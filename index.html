@@ -33,13 +33,44 @@
     .right { margin-left:auto; }
     .list { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
     .warn { color:#ffcf6a; opacity:.95; }
+    /* ジョイスティックの外枠 */
+    #joystick-base {
+      position: fixed;
+      bottom: 40px;
+      left: 40px;
+      width: 100px;
+      height: 100px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: none; /* デフォルトは非表示、タッチ開始時に表示 */
+      touch-action: none;
+      z-index: 100;
+    }
+    /* ジョイスティックのスティック部分 */
+    #joystick-stick {
+      position: absolute;
+      top: 25px;
+      left: 25px;
+      width: 50px;
+      height: 50px;
+      background: rgba(100, 160, 255, 0.5);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    /* キャンバスをタッチ操作しやすくするための設定 */
+    canvas {
+      touch-action: none; 
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <canvas id="c" width="960" height="540"></canvas>
   </div>
-
+  <div id="joystick-base">
+    <div id="joystick-stick"></div>
+  </div>
   <div class="ui">
     <div class="panel" style="min-width:320px">
       <div class="row" style="justify-content:space-between">
@@ -131,6 +162,11 @@
         <div class="row" style="margin-top:10px; justify-content:flex-end">
           <button class="btn" id="toBuild">編成に戻る</button>
         </div>
+      </div>
+
+      <div class="row" style="margin-top:10px; gap:5px;">
+        <button class="btn tiny" onclick="togglePause()">Pause</button>
+        <button class="btn tiny" onclick="showMinimap = !showMinimap">Map</button>
       </div>
     </div>
   </div>
@@ -235,6 +271,13 @@
   }
 
   // ===== Input =====
+  // ジョイスティック用の変数
+  const jBase = document.getElementById('joystick-base');
+  const jStick = document.getElementById('joystick-stick');
+  let touchId = null;
+  let jPos = { x: 0, y: 0 }; // 中心座標
+  let jInput = { x: 0, y: 0 }; // 入力値 (-1.0 ~ 1.0)
+
   const keys = new Set();
   let showMinimap = true;
   addEventListener('keydown', (e)=>{
@@ -247,6 +290,61 @@
   });
   addEventListener('keyup', (e)=> keys.delete(e.key.toLowerCase()));
   addEventListener('pointerdown', ()=>{ try{ getAudio().resume(); }catch{} });
+
+  // タッチ開始
+  addEventListener('touchstart', (e) => {
+    const t = e.changedTouches[0];
+    
+    // 画面の左半分をタッチしたらジョイスティックを表示
+    if (t.clientX < window.innerWidth / 2) {
+      touchId = t.identifier;
+      jPos = { x: t.clientX, y: t.clientY };
+      jBase.style.display = 'block';
+      jBase.style.left = `${jPos.x - 50}px`;
+      jBase.style.top = `${jPos.y - 50}px`;
+    } else {
+      // 画面の右半分をタッチしたら「Eキー」と同じ挙動（インタラクト）
+      tryInteract();
+    }
+    
+    // オーディオコンテキストの再開
+    try { getAudio().resume(); } catch {}
+  }, { passive: false });
+  
+  // タッチ移動
+  addEventListener('touchmove', (e) => {
+    if (touchId === null) return;
+    
+    for (const t of e.changedTouches) {
+      if (t.identifier === touchId) {
+        const dx = t.clientX - jPos.x;
+        const dy = t.clientY - jPos.y;
+        const dist = Math.hypot(dx, dy);
+        const maxDist = 50;
+        
+        const ratio = Math.min(dist, maxDist) / maxDist;
+        const angle = Math.atan2(dy, dx);
+        
+        jInput.x = Math.cos(angle) * ratio;
+        jInput.y = Math.sin(angle) * ratio;
+        
+        // スティックの表示更新
+        jStick.style.transform = `translate(${jInput.x * 40}px, ${jInput.y * 40}px)`;
+      }
+    }
+    e.preventDefault(); // スクロール防止
+  }, { passive: false });
+  
+  // タッチ終了
+  addEventListener('touchend', (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === touchId) {
+        touchId = null;
+        jInput = { x: 0, y: 0 };
+        jBase.style.display = 'none';
+      }
+    }
+  });
 
   // ===== Stage / Areas =====
   const AREAS = [
@@ -1332,15 +1430,26 @@
     const st = game.stage;
     const p = game.player;
 
-    // movement
-    let mx=0,my=0;
+    // movement (修正後)
+    let mx=0, my=0;
     if (keys.has('w') || keys.has('arrowup')) my -= 1;
     if (keys.has('s') || keys.has('arrowdown')) my += 1;
     if (keys.has('a') || keys.has('arrowleft')) mx -= 1;
     if (keys.has('d') || keys.has('arrowright')) mx += 1;
-    const ml = len(mx,my) || 1;
-    mx/=ml; my/=ml;
-    if (mx||my) { p.dirX=mx; p.dirY=my; }
+    
+    // ジョイスティックの入力を加算
+    mx += jInput.x;
+    my += jInput.y;
+
+    const ml = len(mx, my);
+    if (ml > 0.1) { // 入力がある程度大きい場合のみ向きを更新
+      mx /= (ml > 1 ? ml : 1); // 正規化（キーボード斜め移動対策）
+      my /= (ml > 1 ? ml : 1);
+      p.dirX = mx / (ml > 1 ? 1 : ml); // スティックを倒した量に関わらず向きを保持
+      p.dirY = my / (ml > 1 ? 1 : ml);
+    }
+
+
 
     p.x += mx * p.speed * dt;
     p.y += my * p.speed * dt;
