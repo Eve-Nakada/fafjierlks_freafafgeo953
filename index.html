@@ -127,7 +127,7 @@
         </div>
         <div class="tiny muted">
           <span class="warn">進化ツリー</span>：
-          武器Lv8+条件で第1進化 → 進化武器をLv4まで強化 → 追加条件で第2進化。
+          武器Lv5+条件で第1進化 → 進化武器をLv4まで強化 → 追加条件で第2進化。
         </div>
       </div>
 
@@ -162,11 +162,6 @@
         <div class="row" style="margin-top:10px; justify-content:flex-end">
           <button class="btn" id="toBuild">編成に戻る</button>
         </div>
-      </div>
-
-      <div class="row" style="margin-top:10px; gap:5px;">
-        <button class="btn tiny" onclick="togglePause()">Pause</button>
-        <button class="btn tiny" onclick="showMinimap = !showMinimap">Map</button>
       </div>
     </div>
   </div>
@@ -716,7 +711,7 @@
 
       if (node.tierFrom === 0) {
         if (w.tier !== 0) continue;
-        if (w.formLevel < 8) continue;
+        if (w.formLevel < 5) continue;
       } else {
         if (w.tier !== 1) continue;
         if (w.formLevel < 4) continue;
@@ -724,7 +719,7 @@
 
       opts.push({
         id: 'evo_'+node.id,
-        name: `進化: ${node.name}`,
+        name: `進化: ${node.name}（${w.name} Lv${w.formLevel}）`,
         desc: `${w.name} + ${PASSIVES.find(p=>p.id===node.need)?.name} → ${node.name}`,
         badge: node.badge,
         apply: ()=>doEvolution(node, w),
@@ -753,8 +748,8 @@
       if (w.formLevel >= w.formMax) continue;
       opts.push({
         id: 'wp_'+w.kind,
-        name: `${w.name} Lv+1`,
-        desc: (w.tier===0 ? '（Lv8で第1進化条件）' : (w.tier===1 ? '（Lv4で第2進化条件）' : '最終形態')),
+        name: `${w.name} Lv${w.formLevel}→${w.formLevel+1}（${w.formLevel}/${w.formMax}）`,
+        desc: (w.tier===0 ? '（Lv5で第1進化条件）' : (w.tier===1 ? '（Lv4で第2進化条件）' : '最終形態')),
         badge: 'WEAPON',
         apply: () => upgradeWeapon(w),
       });
@@ -902,12 +897,13 @@
     const c = nearestChest();
     if (c) {
       const d = Math.hypot(c.x-game.player.x, c.y-game.player.y);
-      if (d <= 48) openChest(c);
+      if (d <= 70) openChest(c);
     }
   }
 
   function openChest(chest){
     chest.opened = true;
+    paused = true;
     const stats = computeStats();
     const g = Math.floor((chest.gold || 40) * stats.goldMul);
     game.gold += g;
@@ -949,21 +945,22 @@
         </div>
         <div class="tiny muted">${opt.desc || ''}</div>
       `;
-      card.onclick = () => { opt.apply(); hideOverlay(); updateHudTexts(); };
+      card.onclick = () => { opt.apply(); hideOverlay(); paused = false; updateHudTexts(); };
       chestGrid.appendChild(card);
     }
   }
 
   openShopBtn.onclick = () => { openShop(); };
-  closeChestBtn.onclick = () => { hideOverlay(); };
+  closeChestBtn.onclick = () => { hideOverlay(); paused = false; };
 
   function openShop(){
+    paused = true;
     overlayTitle.querySelector('h2').textContent = 'ショップ';
     pickInfo.textContent = `所持Gold: ${game.gold}`;
     showOverlay('shop');
     renderShop();
   }
-  closeShopBtn.onclick = () => { hideOverlay(); };
+  closeShopBtn.onclick = () => { hideOverlay(); paused = false; };
 
   function renderShop(){
     shopGrid.innerHTML = '';
@@ -1018,7 +1015,15 @@
   // ===== Combat helpers =====
   function addPop(x,y, text) { game.damagePop.push({ x,y, text, t:0 }); }
   function dropGem(x,y, amount=6) {
-    game.gems.push({ x,y, r:6, xp: amount, vx:rnd(-45,45), vy:rnd(-45,45) });
+    // rare gem: sometimes drops a big chunk of XP
+    const roll = Math.random();
+    let xp = amount;
+    let r = 6;
+    let rare = false;
+    if (roll < 0.010) { xp = Math.round(amount * 12); r = 10; rare = true; }
+    else if (roll < 0.060) { xp = Math.round(amount * 5); r = 9; rare = true; }
+
+    game.gems.push({ x,y, r, xp, rare, vx:rnd(-45,45), vy:rnd(-45,45) });
   }
   function spawnChest(x,y, gold=45){
     game.chests.push({ x,y, r: 14, opened:false, gold });
@@ -1152,8 +1157,15 @@
         healT: 0, healCd: tpl.healCd, healR: tpl.healR,
         sumT: 0, sumCd: tpl.sumCd,
         shieldR: tpl.shieldR,
+        barrierMax: (tpl.kind==='shielder') ? (80*(1+game.difficulty*0.55)) : 0,
+        barrierHp:  (tpl.kind==='shielder') ? (80*(1+game.difficulty*0.55)) : 0,
+        barrierRegen: (tpl.kind==='shielder') ? (6 + game.difficulty*1.2) : 0, // per second
         blinkT: 0, blinkCd: tpl.blinkCd,
+        // sniper charge system
         snipeT: 0, snipeCd: tpl.snipeCd,
+        snipeState: 0, // 0 cooldown, 1 charging
+        snipeCharge: 0,
+        snipeAimX: 0, snipeAimY: 0,
         bossAtkT: 0, bossAtkCd: 2.1,
         telePhase: 0,
       }
@@ -1165,15 +1177,59 @@
     for (const s of game.enemies) {
       if (s.dead) continue;
       if (s.kind !== 'shielder') continue;
+      if ((s.ai.barrierHp||0) <= 0) continue;
       const d = Math.hypot(s.x-e.x, s.y-e.y);
       if (d <= (s.ai.shieldR || 220)) return true;
     }
     return false;
   }
 
+  function nearestActiveShielderForEnemy(e){
+    let best=null, bestD=1e9;
+    for (const s of game.enemies) {
+      if (s.dead) continue;
+      if (s.kind !== 'shielder') continue;
+      if ((s.ai.barrierHp||0) <= 0) continue;
+      const d = Math.hypot(s.x-e.x, s.y-e.y);
+      if (d <= (s.ai.shieldR || 220) && d < bestD) { bestD=d; best=s; }
+    }
+    return best;
+  }
+
   function dealDamageToEnemy(e, dmg, knockX=0, knockY=0) {
-    // shielder aura reduction
-    if (e.kind !== 'shielder' && isShieldedEnemy(e)) dmg = Math.max(1, Math.round(dmg * 0.60));
+    // --- Shielder: barrier HP system ---
+    // 1) Allies in shielder radius: damage is reduced, and the reduced portion is paid by shielder barrier HP.
+    if (e.kind !== 'shielder') {
+      const sh = nearestActiveShielderForEnemy(e);
+      if (sh) {
+        const reduced = Math.max(1, Math.round(dmg * 0.60));
+        const absorbed = Math.max(0, dmg - reduced);
+        if (absorbed > 0) {
+          sh.ai.barrierHp = Math.max(0, (sh.ai.barrierHp||0) - absorbed);
+          addPop(sh.x, sh.y, `🛡-${absorbed}`);
+          spawnParticles(sh.x, sh.y, 6, 0.9, 180, 0.35, 'heal'); // teal-ish
+          beep(300,0.02,'triangle',0.02);
+        }
+        dmg = reduced;
+      }
+    }
+
+    // 2) Shielder itself: barrier takes hits first
+    if (e.kind === 'shielder' && (e.ai.barrierHp||0) > 0) {
+      const take = Math.min(e.ai.barrierHp, dmg);
+      e.ai.barrierHp -= take;
+      addPop(e.x, e.y, `🛡${take}`);
+      spawnParticles(e.x, e.y, 8, 1.0, 200, 0.4, 'heal');
+      dmg -= take;
+      if (e.ai.barrierHp <= 0) {
+        flash(0.12,0.06);
+        shake(6,0.12);
+        spawnParticles(e.x, e.y, 22, 1.0, 260, 0.6, 'spark');
+        beep(180,0.06,'square',0.04);
+      }
+      if (dmg <= 0) return; // fully absorbed
+    }
+
     e.hp -= dmg;
     e.vx += knockX; e.vy += knockY;
     addPop(e.x, e.y, String(dmg));
@@ -1193,7 +1249,7 @@
             kind:'runner',
             vx:rnd(-120,120), vy:rnd(-120,120),
             dead:false, boss:false,
-            ai:{ shootT:0, shootCd:0, healT:0, healCd:0, healR:0, sumT:0, sumCd:0, shieldR:0, blinkT:0, blinkCd:0, snipeT:0, snipeCd:0, bossAtkT:0, bossAtkCd:0, telePhase:0 }
+            ai:{ shootT:0, shootCd:0, healT:0, healCd:0, healR:0, sumT:0, sumCd:0, shieldR:0, barrierMax:0, barrierHp:0, barrierRegen:0, blinkT:0, blinkCd:0, snipeT:0, snipeCd:0, snipeState:0, snipeCharge:0, snipeAimX:0, snipeAimY:0, bossAtkT:0, bossAtkCd:0, telePhase:0 }
           });
         }
         spawnParticles(e.x,e.y, 18, 1.0, 220, 0.6, 'spark');
@@ -1651,6 +1707,11 @@
       e.vx *= Math.pow(0.001, dt);
       e.vy *= Math.pow(0.001, dt);
 
+      // shielder barrier regen
+      if (e.kind==='shielder' && (e.ai.barrierMax||0) > 0 && (e.ai.barrierHp||0) < e.ai.barrierMax) {
+        e.ai.barrierHp = Math.min(e.ai.barrierMax, e.ai.barrierHp + (e.ai.barrierRegen||0) * dt);
+      }
+
       const dx=p.x-e.x, dy=p.y-e.y;
       const dist=len(dx,dy)||1;
       const ux=dx/dist, uy=dy/dist;
@@ -1700,29 +1761,47 @@
         }
       }
       else if (e.kind === 'summoner') {
-        // approach slowly and summon minions
+        // approach slowly and summon multiple minion types
         e.x += (ux*e.sp*0.85)*dt + e.vx*dt;
         e.y += (uy*e.sp*0.85)*dt + e.vy*dt;
 
         e.ai.sumT += dt;
         if (e.ai.sumT >= e.ai.sumCd) {
           e.ai.sumT = 0;
-          // summon 2 small minions near it
-          for (let i=0;i<2;i++){
-            game.enemies.push({
-              x: e.x + rnd(-28,28), y: e.y + rnd(-28,28),
-              r: 10,
-              hp: 14*(1+game.difficulty*0.45),
-              maxHp: 14*(1+game.difficulty*0.45),
-              sp: 120*(1+game.difficulty*0.06),
-              touchDmg: 9*(1+game.difficulty*0.12),
-              kind:'runner',
+
+          const summonCount = 2 + (Math.random()<0.25 ? 1 : 0);
+          for (let i=0;i<summonCount;i++){
+            const r = Math.random();
+            let kind = 'runner';
+            if (r < 0.50) kind = 'runner';
+            else if (r < 0.82) kind = 'shooter';
+            else kind = 'bomber';
+
+            // minion stats (lighter than normal)
+            const baseHp = (kind==='runner') ? 14 : (kind==='shooter' ? 16 : 18);
+            const baseSp = (kind==='runner') ? 130 : (kind==='shooter' ? 92 : 110);
+            const baseTouch = (kind==='runner') ? 8 : (kind==='shooter' ? 9 : 10);
+
+            const ent = {
+              x: e.x + rnd(-34,34), y: e.y + rnd(-34,34),
+              r: (kind==='bomber') ? 11 : 10,
+              hp: baseHp*(1+game.difficulty*0.42),
+              maxHp: baseHp*(1+game.difficulty*0.42),
+              sp: baseSp*(1+game.difficulty*0.05),
+              touchDmg: baseTouch*(1+game.difficulty*0.10),
+              kind,
               vx:rnd(-90,90), vy:rnd(-90,90),
               dead:false, boss:false,
-              ai:{ shootT:0, shootCd:0, healT:0, healCd:0, healR:0, sumT:0, sumCd:0, shieldR:0, blinkT:0, blinkCd:0, snipeT:0, snipeCd:0, bossAtkT:0, bossAtkCd:0, telePhase:0 }
-            });
+              minion:true,
+              ai:{ shootT:0, shootCd:(kind==='shooter')?1.85:0, healT:0, healCd:0, healR:0, sumT:0, sumCd:0, shieldR:0, barrierMax:0, barrierHp:0, barrierRegen:0, blinkT:0, blinkCd:0, snipeT:0, snipeCd:0, snipeState:0, snipeCharge:0, snipeAimX:0, snipeAimY:0, bossAtkT:0, bossAtkCd:0, telePhase:0 }
+            };
+            // bomber minion carries smaller boom on death
+            if (kind==='bomber') ent.ai.boom = 55;
+
+            game.enemies.push(ent);
           }
-          spawnParticles(e.x,e.y, 18, 1.0, 240, 0.6, 'summon');
+
+          spawnParticles(e.x,e.y, 22, 1.0, 240, 0.6, 'summon');
           beep(210,0.06,'square',0.04);
         }
       }
@@ -1756,22 +1835,47 @@
         e.y += (uy*e.sp*0.55)*dt + e.vy*dt;
       }
       else if (e.kind === 'sniper') {
-        // keep far and snipe with telegraph line
+        // keep far and snipe with strict charge -> fire
         const want = 420;
         const toward = (dist > want) ? 0.75 : -0.55;
         e.x += (ux*e.sp*toward)*dt + e.vx*dt;
         e.y += (uy*e.sp*toward)*dt + e.vy*dt;
 
-        e.ai.snipeT += dt;
-        if (e.ai.snipeT >= e.ai.snipeCd) {
-          e.ai.snipeT = 0;
-          // telegraph first, then shoot after short delay via line-life
-          addLine(e.x,e.y,p.x,p.y, 0.30, 'snipe');
-          // shoot now (simple), but line warns where it goes
-          const sp = 520 + game.difficulty*25;
-          shootEnemyBullet(e.x, e.y, ux, uy, sp, 14*(1+game.difficulty*0.10), 2.8, 4);
-          beep(260,0.05,'triangle',0.03);
-          flash(0.10,0.05);
+        if ((e.ai.snipeState||0) === 0) {
+          e.ai.snipeT += dt;
+          if (e.ai.snipeT >= e.ai.snipeCd) {
+            // start charging
+            e.ai.snipeState = 1;
+            e.ai.snipeCharge = 0.55; // charge seconds
+            e.ai.snipeT = 0;
+
+            // lock target position at start of charge
+            e.ai.snipeAimX = p.x;
+            e.ai.snipeAimY = p.y;
+            addLine(e.x, e.y, e.ai.snipeAimX, e.ai.snipeAimY, e.ai.snipeCharge, 'snipe');
+            spawnParticles(e.x, e.y, 10, 1.0, 120, 0.45, 'tele');
+            beep(220,0.04,'sine',0.03);
+          }
+        } else {
+          // charging...
+          e.ai.snipeCharge -= dt;
+          if (e.ai.snipeCharge <= 0) {
+            e.ai.snipeState = 0;
+
+            const dx2 = e.ai.snipeAimX - e.x;
+            const dy2 = e.ai.snipeAimY - e.y;
+            const d2 = Math.hypot(dx2, dy2) || 1;
+            const sx2 = dx2 / d2, sy2 = dy2 / d2;
+
+            const sp = 560 + game.difficulty*28;
+            const dmg = 16*(1+game.difficulty*0.10);
+            shootEnemyBullet(e.x, e.y, sx2, sy2, sp, dmg, 2.8, 4);
+
+            flash(0.10,0.05);
+            shake(6,0.12);
+            beep(320,0.05,'triangle',0.03);
+            spawnParticles(e.ai.snipeAimX, e.ai.snipeAimY, 10, 1.0, 200, 0.45, 'spark');
+          }
         }
       }
       else if (e.boss) {
@@ -1856,9 +1960,19 @@
 
     // chest hint
     const c = nearestChest();
+
+    // chest auto pickup
+    if (c) {
+      const dAuto = Math.hypot(c.x-p.x, c.y-p.y);
+      if (dAuto <= 48 && game.mode==='play' && !paused) {
+        openChest(c);
+        updateHudTexts();
+        return; // openChest pauses & opens overlay
+      }
+    }
     if (c) {
       const d = Math.hypot(c.x-p.x, c.y-p.y);
-      hintLine.textContent = (d <= 70) ? '宝箱が近い：Eで開ける' : '宝箱あり：近づいてE';
+      hintLine.textContent = (d <= 70) ? '宝箱が近い：近づくと取得' : '宝箱あり：近づいて取得';
     } else hintLine.textContent = '';
 
     // level up
@@ -1985,7 +2099,7 @@
     // gems
     for (const g of game.gems) {
       const {sx, sy} = worldToScreen(g.x, g.y);
-      ctx.fillStyle = '#7cf';
+      ctx.fillStyle = g.rare ? 'rgba(255,207,106,.95)' : '#7cf';
       ctx.beginPath(); ctx.arc(sx,sy,g.r,0,Math.PI*2); ctx.fill();
     }
 
@@ -2045,8 +2159,8 @@
       ctx.fillStyle = color;
       ctx.beginPath(); ctx.arc(sx,sy,e.r,0,Math.PI*2); ctx.fill();
 
-      // shielder aura ring
-      if (e.kind==='shielder') {
+      // shielder aura ring (only while barrier is alive)
+      if (e.kind==='shielder' && (e.ai.barrierHp||0) > 0) {
         ctx.globalAlpha = 0.10;
         ctx.strokeStyle = 'rgba(127,255,212,.9)';
         ctx.beginPath(); ctx.arc(sx,sy, e.ai.shieldR||220, 0, Math.PI*2); ctx.stroke();
