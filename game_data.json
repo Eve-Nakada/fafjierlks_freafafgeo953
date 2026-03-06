@@ -1,0 +1,805 @@
+{
+  "title": "Ocean Survivor",
+  "titleSub": "深海を生き延びるヴァンサバ系サバイバルアクション",
+  "player": {
+    "name": "潜水士"
+  },
+  "spriteSheets": {
+    "player_icon": {
+      "src": "player_icon.png",
+      "cols": 1,
+      "rows": 1,
+      "directions": 1
+    },
+    "player": {
+      "src": "player.png",
+      "cols": 2,
+      "rows": 2,
+      "directions": 4
+    },
+    "weapons": {
+      "src": "weapons.png",
+      "cols": 2,
+      "rows": 3,
+      "directions": 1
+    },
+    "enemies": {
+      "src": "enemies.png",
+      "cols": 3,
+      "rows": 4,
+      "directions": 1
+    },
+    "boss": {
+      "src": "boss.png",
+      "cols": 2,
+      "rows": 2,
+      "directions": 4
+    },
+    "leviathan": {
+      "src": "leviathan.png",
+      "cols": 2,
+      "rows": 2,
+      "directions": 4
+    }
+  },
+  "weapons": [
+    {
+      "id": "wand",
+      "name": "ハープーン",
+      "iconIndex": 0,
+      "desc": "最も近い敵を狙う追尾式ハープーン。進化で3方向の三叉槍になる。",
+      "base": {
+        "dmg": 12,
+        "cd": 520,
+        "speed": 540,
+        "count": 1,
+        "pierce": 0,
+        "homing": 1,
+        "radius": 0
+      }
+    },
+    {
+      "id": "knife",
+      "name": "水流カッター",
+      "iconIndex": 1,
+      "desc": "進行方向へ水刃を連射。進化で周囲を巡る潮流ブレードになる。",
+      "base": {
+        "dmg": 9,
+        "cd": 180,
+        "speed": 760,
+        "count": 1,
+        "pierce": 0,
+        "homing": 0,
+        "radius": 0
+      }
+    },
+    {
+      "id": "aura",
+      "name": "電気クラゲフィールド",
+      "iconIndex": 2,
+      "desc": "周囲に放電域を展開。進化で連鎖電撃を起こす。",
+      "base": {
+        "dmg": 4,
+        "cd": 240,
+        "speed": 0,
+        "count": 0,
+        "pierce": 99,
+        "homing": 0,
+        "radius": 70
+      }
+    },
+    {
+      "id": "bomb",
+      "name": "機雷",
+      "iconIndex": 3,
+      "desc": "機雷を射出して爆発。進化で深海爆雷となり余波も広がる。",
+      "base": {
+        "dmg": 22,
+        "cd": 900,
+        "speed": 420,
+        "count": 1,
+        "pierce": 0,
+        "homing": 0,
+        "radius": 60
+      }
+    },
+    {
+      "id": "ring",
+      "name": "魚群ミサイル",
+      "iconIndex": 4,
+      "desc": "魚群型ミサイルを放つ。進化で追尾するサメ群へ変化。",
+      "base": {
+        "dmg": 8,
+        "cd": 700,
+        "speed": 520,
+        "count": 8,
+        "pierce": 1,
+        "homing": 0,
+        "radius": 0
+      }
+    },
+    {
+      "id": "beam",
+      "name": "ソナー砲",
+      "iconIndex": 5,
+      "desc": "直線上を貫くソナー砲。進化で幅広い破壊波になる。",
+      "base": {
+        "dmg": 10,
+        "cd": 620,
+        "speed": 980,
+        "count": 1,
+        "pierce": 6,
+        "homing": 0,
+        "radius": 0
+      }
+    }
+  ],
+  "passives": [
+    {
+      "id": "tome",
+      "name": "海図",
+      "maxLv": 5,
+      "desc": "クールダウン短縮",
+      "effect": {
+        "target": "cooldownMul",
+        "mode": "cooldown",
+        "perLevel": 0.06
+      },
+      "effectDesc": "攻撃間隔を短縮し、武器の回転率を高める。",
+      "levelDesc": [
+        "攻撃間隔 -6%",
+        "攻撃間隔 -6%(合計-12%)",
+        "攻撃間隔 -6%(合計-18%)",
+        "攻撃間隔 -6%(合計-24%)",
+        "攻撃間隔 -6%(合計-30%)"
+      ]
+    },
+    {
+      "id": "spinach",
+      "name": "海の力",
+      "maxLv": 5,
+      "desc": "与ダメ増加",
+      "effect": {
+        "target": "damageMul",
+        "mode": "mul",
+        "perLevel": 0.1
+      },
+      "effectDesc": "与えるダメージを底上げする。",
+      "levelDesc": [
+        "与ダメ +10%",
+        "与ダメ +10%(合計+20%)",
+        "与ダメ +10%(合計+30%)",
+        "与ダメ +10%(合計+40%)",
+        "与ダメ +10%(合計+50%)"
+      ]
+    },
+    {
+      "id": "bracer",
+      "name": "水中スラスター",
+      "maxLv": 5,
+      "desc": "弾速アップ",
+      "effect": {
+        "target": "projSpeedMul",
+        "mode": "mul",
+        "perLevel": 0.1
+      },
+      "effectDesc": "水中での射出速度を高め、命中率も向上させる。",
+      "levelDesc": [
+        "弾速 +10%",
+        "弾速 +10%(合計+20%)",
+        "弾速 +10%(合計+30%)",
+        "弾速 +10%(合計+40%)",
+        "弾速 +10%(合計+50%)"
+      ]
+    },
+    {
+      "id": "candle",
+      "name": "深海灯",
+      "maxLv": 5,
+      "desc": "範囲アップ",
+      "effect": {
+        "target": "areaMul",
+        "mode": "mul",
+        "perLevel": 0.12
+      },
+      "effectDesc": "攻撃の範囲と当たり幅を強化する。",
+      "levelDesc": [
+        "範囲 +12%",
+        "範囲 +12%(合計+24%)",
+        "範囲 +12%(合計+36%)",
+        "範囲 +12%(合計+48%)",
+        "範囲 +12%(合計+60%)"
+      ]
+    },
+    {
+      "id": "duplicator",
+      "name": "魚群誘導器",
+      "maxLv": 3,
+      "desc": "弾数アップ",
+      "effect": {
+        "target": "amountAdd",
+        "mode": "add",
+        "perLevel": 1
+      },
+      "effectDesc": "追加弾を発生させ、群れの制圧力を上げる。",
+      "levelDesc": [
+        "発射数 +1",
+        "発射数 +1(合計+2)",
+        "発射数 +1(合計+3)"
+      ]
+    },
+    {
+      "id": "coin",
+      "name": "海賊の宝",
+      "maxLv": 3,
+      "desc": "Gold獲得増加",
+      "effect": {
+        "target": "goldMul",
+        "mode": "mul",
+        "perLevel": 0.2
+      },
+      "effectDesc": "海賊の宝でGold取得量が増える。",
+      "levelDesc": [
+        "Gold +20%",
+        "Gold +20%(合計+40%)",
+        "Gold +20%(合計+60%)"
+      ]
+    },
+    {
+      "id": "boots",
+      "name": "水中ブーツ",
+      "maxLv": 5,
+      "desc": "移動速度アップ",
+      "effect": {
+        "target": "speedMul",
+        "mode": "mul",
+        "perLevel": 0.06
+      },
+      "effectDesc": "潜水移動を軽快にし、回避性能を高める。",
+      "levelDesc": [
+        "移動速度 +6%",
+        "移動速度 +6%(合計+12%)",
+        "移動速度 +6%(合計+18%)",
+        "移動速度 +6%(合計+24%)",
+        "移動速度 +6%(合計+30%)"
+      ]
+    },
+    {
+      "id": "magnet",
+      "name": "潮流吸引機",
+      "maxLv": 5,
+      "desc": "吸い寄せ範囲アップ",
+      "effect": {
+        "target": "pickupMul",
+        "mode": "mul",
+        "perLevel": 0.12
+      },
+      "effectDesc": "XPやドロップの吸引範囲を広げる。",
+      "levelDesc": [
+        "吸引範囲 +12%",
+        "吸引範囲 +12%(合計+24%)",
+        "吸引範囲 +12%(合計+36%)",
+        "吸引範囲 +12%(合計+48%)",
+        "吸引範囲 +12%(合計+60%)"
+      ]
+    }
+  ],
+  "waves": [
+    {
+      "name": "1",
+      "start": 0,
+      "end": 45,
+      "spawnMul": 1.0,
+      "ranged": 0.0,
+      "special": 0.0,
+      "hpMul": 1.0,
+      "dmgMul": 1.0
+    },
+    {
+      "name": "2",
+      "start": 45,
+      "end": 90,
+      "spawnMul": 1.15,
+      "ranged": 0.02,
+      "special": 0.0,
+      "hpMul": 1.06,
+      "dmgMul": 1.04
+    },
+    {
+      "name": "3",
+      "start": 90,
+      "end": 140,
+      "spawnMul": 1.28,
+      "ranged": 0.06,
+      "special": 0.02,
+      "hpMul": 1.12,
+      "dmgMul": 1.08
+    },
+    {
+      "name": "4",
+      "start": 140,
+      "end": 180,
+      "spawnMul": 1.55,
+      "ranged": 0.1,
+      "special": 0.05,
+      "hpMul": 1.2,
+      "dmgMul": 1.12
+    },
+    {
+      "name": "5",
+      "start": 180,
+      "end": 215,
+      "spawnMul": 2.0,
+      "ranged": 0.18,
+      "special": 0.16,
+      "hpMul": 1.28,
+      "dmgMul": 1.16
+    },
+    {
+      "name": "6",
+      "start": 215,
+      "end": 245,
+      "spawnMul": 2.2,
+      "ranged": 0.2,
+      "special": 0.18,
+      "hpMul": 1.6,
+      "dmgMul": 1.22
+    },
+    {
+      "name": "7",
+      "start": 245,
+      "end": 275,
+      "spawnMul": 2.4,
+      "ranged": 0.22,
+      "special": 0.2,
+      "hpMul": 2.8,
+      "dmgMul": 1.34
+    },
+    {
+      "name": "8",
+      "start": 275,
+      "end": 9999,
+      "spawnMul": 1.2,
+      "ranged": 0.22,
+      "special": 0.22,
+      "hpMul": 3.2,
+      "dmgMul": 1.45
+    }
+  ],
+  "enemies": {
+    "grunt": {
+      "name": "小魚",
+      "spriteIndex": 0,
+      "color": "#7cf"
+    },
+    "runner": {
+      "name": "クラゲ",
+      "spriteIndex": 1,
+      "color": "#53d66f"
+    },
+    "tank": {
+      "name": "カニ",
+      "spriteIndex": 2,
+      "color": "#ff5b5b"
+    },
+    "shooter": {
+      "name": "エイ",
+      "spriteIndex": 3,
+      "color": "#ffb36a"
+    },
+    "splitter": {
+      "name": "ウツボ",
+      "spriteIndex": 4,
+      "color": "#ff9b6a"
+    },
+    "bomber": {
+      "name": "電気ウナギ",
+      "spriteIndex": 5,
+      "color": "#ffd34d"
+    },
+    "healer": {
+      "name": "タコ",
+      "spriteIndex": 6,
+      "color": "#b69cff"
+    },
+    "summoner": {
+      "name": "深海魚",
+      "spriteIndex": 7,
+      "color": "#7a8cff"
+    },
+    "elite": {
+      "name": "サメ",
+      "spriteIndex": 8,
+      "color": "#ff7bbd"
+    },
+    "shielder": {
+      "name": "エビ",
+      "spriteIndex": 9,
+      "color": "#ff8a8a"
+    },
+    "teleporter": {
+      "name": "深海ゴースト",
+      "spriteIndex": 10,
+      "color": "#9ce7ff"
+    },
+    "sniper": {
+      "name": "バラクーダ",
+      "spriteIndex": 11,
+      "color": "#ffcf6a"
+    },
+    "boss": {
+      "name": "ボス",
+      "spriteIndex": 0,
+      "color": "#ffcf6a"
+    },
+    "finalboss": {
+      "name": "リヴァイアサン",
+      "spriteIndex": 0,
+      "color": "#ffcf6a"
+    }
+  },
+  "enemyStats": {
+    "grunt": {
+      "r": 11,
+      "hp": 18,
+      "sp": 82,
+      "touch": 10,
+      "shootCd": 0,
+      "healCd": 0,
+      "healR": 0,
+      "sumCd": 0,
+      "shieldR": 0,
+      "blinkCd": 0,
+      "snipeCd": 0,
+      "bossAtkCd": 0,
+      "boom": 0
+    },
+    "runner": {
+      "r": 10,
+      "hp": 16,
+      "sp": 130,
+      "touch": 9,
+      "shootCd": 0,
+      "healCd": 0,
+      "healR": 0,
+      "sumCd": 0,
+      "shieldR": 0,
+      "blinkCd": 0,
+      "snipeCd": 0,
+      "bossAtkCd": 0,
+      "boom": 0
+    },
+    "tank": {
+      "r": 14,
+      "hp": 42,
+      "sp": 62,
+      "touch": 14,
+      "shootCd": 0,
+      "healCd": 0,
+      "healR": 0,
+      "sumCd": 0,
+      "shieldR": 0,
+      "blinkCd": 0,
+      "snipeCd": 0,
+      "bossAtkCd": 0,
+      "boom": 0
+    },
+    "elite": {
+      "r": 15,
+      "hp": 70,
+      "sp": 78,
+      "touch": 18,
+      "shootCd": 0,
+      "healCd": 0,
+      "healR": 0,
+      "sumCd": 0,
+      "shieldR": 0,
+      "blinkCd": 0,
+      "snipeCd": 0,
+      "bossAtkCd": 0,
+      "boom": 0
+    },
+    "shooter": {
+      "r": 12,
+      "hp": 26,
+      "sp": 86,
+      "touch": 10,
+      "shootCd": 1.6,
+      "healCd": 0,
+      "healR": 0,
+      "sumCd": 0,
+      "shieldR": 0,
+      "blinkCd": 0,
+      "snipeCd": 0,
+      "bossAtkCd": 0,
+      "boom": 0
+    },
+    "splitter": {
+      "r": 12,
+      "hp": 30,
+      "sp": 84,
+      "touch": 11,
+      "shootCd": 0,
+      "healCd": 0,
+      "healR": 0,
+      "sumCd": 0,
+      "shieldR": 0,
+      "blinkCd": 0,
+      "snipeCd": 0,
+      "bossAtkCd": 0,
+      "boom": 0
+    },
+    "bomber": {
+      "r": 13,
+      "hp": 34,
+      "sp": 96,
+      "touch": 11,
+      "shootCd": 0,
+      "healCd": 0,
+      "healR": 0,
+      "sumCd": 0,
+      "shieldR": 0,
+      "blinkCd": 0,
+      "snipeCd": 0,
+      "bossAtkCd": 0,
+      "boom": 80
+    },
+    "healer": {
+      "r": 12,
+      "hp": 26,
+      "sp": 78,
+      "touch": 10,
+      "shootCd": 0,
+      "healCd": 2.2,
+      "healR": 140,
+      "sumCd": 0,
+      "shieldR": 0,
+      "blinkCd": 0,
+      "snipeCd": 0,
+      "bossAtkCd": 0,
+      "boom": 0
+    },
+    "summoner": {
+      "r": 13,
+      "hp": 34,
+      "sp": 74,
+      "touch": 12,
+      "shootCd": 0,
+      "healCd": 0,
+      "healR": 0,
+      "sumCd": 2.5,
+      "shieldR": 0,
+      "blinkCd": 0,
+      "snipeCd": 0,
+      "bossAtkCd": 0,
+      "boom": 0
+    },
+    "shielder": {
+      "r": 13,
+      "hp": 40,
+      "sp": 72,
+      "touch": 12,
+      "shootCd": 0,
+      "healCd": 0,
+      "healR": 0,
+      "sumCd": 0,
+      "shieldR": 85,
+      "blinkCd": 0,
+      "snipeCd": 0,
+      "bossAtkCd": 0,
+      "boom": 0
+    },
+    "teleporter": {
+      "r": 12,
+      "hp": 28,
+      "sp": 88,
+      "touch": 11,
+      "shootCd": 0,
+      "healCd": 0,
+      "healR": 0,
+      "sumCd": 0,
+      "shieldR": 0,
+      "blinkCd": 1.8,
+      "snipeCd": 0,
+      "bossAtkCd": 0,
+      "boom": 0
+    },
+    "sniper": {
+      "r": 12,
+      "hp": 26,
+      "sp": 76,
+      "touch": 10,
+      "shootCd": 0,
+      "healCd": 0,
+      "healR": 0,
+      "sumCd": 0,
+      "shieldR": 0,
+      "blinkCd": 0,
+      "snipeCd": 1.6,
+      "bossAtkCd": 0,
+      "boom": 0
+    },
+    "boss": {
+      "r": 26,
+      "hp": 840,
+      "sp": 78,
+      "touch": 18,
+      "shootCd": 0,
+      "healCd": 0,
+      "healR": 0,
+      "sumCd": 0,
+      "shieldR": 0,
+      "blinkCd": 0,
+      "snipeCd": 0,
+      "bossAtkCd": 2.1,
+      "boom": 0
+    },
+    "finalboss": {
+      "r": 36,
+      "hp": 28000,
+      "sp": 96,
+      "touch": 30,
+      "shootCd": 0,
+      "healCd": 0,
+      "healR": 0,
+      "sumCd": 0,
+      "shieldR": 0,
+      "blinkCd": 1.4,
+      "snipeCd": 1.2,
+      "bossAtkCd": 1.6,
+      "boom": 0
+    }
+  },
+  "shopItems": [
+    {
+      "id": "heal100",
+      "name": "回復 +100",
+      "cost": 25,
+      "desc": "即時回復（満タン時は購入不可）"
+    },
+    {
+      "id": "maxHp50",
+      "name": "最大HP +50",
+      "cost": 45,
+      "desc": "上限を伸ばす"
+    },
+    {
+      "id": "passiveRandom",
+      "name": "パッシブアイテム（ランダム1種）",
+      "cost": 70,
+      "desc": "このショップでは1種類のみ（毎回ランダム）"
+    },
+    {
+      "id": "weaponBaseUp",
+      "name": "武器いずれかLv+1",
+      "cost": 60,
+      "desc": "ベース武器のみ強化（進化武器は対象外）"
+    },
+    {
+      "id": "weaponEvoUp",
+      "name": "武器★いずれかLv+1",
+      "cost": 300,
+      "desc": "第1進化まで対象（第2進化は対象外）"
+    },
+    {
+      "id": "rerollTicket",
+      "name": "リロール券（LvUp用）",
+      "cost": 20,
+      "fixedPrice": true,
+      "desc": "次のLvUpでリロール1回無料（スタック）"
+    },
+    {
+      "id": "xpVacuum",
+      "name": "XP全吸収",
+      "cost": 35,
+      "fixedPrice": true,
+      "desc": "画面内のXPをすべて吸収"
+    }
+  ],
+  "evolutions": [
+    {
+      "id": "harpoon_evo",
+      "from": "wand",
+      "need": "spinach",
+      "name": "ポセイドンのトライデント",
+      "badge": "EVOLVE",
+      "desc": "ハープーン + 海の力。貫通しつつ3方向へ飛ぶ。",
+      "maxAfter": 1,
+      "mods": {
+        "kind": "harpoon_trident",
+        "dmgMul": 1.9,
+        "cdMul": 0.84,
+        "countAdd": 2,
+        "pierceAdd": 4,
+        "homing": 0
+      },
+      "detail": "3方向へ拡散しつつ敵へ吸い付く高貫通の三叉槍。"
+    },
+    {
+      "id": "cutter_evo",
+      "from": "knife",
+      "need": "bracer",
+      "name": "潮流ブレード",
+      "badge": "EVOLVE",
+      "desc": "水流カッター + 水中スラスター。周囲を巡る刃に変化。",
+      "maxAfter": 1,
+      "mods": {
+        "kind": "cutter_tide",
+        "dmgMul": 1.65,
+        "cdMul": 0.86,
+        "countAdd": 2,
+        "pierceAdd": 1,
+        "orbit": 1
+      },
+      "detail": "自機の周囲を2枚以上の刃が公転し、近寄る敵を切り裂く。"
+    },
+    {
+      "id": "jelly_evo",
+      "from": "aura",
+      "need": "duplicator",
+      "name": "嵐の電撃海域",
+      "badge": "EVOLVE",
+      "desc": "電気クラゲフィールド + 魚群誘導器。広範囲に連鎖電撃。",
+      "maxAfter": 1,
+      "mods": {
+        "kind": "jelly_storm",
+        "dmgMul": 1.9,
+        "cdMul": 0.84,
+        "radiusMul": 1.45,
+        "chain": 1
+      },
+      "detail": "フィールド内の敵から周辺敵へ連鎖電撃が飛ぶ。"
+    },
+    {
+      "id": "mine_evo",
+      "from": "bomb",
+      "need": "tome",
+      "name": "深海爆雷",
+      "badge": "EVOLVE",
+      "desc": "機雷 + 海図。広範囲に爆ぜる爆雷へ進化。",
+      "maxAfter": 1,
+      "mods": {
+        "kind": "mine_depth",
+        "dmgMul": 1.85,
+        "cdMul": 0.9,
+        "radiusMul": 1.55
+      },
+      "detail": "大爆発後に余震ダメージを追加で与える。"
+    },
+    {
+      "id": "missile_evo",
+      "from": "ring",
+      "need": "magnet",
+      "name": "サメ群ハンティング",
+      "badge": "EVOLVE",
+      "desc": "魚群ミサイル + 潮流吸引機。追尾する群れへ変化。",
+      "maxAfter": 1,
+      "mods": {
+        "kind": "missile_shark",
+        "dmgMul": 1.7,
+        "cdMul": 0.82,
+        "countAdd": 4,
+        "pierceAdd": 2,
+        "homing": 1
+      },
+      "detail": "複数の追尾ミサイルが群れとなって敵を追う。"
+    },
+    {
+      "id": "sonar_evo",
+      "from": "beam",
+      "need": "candle",
+      "name": "超音波破壊砲",
+      "badge": "EVOLVE",
+      "desc": "ソナー砲 + 深海灯。幅広の貫通破壊波。",
+      "maxAfter": 1,
+      "mods": {
+        "kind": "sonar_destroyer",
+        "dmgMul": 1.95,
+        "cdMul": 0.86,
+        "pierceAdd": 8,
+        "beamWide": 1
+      },
+      "detail": "太く長い貫通ビームを前方へ照射する。"
+    }
+  ]
+}
