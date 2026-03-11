@@ -590,6 +590,10 @@ button:disabled{
     font-size:12px;
   }
 
+  #absorbXPBtn{
+    display:none;
+  }
+
   #playerIcon{
     width:42px;
     height:42px;
