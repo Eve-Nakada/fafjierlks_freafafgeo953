@@ -68,17 +68,18 @@ function updatePlayer(dt) {
   p.x += mx * getPlayerSpeed() * dt;
   p.y += my * getPlayerSpeed() * dt;
 
-  resolvePlayerMapCollision(prevX, prevY)
+  resolvePlayerMapCollision(prevX, prevY);
 
   p.x = clamp(p.x, p.r, STATE.world.width - p.r);
   p.y = clamp(p.y, p.r, STATE.world.height - p.r);
 
+  // 画像順: 下 右 左 上
   if (Math.abs(mx) > Math.abs(my)) {
-    if (mx > 0) p.dirIndex = 1;
-    else if (mx < 0) p.dirIndex = 3;
+    if (mx > 0) p.dirIndex = 2; // 右
+    else if (mx < 0) p.dirIndex = 1; // 左
   } else if (Math.abs(my) > 0.001) {
-    if (my > 0) p.dirIndex = 2;
-    else if (my < 0) p.dirIndex = 0;
+    if (my > 0) p.dirIndex = 0; // 下
+    else if (my < 0) p.dirIndex = 3; // 上
   }
 
   if (p.invincibleTimer > 0) p.invincibleTimer -= dt;
