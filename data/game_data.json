@@ -1,0 +1,448 @@
+{
+  "title": "Ocean Survivor",
+  "titleSub": "Deep Sea Survival",
+  "shopPriceMul": 1,
+
+  "spriteSheets": {
+    "player": {
+      "src": "images/player.png",
+      "cols": 2,
+      "rows": 2
+    },
+    "weapons": {
+      "src": "images/weapons.png",
+      "cols": 2,
+      "rows": 3
+    },
+    "enemies": {
+      "src": "images/enemies.png",
+      "cols": 3,
+      "rows": 4
+    },
+    "boss": {
+      "src": "images/boss.png",
+      "cols": 2,
+      "rows": 2
+    },
+    "leviathan": {
+      "src": "images/leviathan.png",
+      "cols": 2,
+      "rows": 2
+    }
+  },
+
+  "weapons": [
+    {
+      "id": "harpoon",
+      "name": "ハープーン",
+      "desc": "最も基本的な直線攻撃。近い敵を狙って高速で貫く。",
+      "iconIndex": 0,
+      "damage": 18,
+      "levelDamage": 4,
+      "cooldown": 0.8,
+      "speed": 360,
+      "life": 1.2,
+      "evolution": {
+        "name": "ポセイドンのトライデント",
+        "pattern": "trident",
+        "needsPassive": "chart"
+      }
+    },
+    {
+      "id": "water_cutter",
+      "name": "水流カッター",
+      "desc": "自機の周囲を巡る刃で接近した敵を切り裂く。",
+      "iconIndex": 1,
+      "damage": 14,
+      "levelDamage": 3,
+      "cooldown": 0.25,
+      "speed": 0,
+      "life": 0.2,
+      "evolution": {
+        "name": "潮流ブレード",
+        "pattern": "orbit",
+        "needsPassive": "pressure_fin"
+      }
+    },
+    {
+      "id": "jelly_field",
+      "name": "電気クラゲフィールド",
+      "desc": "自機の周囲に短時間の電撃海域を展開する。",
+      "iconIndex": 2,
+      "damage": 10,
+      "levelDamage": 2,
+      "cooldown": 1.4,
+      "speed": 0,
+      "life": 0.55,
+      "evolution": {
+        "name": "嵐の電撃海域",
+        "pattern": "chain",
+        "needsPassive": "battery"
+      }
+    },
+    {
+      "id": "mine",
+      "name": "機雷",
+      "desc": "周囲または敵付近に設置され、接触で爆発する。",
+      "iconIndex": 3,
+      "damage": 28,
+      "levelDamage": 6,
+      "cooldown": 1.55,
+      "speed": 0,
+      "life": 1.15,
+      "evolution": {
+        "name": "深海爆雷",
+        "pattern": "burst",
+        "needsPassive": "shell"
+      }
+    },
+    {
+      "id": "fish_missile",
+      "name": "魚群ミサイル",
+      "desc": "敵を追尾する生体ミサイルを放つ。",
+      "iconIndex": 4,
+      "damage": 24,
+      "levelDamage": 5,
+      "cooldown": 1.35,
+      "speed": 240,
+      "life": 2.4,
+      "evolution": {
+        "name": "サメ群ハンティング",
+        "pattern": "multi_homing",
+        "needsPassive": "sonar_scope"
+      }
+    },
+    {
+      "id": "sonar",
+      "name": "ソナー砲",
+      "desc": "前方の敵をまとめて貫く音波ビームを発射する。",
+      "iconIndex": 5,
+      "damage": 30,
+      "levelDamage": 7,
+      "cooldown": 1.8,
+      "speed": 1,
+      "life": 0.16,
+      "evolution": {
+        "name": "超音波破壊砲",
+        "pattern": "beam",
+        "needsPassive": "core"
+      }
+    }
+  ],
+
+  "passives": [
+    {
+      "id": "chart",
+      "name": "海図",
+      "desc": "探索効率を上げる補助装備。",
+      "effectDesc": "経験値の回収範囲が広がる。",
+      "levelDesc": [
+        "回収範囲 +12",
+        "回収範囲 +24",
+        "回収範囲 +36",
+        "回収範囲 +48",
+        "回収範囲 +60"
+      ],
+      "maxLevel": 5
+    },
+    {
+      "id": "thruster",
+      "name": "水中スラスター",
+      "desc": "移動性能を高める推進器。",
+      "effectDesc": "移動速度が上がる。",
+      "levelDesc": [
+        "移動速度 +10%",
+        "移動速度 +20%",
+        "移動速度 +30%",
+        "移動速度 +40%",
+        "移動速度 +50%"
+      ],
+      "maxLevel": 5
+    },
+    {
+      "id": "shell",
+      "name": "強化潜水殻",
+      "desc": "船体耐久を高める強化装甲。",
+      "effectDesc": "最大HPが増える。",
+      "levelDesc": [
+        "最大HP +20",
+        "最大HP +40",
+        "最大HP +60",
+        "最大HP +80",
+        "最大HP +100"
+      ],
+      "maxLevel": 5
+    },
+    {
+      "id": "core",
+      "name": "海流コア",
+      "desc": "武器出力を高める増幅装置。",
+      "effectDesc": "武器ダメージが上がる。",
+      "levelDesc": [
+        "ダメージ +10%",
+        "ダメージ +20%",
+        "ダメージ +30%",
+        "ダメージ +40%",
+        "ダメージ +50%"
+      ],
+      "maxLevel": 5
+    },
+    {
+      "id": "battery",
+      "name": "高圧バッテリー",
+      "desc": "武装の駆動効率を高める電源ユニット。",
+      "effectDesc": "攻撃クールダウンが短くなる。",
+      "levelDesc": [
+        "発射速度 +10%",
+        "発射速度 +20%",
+        "発射速度 +30%",
+        "発射速度 +40%",
+        "発射速度 +50%"
+      ],
+      "maxLevel": 5
+    },
+    {
+      "id": "sonar_scope",
+      "name": "精密ソナースコープ",
+      "desc": "遠距離攻撃の精度と速度を高める。",
+      "effectDesc": "投射物の速度が上がる。",
+      "levelDesc": [
+        "弾速 +12%",
+        "弾速 +24%",
+        "弾速 +36%",
+        "弾速 +48%",
+        "弾速 +60%"
+      ],
+      "maxLevel": 5
+    },
+    {
+      "id": "pressure_fin",
+      "name": "耐圧フィン",
+      "desc": "広域兵装の展開性能を高める。",
+      "effectDesc": "攻撃範囲が広がる。",
+      "levelDesc": [
+        "範囲 +10%",
+        "範囲 +20%",
+        "範囲 +30%",
+        "範囲 +40%",
+        "範囲 +50%"
+      ],
+      "maxLevel": 5
+    },
+    {
+      "id": "med_kit",
+      "name": "救急キット",
+      "desc": "継続的な自己修復を行う補助装置。",
+      "effectDesc": "毎秒HPが回復する。",
+      "levelDesc": [
+        "毎秒HP +0.6",
+        "毎秒HP +1.2",
+        "毎秒HP +1.8",
+        "毎秒HP +2.4",
+        "毎秒HP +3.0"
+      ],
+      "maxLevel": 5
+    },
+    {
+      "id": "armor_plate",
+      "name": "装甲プレート",
+      "desc": "被ダメージを軽減する外装補強。",
+      "effectDesc": "受けるダメージを軽減する。",
+      "levelDesc": [
+        "防御 +1.5",
+        "防御 +3.0",
+        "防御 +4.5",
+        "防御 +6.0",
+        "防御 +7.5"
+      ],
+      "maxLevel": 5
+    }
+  ],
+
+  "enemyStats": {
+    "small_fish": {
+      "name": "小魚",
+      "hp": 16,
+      "speed": 84,
+      "damage": 8,
+      "xp": 1,
+      "gold": 1,
+      "spriteIndex": 0
+    },
+    "jellyfish": {
+      "name": "クラゲ",
+      "hp": 24,
+      "speed": 68,
+      "damage": 10,
+      "xp": 5,
+      "gold": 1,
+      "spriteIndex": 1
+    },
+    "crab": {
+      "name": "カニ",
+      "hp": 36,
+      "speed": 54,
+      "damage": 12,
+      "xp": 5,
+      "gold": 2,
+      "spriteIndex": 2
+    },
+    "ray": {
+      "name": "エイ",
+      "hp": 32,
+      "speed": 82,
+      "damage": 11,
+      "xp": 5,
+      "gold": 2,
+      "spriteIndex": 3
+    },
+    "moray": {
+      "name": "ウツボ",
+      "hp": 42,
+      "speed": 88,
+      "damage": 14,
+      "xp": 5,
+      "gold": 2,
+      "spriteIndex": 4
+    },
+    "electric_eel": {
+      "name": "電気ウナギ",
+      "hp": 52,
+      "speed": 92,
+      "damage": 16,
+      "xp": 5,
+      "gold": 2,
+      "spriteIndex": 5
+    },
+    "octopus": {
+      "name": "タコ",
+      "hp": 60,
+      "speed": 70,
+      "damage": 18,
+      "xp": 5,
+      "gold": 3,
+      "spriteIndex": 6
+    },
+    "deep_fish": {
+      "name": "深海魚",
+      "hp": 72,
+      "speed": 76,
+      "damage": 20,
+      "xp": 20,
+      "gold": 3,
+      "spriteIndex": 7
+    },
+    "shark": {
+      "name": "サメ",
+      "hp": 92,
+      "speed": 108,
+      "damage": 24,
+      "xp": 20,
+      "gold": 4,
+      "spriteIndex": 8
+    },
+    "shrimp": {
+      "name": "エビ",
+      "hp": 56,
+      "speed": 96,
+      "damage": 15,
+      "xp": 5,
+      "gold": 2,
+      "spriteIndex": 9
+    },
+    "deep_ghost": {
+      "name": "深海ゴースト",
+      "hp": 84,
+      "speed": 74,
+      "damage": 22,
+      "xp": 20,
+      "gold": 4,
+      "spriteIndex": 10
+    },
+    "barracuda": {
+      "name": "バラクーダ",
+      "hp": 88,
+      "speed": 118,
+      "damage": 23,
+      "xp": 20,
+      "gold": 4,
+      "spriteIndex": 11
+    },
+
+    "boss_manta": {
+      "name": "ボスエイ",
+      "hp": 900,
+      "speed": 76,
+      "damage": 28,
+      "xp": 20,
+      "gold": 25,
+      "spriteIndex": 0
+    },
+    "leviathan": {
+      "name": "リヴァイアサン",
+      "hp": 2200,
+      "speed": 82,
+      "damage": 40,
+      "xp": 20,
+      "gold": 80,
+      "spriteIndex": 0
+    }
+  },
+
+  "shopItems": [
+    {
+      "id": "heal_100",
+      "name": "回復 +100",
+      "desc": "HPを100回復する。",
+      "effect": "heal",
+      "value": 100,
+      "price": 50,
+      "fixedPrice": false
+    },
+    {
+      "id": "max_hp_50",
+      "name": "最大HP +50",
+      "desc": "最大HPを50増やし、同時に回復する。",
+      "effect": "maxHp",
+      "value": 50,
+      "price": 60,
+      "fixedPrice": false
+    },
+    {
+      "id": "weapon_up",
+      "name": "武器強化",
+      "desc": "ランダムな武器を1段階強化する。",
+      "effect": "weaponLevelUp",
+      "value": 1,
+      "price": 70,
+      "fixedPrice": false
+    },
+    {
+      "id": "passive_up",
+      "name": "補助装備強化",
+      "desc": "ランダムなパッシブを1段階強化する。",
+      "effect": "passiveLevelUp",
+      "value": 1,
+      "price": 70,
+      "fixedPrice": false
+    },
+    {
+      "id": "vacuum",
+      "name": "XP全回収",
+      "desc": "画面上のXPをすべて吸収する。",
+      "effect": "absorbXp",
+      "value": 1,
+      "price": 40,
+      "fixedPrice": false
+    },
+    {
+      "id": "reroll",
+      "name": "リロール券",
+      "desc": "レベルアップ選択肢を引き直す。",
+      "effect": "reroll",
+      "value": 1,
+      "price": 30,
+      "fixedPrice": true
+    }
+  ]
+}

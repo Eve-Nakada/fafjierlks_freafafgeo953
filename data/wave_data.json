@@ -1,0 +1,76 @@
+{
+  "clearTime": 480,
+  "waves": [
+    {
+      "index": 1,
+      "at": 0,
+      "spawnInterval": 1.2,
+      "count": 2,
+      "enemyTypes": ["small_fish"]
+    },
+    {
+      "index": 2,
+      "at": 40,
+      "spawnInterval": 1.05,
+      "count": 3,
+      "enemyTypes": ["small_fish", "jellyfish"]
+    },
+    {
+      "index": 3,
+      "at": 80,
+      "spawnInterval": 0.95,
+      "count": 3,
+      "enemyTypes": ["small_fish", "jellyfish", "crab", "ray"]
+    },
+    {
+      "index": 4,
+      "at": 120,
+      "spawnInterval": 0.9,
+      "count": 4,
+      "enemyTypes": ["ray", "moray", "electric_eel", "shrimp"]
+    },
+    {
+      "index": 5,
+      "at": 160,
+      "spawnInterval": 0.82,
+      "count": 4,
+      "enemyTypes": ["moray", "electric_eel", "octopus", "deep_fish"]
+    },
+    {
+      "index": 6,
+      "at": 210,
+      "spawnInterval": 0.74,
+      "count": 5,
+      "enemyTypes": ["octopus", "deep_fish", "shark", "deep_ghost"]
+    },
+    {
+      "index": 7,
+      "at": 270,
+      "spawnInterval": 0.68,
+      "count": 5,
+      "enemyTypes": ["shark", "deep_ghost", "barracuda", "electric_eel"],
+      "boss": {
+        "at": 300,
+        "typeId": "boss_manta"
+      }
+    },
+    {
+      "index": 8,
+      "at": 340,
+      "spawnInterval": 0.6,
+      "count": 6,
+      "enemyTypes": ["deep_fish", "shark", "deep_ghost", "barracuda", "octopus"]
+    },
+    {
+      "index": 9,
+      "at": 410,
+      "spawnInterval": 0.54,
+      "count": 6,
+      "enemyTypes": ["shark", "deep_ghost", "barracuda"],
+      "leviathan": {
+        "at": 430,
+        "typeId": "leviathan"
+      }
+    }
+  ]
+}
