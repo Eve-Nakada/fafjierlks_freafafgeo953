@@ -37,6 +37,7 @@ async function loadAllData() {
     STATE.gameData = gameData;
     STATE.mapData = mapData;
     STATE.waveData = waveData;
+    STATE.baseShopPriceMul = typeof gameData?.shopPriceMul === "number" ? gameData.shopPriceMul : 1;
 
   } catch (e) {
 

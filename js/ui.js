@@ -108,6 +108,23 @@ function setupUI() {
       updateHUD();
     };
   }
+
+  const levelUpRerollBtn = getEl("levelUpRerollBtn");
+  if (levelUpRerollBtn) {
+    levelUpRerollBtn.onclick = () => {
+      useRerollTicket();
+    };
+  }
+
+  const weaponGrowthBackBtn = getEl("weaponGrowthBackBtn");
+  if (weaponGrowthBackBtn) {
+    weaponGrowthBackBtn.onclick = () => closeWeaponGrowth();
+  }
+
+  const chestEvolutionCloseBtn = getEl("chestEvolutionCloseBtn");
+  if (chestEvolutionCloseBtn) {
+    chestEvolutionCloseBtn.onclick = () => closeChestEvolutionScreen();
+  }
 }
 
 function updateHUD() {
@@ -153,6 +170,85 @@ function updateHUD() {
   renderDetailLists();
 }
 
+
+function getWeaponStageLabel(w) {
+  if (!w) return "";
+  const stage = w.evolutionStage || 0;
+  if (stage === 0) return `Lv.${w.level}`;
+  if (stage === 1) return `進化 Lv.${w.level}`;
+  return `第2進化 Lv.${w.level}`;
+}
+
+function getWeaponStageLabelShort(w) {
+  if (!w) return "";
+  const stage = w.evolutionStage || 0;
+  if (stage === 0) return `Lv${w.level}`;
+  if (stage === 1) return `E1-${w.level}`;
+  return `E2-${w.level}`;
+}
+
+function openWeaponGrowth(weaponId) {
+  const screen = getEl("weaponGrowthScreen");
+  const content = getEl("weaponGrowthContent");
+  const def = getWeaponDef(weaponId);
+  if (!screen || !content || !def) return;
+
+  const lines = [];
+  lines.push(`<div class="choiceTitle">${def.name}</div>`);
+  lines.push(`<div class="choiceDesc">通常: Lv1-6</div>`);
+
+  for (const evo of def.evolutions || []) {
+    lines.push(`<div class="choiceMeta">第1進化: ${evo.name} / 条件: ${evo.needsPassive || "なし"}</div>`);
+    if (evo.secondStage) {
+      lines.push(`<div class="choiceMeta">第2進化: ${evo.secondStage.name} / 条件: ${evo.secondStage.needsPassive || "なし"} / Lv上限: 3</div>`);
+    }
+  }
+
+  content.innerHTML = `<div class="detailEntry"><div class="detailValue">${lines.join("<br>")}</div></div>`;
+  showScreen("weaponGrowthScreen");
+}
+
+function closeWeaponGrowth() {
+  hideScreen("weaponGrowthScreen");
+}
+
+function openChestEvolutionScreen(choices) {
+  const wrap = getEl("chestEvolutionChoices");
+  if (!wrap) return false;
+
+  wrap.innerHTML = "";
+  STATE.paused = true;
+  STATE._chestEvolutionChoices = choices || [];
+
+  for (const evo of STATE._chestEvolutionChoices) {
+    const weaponDef = getWeaponDef(evo.weaponId);
+    const btn = document.createElement("button");
+    btn.className = "choiceBtn";
+    btn.innerHTML = `
+      <div class="choiceTitle">${evo.evolutionName}</div>
+      <div class="choiceDesc">${weaponDef?.name || evo.weaponId} の${evo.type === "second" ? "第2段" : "分岐"}進化</div>
+      <div class="choiceMeta">条件: ${evo.needPassive || "なし"}</div>
+    `;
+    btn.onclick = () => {
+      if (!applyEvolutionChoice(evo)) return;
+      STATE.score += evo.type === "second" ? 400 : 250;
+      closeChestEvolutionScreen();
+      updateHUD();
+    };
+    wrap.appendChild(btn);
+  }
+
+  showScreen("chestEvolutionScreen");
+  return true;
+}
+
+function closeChestEvolutionScreen() {
+  hideScreen("chestEvolutionScreen");
+  STATE.paused = false;
+  STATE._chestEvolutionChoices = [];
+  updateHUD();
+}
+
 function renderWeaponBar(container) {
   const p = STATE.player;
   if (!p || !container) return;
@@ -173,7 +269,7 @@ function renderWeaponBar(container) {
 
     const lv = document.createElement("div");
     lv.className = "weaponLv";
-    lv.textContent = w.evolved ? "EVO" : `Lv${w.level}`;
+    lv.textContent = getWeaponStageLabelShort(w);
     chip.appendChild(lv);
 
     container.appendChild(chip);
@@ -195,7 +291,10 @@ function renderDetailLists() {
       row.className = "detailEntry";
       row.innerHTML = `
         <div class="detailName">${def?.name || w.id}</div>
-        <div class="detailValue">${w.evolved ? "進化済み" : `Lv${w.level}`}</div>
+        <div class="detailValue">
+          ${getWeaponStageLabel(w)}
+          <button class="miniBtn" onclick="openWeaponGrowth('${w.id}')">成長表</button>
+        </div>
       `;
       weaponDetailList.appendChild(row);
     }
@@ -329,6 +428,29 @@ function renderLevelUpChoices() {
     };
     wrap.appendChild(btn);
   }
+
+  updateLevelUpRerollButton();
+}
+
+function updateLevelUpRerollButton() {
+  const btn = getEl("levelUpRerollBtn");
+  if (!btn) return;
+
+  const tickets = STATE.player?.rerollTickets || 0;
+  btn.textContent = `リロール (${tickets})`;
+  btn.disabled = tickets <= 0 || !isScreenVisible("levelUpScreen");
+}
+
+function useRerollTicket() {
+  const p = STATE.player;
+  if (!p) return false;
+  if (!isScreenVisible("levelUpScreen")) return false;
+  if ((p.rerollTickets || 0) <= 0) return false;
+
+  p.rerollTickets -= 1;
+  renderLevelUpChoices();
+  updateHUD();
+  return true;
 }
 
 function openLevelUp() {
@@ -340,13 +462,8 @@ function openLevelUp() {
 function closeLevelUp() {
   hideScreen("levelUpScreen");
   STATE.paused = false;
+  updateLevelUpRerollButton();
   updateHUD();
-}
-
-function rerollLevelUpChoices() {
-  if (!isScreenVisible("levelUpScreen")) return false;
-  renderLevelUpChoices();
-  return true;
 }
 
 function showResultScreen(clear, rankingResult) {

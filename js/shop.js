@@ -44,6 +44,7 @@ function rerollShopChoices() {
   if ((STATE.player?.gold || 0) < cost) return false;
 
   STATE.player.gold -= cost;
+  STATE.player.rerollTickets += 1;
   renderShop(true);
   updateHUD();
   return true;
@@ -74,7 +75,7 @@ function renderShop(forceShuffle = false) {
     btn.className = "choiceBtn";
 
     const cost = calcShopPrice(item);
-    const canBuy = (STATE.player?.gold || 0) >= cost;
+    const canBuy = (STATE.player?.gold || 0) >= cost && canBuyWaveLimitedItem(item);
 
     btn.innerHTML = `
       <div class="choiceTitle">${item.name} - ${cost}G</div>
@@ -116,11 +117,15 @@ function buyShopItem(item) {
       break;
 
     case "absorbXp":
-      absorbAllXP();
+      success = canBuyWaveLimitedItem(item);
+      if (success) {
+        absorbAllXP();
+        STATE.shopVacuumBoughtByWave[STATE.currentWave] = true;
+      }
       break;
 
     case "reroll":
-      success = rerollLevelUpChoices();
+      STATE.player.rerollTickets += item.value || 1;
       break;
 
     case "weaponLevelUp":
@@ -167,4 +172,10 @@ function levelUpRandomPassive() {
 
   const pickedPassive = pick(candidates);
   return addPassive(pickedPassive.id);
+}
+
+function canBuyWaveLimitedItem(item) {
+  if (!item) return true;
+  if (item.effect !== "absorbXp") return true;
+  return !STATE.shopVacuumBoughtByWave?.[STATE.currentWave];
 }

@@ -10,9 +10,27 @@ function getWeaponInstance(id) {
   return STATE.player?.weapons?.find(w => w.id === id) || null;
 }
 
+function getWeaponEvolutionStage(weaponId) {
+  const w = getWeaponInstance(weaponId);
+  return w?.evolutionStage || 0;
+}
+
+function isWeaponEvolved(weaponId) {
+  return getWeaponEvolutionStage(weaponId) >= 1;
+}
+
+function isWeaponSecondEvolved(weaponId) {
+  return getWeaponEvolutionStage(weaponId) >= 2;
+}
+
+function getWeaponMaxLevel(w) {
+  if (!w) return 6;
+  return (w.evolutionStage || 0) >= 2 ? 3 : 6;
+}
+
 function canAddWeapon(id) {
   const inst = getWeaponInstance(id);
-  if (inst) return inst.level < 6;
+  if (inst) return inst.level < getWeaponMaxLevel(inst);
   return true;
 }
 
@@ -24,7 +42,8 @@ function addWeapon(id) {
   let inst = getWeaponInstance(id);
 
   if (inst) {
-    if (inst.level >= 6) return false;
+    const maxLv = getWeaponMaxLevel(inst);
+    if (inst.level >= maxLv) return false;
     inst.level += 1;
     return true;
   }
@@ -33,12 +52,27 @@ function addWeapon(id) {
     id,
     level: 1,
     cooldown: 0,
-    evolved: false,
+    evolutionStage: 0,
+    branchId: null,
     orbitAngle: 0
   };
 
   p.weapons.push(inst);
   return true;
+}
+
+function getWeaponBranchDef(w) {
+  const def = getWeaponDef(w?.id);
+  if (!def) return null;
+  return (def.evolutions || []).find(x => x.branchId === w.branchId) || null;
+}
+
+function getWeaponCurrentPattern(w) {
+  const stage = w?.evolutionStage || 0;
+  const branch = getWeaponBranchDef(w);
+  if (stage === 0) return null;
+  if (stage === 1) return branch?.pattern || null;
+  return branch?.secondStage?.pattern || branch?.pattern || null;
 }
 
 function updateWeapons(dt) {
@@ -125,12 +159,28 @@ function fireHarpoon(w, def) {
   const len = Math.hypot(dx, dy) || 1;
   const nx = dx / len;
   const ny = dy / len;
+  const pattern = getWeaponCurrentPattern(w);
 
-  const evolved = w.evolved || def.evolution?.pattern === "trident" && isWeaponEvolved(w.id);
-  const count = evolved ? 3 : 1;
+  let count = 1;
+  let spreadStep = 0;
+  let life = 1.2;
+  let radius = 6;
+  let damageMul = 1;
+  let pierce = 1;
+
+  if (pattern === "trident") {
+    count = 3; spreadStep = 0.22; life = 1.5; radius = 8; damageMul = 1.15; pierce = 3;
+  } else if (pattern === "trident_king") {
+    count = 5; spreadStep = 0.18; life = 1.7; radius = 9; damageMul = 1.35; pierce = 5;
+  } else if (pattern === "pierce") {
+    count = 2; spreadStep = 0.08; life = 1.6; radius = 7; damageMul = 1.2; pierce = 5;
+  } else if (pattern === "pierce_ex") {
+    count = 3; spreadStep = 0.08; life = 1.9; radius = 8; damageMul = 1.35; pierce = 8;
+  }
 
   for (let i = 0; i < count; i++) {
-    const spread = count === 1 ? 0 : (i - 1) * 0.22;
+    const center = (count - 1) / 2;
+    const spread = count === 1 ? 0 : (i - center) * spreadStep;
     const cos = Math.cos(spread);
     const sin = Math.sin(spread);
     const vx = nx * cos - ny * sin;
@@ -141,78 +191,85 @@ function fireHarpoon(w, def) {
       y: p.y,
       vx: vx * (def.speed || 360) * p.stats.projectileSpeedMul,
       vy: vy * (def.speed || 360) * p.stats.projectileSpeedMul,
-      life: evolved ? 1.5 : 1.2,
-      radius: evolved ? 8 : 6,
-      damage: getWeaponDamage(w, def) * (evolved ? 1.15 : 1),
-      pierce: evolved ? 3 : 1,
+      life,
+      radius,
+      damage: getWeaponDamage(w, def) * damageMul,
+      pierce,
       weaponId: w.id,
+      weaponPattern: pattern,
+      weaponStage: w.evolutionStage || 0,
       type: "projectile",
-      color: "#8ef3ff"
+      color: pattern && pattern.startsWith("pierce") ? "#b8f0ff" : "#8ef3ff"
     });
   }
 }
 
 function fireMine(w, def) {
   const p = STATE.player;
-  const target = getNearestEnemy(p.x, p.y, 260);
-  let tx = p.x;
-  let ty = p.y;
+  const pattern = getWeaponCurrentPattern(w);
+  const targets = [];
+  const near = [...STATE.enemies]
+    .sort((a, b) => dist(p.x, p.y, a.x, a.y) - dist(p.x, p.y, b.x, b.y))
+    .slice(0, pattern === "cluster_ex" ? 3 : pattern === "cluster" ? 2 : 1);
 
-  if (target) {
-    tx = target.x;
-    ty = target.y;
+  if (near.length) {
+    for (const target of near) targets.push({ x: target.x, y: target.y });
   } else {
-    tx += rand(-120, 120);
-    ty += rand(-120, 120);
+    targets.push({ x: p.x + rand(-120, 120), y: p.y + rand(-120, 120) });
   }
 
-  spawnBullet({
-    x: tx,
-    y: ty,
-    vx: 0,
-    vy: 0,
-    life: w.evolved ? 2.0 : 1.7,
-    radius: 16,
-    damage: getWeaponDamage(w, def),
-    pierce: 999,
-    weaponId: w.id,
-    type: "mine",
-    color: "#ffd166",
-    explodeRadius: (w.evolved ? 95 : 70) * STATE.player.stats.areaMul,
-    armDelay: 0.25
-  });
+  for (const pos of targets) {
+    spawnBullet({
+      x: pos.x,
+      y: pos.y,
+      vx: 0,
+      vy: 0,
+      life: pattern === "burst_ex" ? 2.3 : pattern ? 2.0 : 1.7,
+      radius: pattern && pattern.startsWith("cluster") ? 14 : 16,
+      damage: getWeaponDamage(w, def) * (pattern === "burst_ex" ? 1.2 : 1),
+      pierce: 999,
+      weaponId: w.id,
+      weaponPattern: pattern,
+      weaponStage: w.evolutionStage || 0,
+      type: "mine",
+      color: pattern && pattern.startsWith("cluster") ? "#ffe08a" : "#ffd166",
+      explodeRadius: (pattern === "burst_ex" ? 120 : pattern === "burst" ? 95 : pattern === "cluster_ex" ? 86 : pattern === "cluster" ? 72 : 70) * STATE.player.stats.areaMul,
+      armDelay: 0.25
+    });
+  }
 }
 
 function fireJellyField(w, def) {
   const p = STATE.player;
-
+  const pattern = getWeaponCurrentPattern(w);
   spawnBullet({
     x: p.x,
     y: p.y,
     vx: 0,
     vy: 0,
-    life: 0.55,
-    radius: (w.evolved ? 94 : 68) * p.stats.areaMul,
-    damage: getWeaponDamage(w, def) * 0.35,
+    life: pattern === "storm_ex" ? 0.8 : pattern === "storm" ? 0.68 : 0.55,
+    radius: (pattern === "chain_ex" ? 108 : pattern === "chain" ? 94 : pattern === "storm_ex" ? 118 : pattern === "storm" ? 102 : 68) * p.stats.areaMul,
+    damage: getWeaponDamage(w, def) * (pattern === "storm_ex" ? 0.5 : pattern === "storm" ? 0.42 : 0.35),
     pierce: 999,
     weaponId: w.id,
+    weaponPattern: pattern,
+    weaponStage: w.evolutionStage || 0,
     type: "field",
     tickTimer: 0,
-    color: w.evolved ? "#a98cff" : "#6de4ff"
+    color: pattern && pattern.startsWith("storm") ? "#d8a5ff" : pattern ? "#a98cff" : "#6de4ff"
   });
 }
 
 function fireFishMissile(w, def) {
   const p = STATE.player;
-  const evolved = w.evolved;
-  const count = evolved ? 3 : 1;
+  const pattern = getWeaponCurrentPattern(w);
+  const count = pattern === "multi_homing_ex" ? 5 : pattern === "multi_homing" ? 3 : pattern === "swarm_ex" ? 6 : pattern === "swarm" ? 4 : 1;
 
   const targets = [...STATE.enemies].sort((a, b) => dist(p.x, p.y, a.x, a.y) - dist(p.x, p.y, b.x, b.y));
+  if (targets.length === 0) return;
 
   for (let i = 0; i < count; i++) {
-    const target = targets[i] || targets[0];
-    if (!target) return;
-
+    const target = targets[i % targets.length];
     const ang = angle(p.x, p.y, target.x, target.y) + rand(-0.12, 0.12);
 
     spawnBullet({
@@ -220,49 +277,63 @@ function fireFishMissile(w, def) {
       y: p.y,
       vx: Math.cos(ang) * (def.speed || 240) * STATE.player.stats.projectileSpeedMul,
       vy: Math.sin(ang) * (def.speed || 240) * STATE.player.stats.projectileSpeedMul,
-      life: 2.4,
-      radius: evolved ? 8 : 7,
-      damage: getWeaponDamage(w, def),
+      life: pattern && pattern.startsWith("swarm") ? 1.9 : 2.4,
+      radius: pattern ? 8 : 7,
+      damage: getWeaponDamage(w, def) * (pattern === "swarm_ex" ? 0.82 : pattern === "swarm" ? 0.74 : 1),
       pierce: 1,
       weaponId: w.id,
+      weaponPattern: pattern,
+      weaponStage: w.evolutionStage || 0,
       type: "homing",
       targetId: target.id,
-      turnRate: evolved ? 4.8 : 3.2,
-      color: "#ff8aa0"
+      turnRate: pattern === "multi_homing_ex" ? 6.0 : pattern === "multi_homing" ? 4.8 : pattern === "swarm_ex" ? 5.2 : pattern === "swarm" ? 4.4 : 3.2,
+      color: pattern && pattern.startsWith("swarm") ? "#ffb0a0" : "#ff8aa0"
     });
   }
 }
 
 function fireSonar(w, def) {
   const p = STATE.player;
+  const pattern = getWeaponCurrentPattern(w);
   const target = getNearestEnemy(p.x, p.y);
   if (!target) return;
 
-  const ang = angle(p.x, p.y, target.x, target.y);
+  const baseAng = angle(p.x, p.y, target.x, target.y);
+  const count = pattern === "wave_ex" ? 3 : pattern === "wave" ? 2 : 1;
+  const spreadStep = pattern && pattern.startsWith("wave") ? 0.16 : 0;
 
-  spawnBullet({
-    x: p.x,
-    y: p.y,
-    vx: Math.cos(ang),
-    vy: Math.sin(ang),
-    life: w.evolved ? 0.22 : 0.16,
-    radius: w.evolved ? 18 : 10,
-    damage: getWeaponDamage(w, def) * (w.evolved ? 1.45 : 1.0),
-    pierce: w.evolved ? 999 : 5,
-    weaponId: w.id,
-    type: "beam",
-    color: w.evolved ? "#79f7ff" : "#50d7ff",
-    length: w.evolved ? 320 : 220
-  });
+  for (let i = 0; i < count; i++) {
+    const center = (count - 1) / 2;
+    const ang = baseAng + (i - center) * spreadStep;
+
+    spawnBullet({
+      x: p.x,
+      y: p.y,
+      vx: Math.cos(ang),
+      vy: Math.sin(ang),
+      life: pattern === "beam_ex" ? 0.28 : pattern === "beam" ? 0.22 : 0.16,
+      radius: pattern === "beam_ex" ? 22 : pattern === "beam" ? 18 : pattern === "wave_ex" ? 15 : pattern === "wave" ? 13 : 10,
+      damage: getWeaponDamage(w, def) * (pattern === "beam_ex" ? 1.7 : pattern === "beam" ? 1.45 : pattern === "wave_ex" ? 1.15 : 1.0),
+      pierce: pattern && pattern.startsWith("beam") ? 999 : pattern && pattern.startsWith("wave") ? 8 : 5,
+      weaponId: w.id,
+      weaponPattern: pattern,
+      weaponStage: w.evolutionStage || 0,
+      type: "beam",
+      color: pattern && pattern.startsWith("wave") ? "#8be0ff" : pattern ? "#79f7ff" : "#50d7ff",
+      length: pattern === "beam_ex" ? 380 : pattern === "beam" ? 320 : pattern === "wave_ex" ? 280 : pattern === "wave" ? 250 : 220
+    });
+  }
 }
 
 function updateOrbitWeapon(w, def, dt) {
   const p = STATE.player;
-  const count = w.evolved ? 3 : 1;
-  const orbitRadius = (w.evolved ? 86 : 62) * p.stats.areaMul;
-  const damage = getWeaponDamage(w, def) * 0.45;
+  const pattern = getWeaponCurrentPattern(w);
+  const count = pattern === "orbit_ex" ? 4 : pattern === "orbit" ? 3 : pattern === "tidal_ring_ex" ? 5 : pattern === "tidal_ring" ? 4 : 1;
+  const orbitRadius = (pattern === "orbit_ex" ? 98 : pattern === "orbit" ? 86 : pattern === "tidal_ring_ex" ? 118 : pattern === "tidal_ring" ? 102 : 62) * p.stats.areaMul;
+  const damage = getWeaponDamage(w, def) * (pattern === "tidal_ring_ex" ? 0.4 : 0.45);
+  const speed = pattern === "orbit_ex" ? 4.2 : pattern === "orbit" ? 3.5 : pattern === "tidal_ring_ex" ? 2.5 : pattern === "tidal_ring" ? 2.0 : 2.4;
 
-  w.orbitAngle += dt * (w.evolved ? 3.5 : 2.4);
+  w.orbitAngle += dt * speed;
 
   for (let i = 0; i < count; i++) {
     const ang = w.orbitAngle + (Math.PI * 2 / count) * i;
@@ -277,11 +348,84 @@ function updateOrbitWeapon(w, def, dt) {
 
     STATE.effects.push({
       x, y,
-      r: 9,
-      color: "#7cf7ff",
+      r: pattern && pattern.startsWith("tidal") ? 11 : 9,
+      color: pattern && pattern.startsWith("tidal") ? "#92eaff" : "#7cf7ff",
       life: 0.06
     });
   }
+}
+
+function getAvailableEvolutions() {
+  const p = STATE.player;
+  const out = [];
+  if (!p) return out;
+
+  for (const w of p.weapons) {
+    const def = getWeaponDef(w.id);
+    if (!def) continue;
+
+    const stage = w.evolutionStage || 0;
+    if (w.level < 6) continue;
+
+    if (stage === 0) {
+      for (const evo of def.evolutions || []) {
+        const need = evo.needsPassive;
+        if (!need || getPassiveLevel(need) > 0) {
+          out.push({
+            type: "first",
+            weaponId: w.id,
+            branchId: evo.branchId,
+            evolutionName: evo.name || "進化武器",
+            needPassive: need || null
+          });
+        }
+      }
+    } else if (stage === 1) {
+      const branch = getWeaponBranchDef(w);
+      const second = branch?.secondStage;
+      if (!second) continue;
+      const need = second.needsPassive;
+      if (!need || getPassiveLevel(need) > 0) {
+        out.push({
+          type: "second",
+          weaponId: w.id,
+          branchId: w.branchId,
+          evolutionName: second.name || "第2段進化",
+          needPassive: need || null
+        });
+      }
+    }
+  }
+
+  return out;
+}
+
+function evolveWeaponToBranch(weaponId, branchId) {
+  const w = getWeaponInstance(weaponId);
+  if (!w || (w.evolutionStage || 0) !== 0) return false;
+
+  w.evolutionStage = 1;
+  w.branchId = branchId;
+  w.level = 1;
+  w.cooldown = 0;
+  return true;
+}
+
+function secondEvolveWeapon(weaponId) {
+  const w = getWeaponInstance(weaponId);
+  if (!w || (w.evolutionStage || 0) !== 1) return false;
+
+  w.evolutionStage = 2;
+  w.level = 1;
+  w.cooldown = 0;
+  return true;
+}
+
+function applyEvolutionChoice(evo) {
+  if (!evo) return false;
+  if (evo.type === "first") return evolveWeaponToBranch(evo.weaponId, evo.branchId);
+  if (evo.type === "second") return secondEvolveWeapon(evo.weaponId);
+  return false;
 }
 
 function spawnBullet(b) {
@@ -374,8 +518,8 @@ function handleProjectileHits(b) {
       damageEnemy(e, b.damage);
       b.alreadyHit.add(e.id);
 
-      if (b.weaponId === "jelly_field" && isWeaponEvolved("jelly_field")) {
-        chainLightning(e, b.damage * 0.5, 2);
+      if (b.weaponId === "jelly_field" && (b.weaponPattern === "chain" || b.weaponPattern === "chain_ex")) {
+        chainLightning(e, b.damage * (b.weaponPattern === "chain_ex" ? 0.7 : 0.5), b.weaponPattern === "chain_ex" ? 3 : 2);
       }
 
       b.pierce -= 1;
@@ -416,18 +560,19 @@ function explodeMine(b) {
     life: 0.22
   });
 
-  if (isWeaponEvolved("mine")) {
+  if (["burst", "burst_ex", "cluster", "cluster_ex"].includes(b.weaponPattern)) {
+    const extraRadius = b.weaponPattern === "burst_ex" ? radius * 1.45 : radius * 1.35;
     STATE.effects.push({
       x: b.x,
       y: b.y,
-      r: radius * 1.35,
+      r: extraRadius,
       color: "#ff8c66",
       life: 0.28
     });
 
     for (const e of STATE.enemies) {
-      if (dist(b.x, b.y, e.x, e.y) <= radius * 1.35 + e.r) {
-        damageEnemy(e, b.damage * 0.45);
+      if (dist(b.x, b.y, e.x, e.y) <= extraRadius + e.r) {
+        damageEnemy(e, b.damage * (b.weaponPattern === "burst_ex" ? 0.65 : 0.45));
       }
     }
   }
@@ -631,8 +776,9 @@ function renderOrbitWeapons(ctx) {
   for (const w of p.weapons) {
     if (w.id !== "water_cutter") continue;
 
-    const count = w.evolved ? 3 : 1;
-    const orbitRadius = (w.evolved ? 86 : 62) * p.stats.areaMul;
+    const pattern = getWeaponCurrentPattern(w);
+    const count = pattern === "orbit_ex" ? 4 : pattern === "orbit" ? 3 : pattern === "tidal_ring_ex" ? 5 : pattern === "tidal_ring" ? 4 : 1;
+    const orbitRadius = (pattern === "orbit_ex" ? 98 : pattern === "orbit" ? 86 : pattern === "tidal_ring_ex" ? 118 : pattern === "tidal_ring" ? 102 : 62) * p.stats.areaMul;
 
     for (let i = 0; i < count; i++) {
       const ang = w.orbitAngle + (Math.PI * 2 / count) * i;
@@ -647,41 +793,4 @@ function renderOrbitWeapons(ctx) {
       ctx.restore();
     }
   }
-}
-
-function getAvailableEvolutions() {
-  const p = STATE.player;
-  const out = [];
-  if (!p) return out;
-
-  for (const w of p.weapons) {
-    if (w.evolved) continue;
-    if (w.level < 6) continue;
-
-    const def = getWeaponDef(w.id);
-    const evo = def?.evolution;
-    if (!evo) continue;
-
-    const need = evo.needsPassive;
-    if (!need || getPassiveLevel(need) > 0) {
-      out.push({
-        weaponId: w.id,
-        evolutionName: evo.name || "進化武器"
-      });
-    }
-  }
-
-  return out;
-}
-
-function evolveWeapon(weaponId) {
-  const w = getWeaponInstance(weaponId);
-  if (!w || w.evolved) return false;
-  w.evolved = true;
-  return true;
-}
-
-function isWeaponEvolved(weaponId) {
-  const w = getWeaponInstance(weaponId);
-  return !!w?.evolved;
 }

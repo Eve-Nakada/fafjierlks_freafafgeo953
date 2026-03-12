@@ -83,6 +83,7 @@ function startGame(initialWeaponId) {
   resetMapState();
   resetWaveState();
   resetGameState();
+  resetRunShopState()
 
   const stage = getCurrentMap();
   if (stage && stage.worldWidth) STATE.world.width = stage.worldWidth;
@@ -105,6 +106,14 @@ function startGame(initialWeaponId) {
   hideAllScreens();
   updateHUD();
   renderPlayerUiIcon();
+}
+
+function resetRunShopState() {
+  if (STATE.gameData) {
+    STATE.gameData.shopPriceMul = STATE.baseShopPriceMul || 1;
+  }
+  STATE._shopDisplayItems = null;
+  STATE.shopVacuumBoughtByWave = {};
 }
 
 // ===============================
@@ -253,14 +262,12 @@ function openChestReward() {
   const evolutions = getAvailableEvolutions();
 
   if (evolutions.length > 0) {
-    const evo = evolutions[0];
-    evolveWeapon(evo.weaponId);
-    STATE.score += 250;
-  } else {
-    STATE.player.gold += 25;
-    STATE.score += 50;
+    openChestEvolutionScreen(evolutions);
+    return;
   }
 
+  STATE.player.gold += 25;
+  STATE.score += 50;
   updateHUD();
 }
 

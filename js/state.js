@@ -34,6 +34,7 @@ const STATE = {
   gameData: null,
   mapData: null,
   waveData: null,
+  baseShopPriceMul: 1,
 
   // ----------------
   // アセット
@@ -103,6 +104,7 @@ const STATE = {
   // ----------------
 
   shopOpen: false,
-  lastShopWave: 0
+  lastShopWave: 0,
+  shopVacuumBoughtByWave: {}
 
 };

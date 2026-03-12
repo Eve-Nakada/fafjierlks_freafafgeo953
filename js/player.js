@@ -21,6 +21,7 @@ function createPlayer() {
     invincibleTimer: 0,
     damageFlash: 0,
 
+    rerollTickets: 0,
     weapons: [],
     passives: [],
     passiveLevels: {},

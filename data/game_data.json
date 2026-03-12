@@ -2,7 +2,6 @@
   "title": "Ocean Survivor",
   "titleSub": "Deep Sea Survival",
   "shopPriceMul": 1,
-
   "spriteSheets": {
     "player": {
       "src": "images/player.png",
@@ -30,7 +29,6 @@
       "rows": 2
     }
   },
-
   "weapons": [
     {
       "id": "harpoon",
@@ -42,11 +40,30 @@
       "cooldown": 0.8,
       "speed": 360,
       "life": 1.2,
-      "evolution": {
-        "name": "ポセイドンのトライデント",
-        "pattern": "trident",
-        "needsPassive": "chart"
-      }
+      "evolutions": [
+        {
+          "branchId": "trident",
+          "name": "ポセイドンのトライデント",
+          "pattern": "trident",
+          "needsPassive": "chart",
+          "secondStage": {
+            "name": "海神王のトライデント",
+            "pattern": "trident_king",
+            "needsPassive": "core"
+          }
+        },
+        {
+          "branchId": "pierce",
+          "name": "深海貫通銛",
+          "pattern": "pierce",
+          "needsPassive": "sonar_scope",
+          "secondStage": {
+            "name": "深淵穿孔銛",
+            "pattern": "pierce_ex",
+            "needsPassive": "battery"
+          }
+        }
+      ]
     },
     {
       "id": "water_cutter",
@@ -58,11 +75,30 @@
       "cooldown": 0.25,
       "speed": 0,
       "life": 0.2,
-      "evolution": {
-        "name": "潮流ブレード",
-        "pattern": "orbit",
-        "needsPassive": "pressure_fin"
-      }
+      "evolutions": [
+        {
+          "branchId": "orbit",
+          "name": "潮流ブレード",
+          "pattern": "orbit",
+          "needsPassive": "pressure_fin",
+          "secondStage": {
+            "name": "渦潮ブレード",
+            "pattern": "orbit_ex",
+            "needsPassive": "core"
+          }
+        },
+        {
+          "branchId": "tidal_ring",
+          "name": "潮環カッター",
+          "pattern": "tidal_ring",
+          "needsPassive": "battery",
+          "secondStage": {
+            "name": "大渦潮環",
+            "pattern": "tidal_ring_ex",
+            "needsPassive": "pressure_fin"
+          }
+        }
+      ]
     },
     {
       "id": "jelly_field",
@@ -74,11 +110,30 @@
       "cooldown": 1.4,
       "speed": 0,
       "life": 0.55,
-      "evolution": {
-        "name": "嵐の電撃海域",
-        "pattern": "chain",
-        "needsPassive": "battery"
-      }
+      "evolutions": [
+        {
+          "branchId": "chain",
+          "name": "嵐の電撃海域",
+          "pattern": "chain",
+          "needsPassive": "battery",
+          "secondStage": {
+            "name": "雷獄の海域",
+            "pattern": "chain_ex",
+            "needsPassive": "core"
+          }
+        },
+        {
+          "branchId": "storm",
+          "name": "帯電嵐域",
+          "pattern": "storm",
+          "needsPassive": "pressure_fin",
+          "secondStage": {
+            "name": "超帯電嵐域",
+            "pattern": "storm_ex",
+            "needsPassive": "battery"
+          }
+        }
+      ]
     },
     {
       "id": "mine",
@@ -90,11 +145,30 @@
       "cooldown": 1.55,
       "speed": 0,
       "life": 1.15,
-      "evolution": {
-        "name": "深海爆雷",
-        "pattern": "burst",
-        "needsPassive": "shell"
-      }
+      "evolutions": [
+        {
+          "branchId": "burst",
+          "name": "深海爆雷",
+          "pattern": "burst",
+          "needsPassive": "shell",
+          "secondStage": {
+            "name": "深淵殲滅爆雷",
+            "pattern": "burst_ex",
+            "needsPassive": "core"
+          }
+        },
+        {
+          "branchId": "cluster",
+          "name": "散布機雷網",
+          "pattern": "cluster",
+          "needsPassive": "pressure_fin",
+          "secondStage": {
+            "name": "飽和機雷網",
+            "pattern": "cluster_ex",
+            "needsPassive": "shell"
+          }
+        }
+      ]
     },
     {
       "id": "fish_missile",
@@ -106,11 +180,30 @@
       "cooldown": 1.35,
       "speed": 240,
       "life": 2.4,
-      "evolution": {
-        "name": "サメ群ハンティング",
-        "pattern": "multi_homing",
-        "needsPassive": "sonar_scope"
-      }
+      "evolutions": [
+        {
+          "branchId": "multi_homing",
+          "name": "サメ群ハンティング",
+          "pattern": "multi_homing",
+          "needsPassive": "sonar_scope",
+          "secondStage": {
+            "name": "深海追撃群",
+            "pattern": "multi_homing_ex",
+            "needsPassive": "battery"
+          }
+        },
+        {
+          "branchId": "swarm",
+          "name": "魚群襲撃",
+          "pattern": "swarm",
+          "needsPassive": "chart",
+          "secondStage": {
+            "name": "狂潮魚群襲撃",
+            "pattern": "swarm_ex",
+            "needsPassive": "sonar_scope"
+          }
+        }
+      ]
     },
     {
       "id": "sonar",
@@ -122,14 +215,32 @@
       "cooldown": 1.8,
       "speed": 1,
       "life": 0.16,
-      "evolution": {
-        "name": "超音波破壊砲",
-        "pattern": "beam",
-        "needsPassive": "core"
-      }
+      "evolutions": [
+        {
+          "branchId": "beam",
+          "name": "超音波破壊砲",
+          "pattern": "beam",
+          "needsPassive": "core",
+          "secondStage": {
+            "name": "深海崩壊砲",
+            "pattern": "beam_ex",
+            "needsPassive": "battery"
+          }
+        },
+        {
+          "branchId": "wave",
+          "name": "拡散音波砲",
+          "pattern": "wave",
+          "needsPassive": "pressure_fin",
+          "secondStage": {
+            "name": "殲滅音波砲",
+            "pattern": "wave_ex",
+            "needsPassive": "core"
+          }
+        }
+      ]
     }
   ],
-
   "passives": [
     {
       "id": "chart",
@@ -274,7 +385,6 @@
       "maxLevel": 5
     }
   ],
-
   "enemyStats": {
     "small_fish": {
       "name": "小魚",
@@ -384,7 +494,6 @@
       "gold": 4,
       "spriteIndex": 11
     },
-
     "boss_manta": {
       "name": "ボスエイ",
       "hp": 900,
@@ -404,7 +513,6 @@
       "spriteIndex": 0
     }
   },
-
   "shopItems": [
     {
       "id": "heal_100",
@@ -445,11 +553,11 @@
     {
       "id": "vacuum",
       "name": "XP全回収",
-      "desc": "画面上のXPをすべて吸収する。",
+      "desc": "画面上のXPをすべて吸収する。各Waveで1回のみ。",
       "effect": "absorbXp",
       "value": 1,
       "price": 40,
-      "fixedPrice": false
+      "fixedPrice": true
     },
     {
       "id": "reroll",
