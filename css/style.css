@@ -639,3 +639,98 @@ button:disabled{
     min-width:110px;
   }
 }
+
+.miniBtn{
+  margin-left:8px;
+  min-height:28px;
+  padding:4px 8px;
+  font-size:12px;
+}
+
+#weaponGrowthScreen{
+  flex-direction:column;
+  gap:14px;
+  text-align:center;
+}
+
+#weaponGrowthContent{
+  width:min(94vw, 900px);
+  text-align:left;
+}
+
+.growthTree{
+  display:grid;
+  gap:16px;
+}
+
+.growthRootWrap{
+  display:flex;
+  justify-content:center;
+}
+
+.growthBranchList{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+  gap:14px;
+  align-items:start;
+}
+
+.growthBranch{
+  position:relative;
+  display:grid;
+  gap:10px;
+  padding-top:18px;
+}
+
+.growthStem,
+.growthChildLink{
+  width:2px;
+  height:14px;
+  margin:0 auto;
+  background:rgba(124,247,255,0.35);
+}
+
+.growthNode{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:rgba(0,0,0,0.28);
+  padding:12px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.18);
+}
+
+.growthNode.active{
+  border-color:rgba(125,255,156,0.7);
+  box-shadow:0 0 0 1px rgba(125,255,156,0.4), 0 8px 20px rgba(0,0,0,0.2);
+}
+
+.growthNodeTitle{
+  color:var(--accent2);
+  font-weight:700;
+  font-size:13px;
+  margin-bottom:4px;
+}
+
+.growthNodeName{
+  font-weight:700;
+  margin-bottom:4px;
+}
+
+.growthNodeMeta{
+  color:var(--sub);
+  font-size:12px;
+  line-height:1.45;
+}
+
+.growthNodeDesc{
+  color:var(--text);
+  font-size:14px;
+}
+
+.growthEmpty{
+  grid-column:1 / -1;
+  border:1px dashed var(--line);
+  border-radius:14px;
+  padding:14px;
+  color:var(--sub);
+  text-align:center;
+}

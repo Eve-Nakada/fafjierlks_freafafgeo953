@@ -75,9 +75,7 @@ function setupUI() {
   }
 
   const rankingBackBtn = getEl("rankingBackBtn");
-  if (rankingBackBtn) {
-    rankingBackBtn.onclick = () => showScreen("titleScreen");
-  }
+  if (rankingBackBtn) rankingBackBtn.onclick = () => showScreen("titleScreen");
 
   const resultToTitleBtn = getEl("resultToTitleBtn");
   if (resultToTitleBtn) {
@@ -92,14 +90,10 @@ function setupUI() {
   }
 
   const closeShopBtn = getEl("closeShopBtn");
-  if (closeShopBtn) {
-    closeShopBtn.onclick = () => closeShop();
-  }
+  if (closeShopBtn) closeShopBtn.onclick = () => closeShop();
 
   const toggleUIBtn = getEl("toggleUIBtn");
-  if (toggleUIBtn) {
-    toggleUIBtn.onclick = () => toggleUiMode();
-  }
+  if (toggleUIBtn) toggleUIBtn.onclick = () => toggleUiMode();
 
   const absorbXPBtn = getEl("absorbXPBtn");
   if (absorbXPBtn) {
@@ -110,21 +104,115 @@ function setupUI() {
   }
 
   const levelUpRerollBtn = getEl("levelUpRerollBtn");
-  if (levelUpRerollBtn) {
-    levelUpRerollBtn.onclick = () => {
-      useRerollTicket();
-    };
-  }
+  if (levelUpRerollBtn) levelUpRerollBtn.onclick = () => useRerollTicket();
 
   const weaponGrowthBackBtn = getEl("weaponGrowthBackBtn");
-  if (weaponGrowthBackBtn) {
-    weaponGrowthBackBtn.onclick = () => closeWeaponGrowth();
-  }
+  if (weaponGrowthBackBtn) weaponGrowthBackBtn.onclick = () => closeWeaponGrowth();
 
   const chestEvolutionCloseBtn = getEl("chestEvolutionCloseBtn");
-  if (chestEvolutionCloseBtn) {
-    chestEvolutionCloseBtn.onclick = () => closeChestEvolutionScreen();
+  if (chestEvolutionCloseBtn) chestEvolutionCloseBtn.onclick = () => closeChestEvolutionScreen();
+}
+
+function getWeaponStageLabel(w) {
+  if (!w) return "";
+  const stage = w.evolutionStage || 0;
+  if (stage === 0) return `Lv.${w.level}`;
+  if (stage === 1) return `進化 Lv.${w.level}`;
+  return `第2進化 Lv.${w.level}`;
+}
+
+function getWeaponStageLabelShort(w) {
+  if (!w) return "";
+  const stage = w.evolutionStage || 0;
+  if (stage === 0) return `Lv${w.level}`;
+  if (stage === 1) return `E1-${w.level}`;
+  return `E2-${w.level}`;
+}
+
+function getWeaponGrowthBranches(def) {
+  if (!def) return [];
+  if (Array.isArray(def.evolutions) && def.evolutions.length > 0) return def.evolutions;
+  if (def.evolution) {
+    return [{
+      branchId: def.evolution.branchId || def.evolution.pattern || "evolution",
+      name: def.evolution.name || "進化",
+      pattern: def.evolution.pattern || null,
+      needsPassive: def.evolution.needsPassive || null,
+      secondStage: def.evolution.secondStage || null
+    }];
   }
+  return [];
+}
+
+function buildGrowthNodeHtml(title, name, meta1, meta2, active, extraClass = "") {
+  return `
+    <div class="growthNode ${extraClass} ${active ? "active" : ""}">
+      <div class="growthNodeTitle">${title}</div>
+      <div class="growthNodeName">${name}</div>
+      <div class="growthNodeMeta">${meta1}</div>
+      ${meta2 ? `<div class="growthNodeMeta">${meta2}</div>` : ""}
+    </div>`;
+}
+
+function openWeaponGrowth(weaponId) {
+  const screen = getEl("weaponGrowthScreen");
+  const content = getEl("weaponGrowthContent");
+  const def = getWeaponDef(weaponId);
+  const inst = getWeaponInstance(weaponId);
+  if (!screen || !content || !def) return;
+
+  const branches = getWeaponGrowthBranches(def);
+  const rootActive = !!inst && (inst.evolutionStage || 0) === 0;
+
+  let html = `
+    <div class="growthTreeTree">
+      <div class="growthTreeHeader">
+        <div class="choiceTitle">${def.name}</div>
+        <div class="choiceDesc">通常武器から分岐進化し、さらに第2進化へ派生します。</div>
+      </div>
+      <div class="growthTreeCanvas">
+        <div class="growthCenterLine"></div>
+        <div class="growthRootWrap">
+          ${buildGrowthNodeHtml("通常", def.name, "Lv1 → Lv6", def.desc || "", rootActive, "growthRoot")}
+        </div>
+        <div class="growthBranchesWrap">`;
+
+  if (branches.length === 0) {
+    html += `<div class="growthEmpty">この武器には進化先がまだ設定されていません。</div>`;
+  }
+
+  for (const branch of branches) {
+    const branchMatch = !inst?.branchId || inst.branchId === branch.branchId;
+    const stage1Active = !!inst && (inst.evolutionStage || 0) >= 1 && branchMatch;
+    const stage2Active = !!inst && (inst.evolutionStage || 0) >= 2 && branchMatch;
+    const need1 = `条件: ${branch.needsPassive || "なし"}`;
+    const second = branch.secondStage || null;
+
+    html += `
+      <div class="growthBranchColumn">
+        <div class="growthBranchConnector"></div>
+        ${buildGrowthNodeHtml("第1進化", branch.name || "進化", need1, "Lv1 → Lv6", stage1Active, "growthStage1")}`;
+
+    if (second) {
+      html += `
+        <div class="growthChildConnector"></div>
+        ${buildGrowthNodeHtml("第2進化", second.name || "第2進化", `条件: ${second.needsPassive || "なし"}`, "Lv1 → Lv3", stage2Active, "growthStage2")}`;
+    }
+
+    html += `</div>`;
+  }
+
+  html += `
+        </div>
+      </div>
+    </div>`;
+
+  content.innerHTML = html;
+  showScreen("weaponGrowthScreen");
+}
+
+function closeWeaponGrowth() {
+  hideScreen("weaponGrowthScreen");
 }
 
 function updateHUD() {
@@ -168,48 +256,6 @@ function updateHUD() {
 
   if (weaponBar) renderWeaponBar(weaponBar);
   renderDetailLists();
-}
-
-
-function getWeaponStageLabel(w) {
-  if (!w) return "";
-  const stage = w.evolutionStage || 0;
-  if (stage === 0) return `Lv.${w.level}`;
-  if (stage === 1) return `進化 Lv.${w.level}`;
-  return `第2進化 Lv.${w.level}`;
-}
-
-function getWeaponStageLabelShort(w) {
-  if (!w) return "";
-  const stage = w.evolutionStage || 0;
-  if (stage === 0) return `Lv${w.level}`;
-  if (stage === 1) return `E1-${w.level}`;
-  return `E2-${w.level}`;
-}
-
-function openWeaponGrowth(weaponId) {
-  const screen = getEl("weaponGrowthScreen");
-  const content = getEl("weaponGrowthContent");
-  const def = getWeaponDef(weaponId);
-  if (!screen || !content || !def) return;
-
-  const lines = [];
-  lines.push(`<div class="choiceTitle">${def.name}</div>`);
-  lines.push(`<div class="choiceDesc">通常: Lv1-6</div>`);
-
-  for (const evo of def.evolutions || []) {
-    lines.push(`<div class="choiceMeta">第1進化: ${evo.name} / 条件: ${evo.needsPassive || "なし"}</div>`);
-    if (evo.secondStage) {
-      lines.push(`<div class="choiceMeta">第2進化: ${evo.secondStage.name} / 条件: ${evo.secondStage.needsPassive || "なし"} / Lv上限: 3</div>`);
-    }
-  }
-
-  content.innerHTML = `<div class="detailEntry"><div class="detailValue">${lines.join("<br>")}</div></div>`;
-  showScreen("weaponGrowthScreen");
-}
-
-function closeWeaponGrowth() {
-  hideScreen("weaponGrowthScreen");
 }
 
 function openChestEvolutionScreen(choices) {
@@ -313,6 +359,14 @@ function renderDetailLists() {
       `;
       passiveDetailList.appendChild(row);
     }
+
+    const rerollRow = document.createElement("div");
+    rerollRow.className = "detailEntry";
+    rerollRow.innerHTML = `
+      <div class="detailName">リロール券</div>
+      <div class="detailValue">${p.rerollTickets || 0}枚</div>
+    `;
+    passiveDetailList.appendChild(rerollRow);
   }
 }
 
@@ -473,7 +527,9 @@ function showResultScreen(clear, rankingResult) {
 
   if (resultTitle) resultTitle.textContent = clear ? "CLEAR" : "GAME OVER";
   if (resultScore) resultScore.textContent = `Score ${Math.floor(STATE.score)}`;
-  if (resultRecord) resultRecord.textContent = rankingResult?.isRecord ? "NEW RECORD!" : "";
+  if (resultRecord) resultRecord.textContent = clear
+    ? (rankingResult?.isRecord ? "NEW RECORD!" : "海を生き延びた")
+    : "潜水不能";
 
   renderRanking("resultRanking");
   showScreen("resultScreen");

@@ -442,6 +442,7 @@ function spawnBullet(b) {
     type: b.type || "projectile",
     color: b.color || "#7cf7ff",
     explodeRadius: b.explodeRadius || 0,
+    warningRadius: b.warningRadius || b.explodeRadius || 0,
     tickTimer: b.tickTimer || 0,
     targetId: b.targetId || null,
     turnRate: b.turnRate || 0,
@@ -552,28 +553,36 @@ function explodeMine(b) {
     }
   }
 
+  const p = STATE.player;
+  if (p && dist(b.x, b.y, p.x, p.y) <= radius + p.r) {
+    damagePlayer(Math.max(8, b.damage * 0.75));
+  }
+
   STATE.effects.push({
     x: b.x,
     y: b.y,
     r: radius,
     color: "#ffb347",
-    life: 0.22
+    life: 0.28
   });
 
-  if (["burst", "burst_ex", "cluster", "cluster_ex"].includes(b.weaponPattern)) {
-    const extraRadius = b.weaponPattern === "burst_ex" ? radius * 1.45 : radius * 1.35;
+  if (isWeaponEvolved("mine")) {
     STATE.effects.push({
       x: b.x,
       y: b.y,
-      r: extraRadius,
+      r: radius * 1.35,
       color: "#ff8c66",
-      life: 0.28
+      life: 0.34
     });
 
     for (const e of STATE.enemies) {
-      if (dist(b.x, b.y, e.x, e.y) <= extraRadius + e.r) {
-        damageEnemy(e, b.damage * (b.weaponPattern === "burst_ex" ? 0.65 : 0.45));
+      if (dist(b.x, b.y, e.x, e.y) <= radius * 1.35 + e.r) {
+        damageEnemy(e, b.damage * 0.45);
       }
+    }
+
+    if (p && dist(b.x, b.y, p.x, p.y) <= radius * 1.35 + p.r) {
+      damagePlayer(Math.max(4, b.damage * 0.3));
     }
   }
 }
@@ -697,6 +706,20 @@ function renderBullets(ctx) {
       const y = b.y - cam.y;
 
       ctx.save();
+
+      const warnRadius = b.warningRadius || b.explodeRadius || 0;
+      if (warnRadius > 0) {
+        ctx.globalAlpha = b.armDelay > 0 ? 0.12 : 0.22;
+        ctx.strokeStyle = b.armDelay > 0 ? "#fff0b3" : "#ffcf70";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath();
+        ctx.arc(x, y, warnRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      ctx.globalAlpha = 1;
       ctx.fillStyle = b.color;
       ctx.beginPath();
       ctx.arc(x, y, 10, 0, Math.PI * 2);

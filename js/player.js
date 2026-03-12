@@ -100,8 +100,8 @@ function damagePlayer(amount) {
   if (p.invincibleTimer > 0) return;
 
   const reduced = Math.max(1, amount - p.stats.armor);
-  p.hp -= reduced;
-  p.invincibleTimer = 0.35;
+  p.hp = Math.max(0, p.hp - reduced);
+  p.invincibleTimer = p.hp > 0 ? 0.35 : 0;
   p.damageFlash = 0.25;
 }
 
