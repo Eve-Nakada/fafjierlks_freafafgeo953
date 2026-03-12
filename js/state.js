@@ -81,6 +81,7 @@ const STATE = {
   player: null,
 
   enemies: [],
+  enemyBullets: [],
   bullets: [],
   effects: [],
   xpGems: [],

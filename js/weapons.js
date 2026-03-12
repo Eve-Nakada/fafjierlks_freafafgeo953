@@ -61,10 +61,25 @@ function addWeapon(id) {
   return true;
 }
 
+function getWeaponEvolutionBranches(def) {
+  if (!def) return [];
+  if (Array.isArray(def.evolutions) && def.evolutions.length > 0) return def.evolutions;
+  if (def.evolution) {
+    return [{
+      branchId: def.evolution.branchId || def.evolution.pattern || "evolution",
+      name: def.evolution.name || "進化",
+      pattern: def.evolution.pattern || null,
+      needsPassive: def.evolution.needsPassive || null,
+      secondStage: def.evolution.secondStage || null
+    }];
+  }
+  return [];
+}
+
 function getWeaponBranchDef(w) {
   const def = getWeaponDef(w?.id);
   if (!def) return null;
-  return (def.evolutions || []).find(x => x.branchId === w.branchId) || null;
+  return getWeaponEvolutionBranches(def).find(x => x.branchId === w.branchId) || null;
 }
 
 function getWeaponCurrentPattern(w) {
@@ -368,7 +383,7 @@ function getAvailableEvolutions() {
     if (w.level < 6) continue;
 
     if (stage === 0) {
-      for (const evo of def.evolutions || []) {
+      for (const evo of getWeaponEvolutionBranches(def)) {
         const need = evo.needsPassive;
         if (!need || getPassiveLevel(need) > 0) {
           out.push({
@@ -566,7 +581,7 @@ function explodeMine(b) {
     life: 0.28
   });
 
-  if (isWeaponEvolved("mine")) {
+  if (b.weaponStage >= 1) {
     STATE.effects.push({
       x: b.x,
       y: b.y,

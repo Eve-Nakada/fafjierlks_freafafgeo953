@@ -66,6 +66,7 @@ function resetGameState() {
   STATE.lastShopWave = 0;
 
   STATE.enemies = [];
+  STATE.enemyBullets = [];
   STATE.bullets = [];
   STATE.effects = [];
   STATE.xpGems = [];
@@ -145,6 +146,7 @@ function updateGame(dt) {
   updateWeapons(dt);
   updateBullets(dt);
   updateEnemies(dt);
+  updateEnemyProjectiles(dt);
   updateXPGems(dt);
   updateChests(dt);
   updateWaves(dt);
@@ -182,6 +184,7 @@ function renderGame() {
   renderXPGems(ctx);
   renderChests(ctx);
   renderEnemies(ctx);
+  renderEnemyProjectiles(ctx);
   renderBullets(ctx);
   renderPlayer(ctx);
 }

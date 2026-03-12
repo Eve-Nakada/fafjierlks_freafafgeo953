@@ -144,6 +144,10 @@ function getWeaponGrowthBranches(def) {
   return [];
 }
 
+function getGrowthScreenDescription(def) {
+  return def?.growthDesc || "通常武器から分岐進化し、さらに第2進化へ派生します。";
+}
+
 function buildGrowthNodeHtml(title, name, meta1, meta2, active, extraClass = "") {
   return `
     <div class="growthNode ${extraClass} ${active ? "active" : ""}">
@@ -155,6 +159,8 @@ function buildGrowthNodeHtml(title, name, meta1, meta2, active, extraClass = "")
 }
 
 function openWeaponGrowth(weaponId) {
+  STATE._weaponGrowthPrevPaused = !!STATE.paused;
+  STATE.paused = true;
   const screen = getEl("weaponGrowthScreen");
   const content = getEl("weaponGrowthContent");
   const def = getWeaponDef(weaponId);
@@ -168,7 +174,7 @@ function openWeaponGrowth(weaponId) {
     <div class="growthTreeTree">
       <div class="growthTreeHeader">
         <div class="choiceTitle">${def.name}</div>
-        <div class="choiceDesc">通常武器から分岐進化し、さらに第2進化へ派生します。</div>
+        <div class="choiceDesc">${getGrowthScreenDescription(def)}</div>
       </div>
       <div class="growthTreeCanvas">
         <div class="growthCenterLine"></div>
@@ -213,6 +219,7 @@ function openWeaponGrowth(weaponId) {
 
 function closeWeaponGrowth() {
   hideScreen("weaponGrowthScreen");
+  STATE.paused = !!STATE._weaponGrowthPrevPaused;
 }
 
 function updateHUD() {
@@ -335,13 +342,31 @@ function renderDetailLists() {
       const def = getWeaponDef(w.id);
       const row = document.createElement("div");
       row.className = "detailEntry";
-      row.innerHTML = `
-        <div class="detailName">${def?.name || w.id}</div>
-        <div class="detailValue">
-          ${getWeaponStageLabel(w)}
-          <button class="miniBtn" onclick="openWeaponGrowth('${w.id}')">成長表</button>
-        </div>
-      `;
+
+      const name = document.createElement("div");
+      name.className = "detailName";
+      name.textContent = def?.name || w.id;
+
+      const value = document.createElement("div");
+      value.className = "detailValue";
+
+      const label = document.createElement("span");
+      label.textContent = getWeaponStageLabel(w);
+
+      const btn = document.createElement("button");
+      btn.className = "miniBtn";
+      btn.type = "button";
+      btn.textContent = "成長表";
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openWeaponGrowth(w.id);
+      });
+
+      value.appendChild(label);
+      value.appendChild(btn);
+      row.appendChild(name);
+      row.appendChild(value);
       weaponDetailList.appendChild(row);
     }
   }
@@ -369,6 +394,7 @@ function renderDetailLists() {
     passiveDetailList.appendChild(rerollRow);
   }
 }
+
 
 function renderWeaponSelect() {
   const list = getEl("weaponSelectList");

@@ -82,18 +82,18 @@
           "pattern": "orbit",
           "needsPassive": "pressure_fin",
           "secondStage": {
-            "name": "渦潮ブレード",
+            "name": "極潮流ブレード",
             "pattern": "orbit_ex",
             "needsPassive": "core"
           }
         },
         {
           "branchId": "tidal_ring",
-          "name": "潮環カッター",
+          "name": "潮圧リング",
           "pattern": "tidal_ring",
-          "needsPassive": "battery",
+          "needsPassive": "chart",
           "secondStage": {
-            "name": "大渦潮環",
+            "name": "大海嘯リング",
             "pattern": "tidal_ring_ex",
             "needsPassive": "pressure_fin"
           }
@@ -117,18 +117,18 @@
           "pattern": "chain",
           "needsPassive": "battery",
           "secondStage": {
-            "name": "雷獄の海域",
+            "name": "深海連鎖嵐",
             "pattern": "chain_ex",
             "needsPassive": "core"
           }
         },
         {
           "branchId": "storm",
-          "name": "帯電嵐域",
+          "name": "雷雲電磁海",
           "pattern": "storm",
           "needsPassive": "pressure_fin",
           "secondStage": {
-            "name": "超帯電嵐域",
+            "name": "超雷雲電磁海",
             "pattern": "storm_ex",
             "needsPassive": "battery"
           }
@@ -159,13 +159,13 @@
         },
         {
           "branchId": "cluster",
-          "name": "散布機雷網",
+          "name": "拡散機雷網",
           "pattern": "cluster",
-          "needsPassive": "pressure_fin",
+          "needsPassive": "chart",
           "secondStage": {
-            "name": "飽和機雷網",
+            "name": "超拡散機雷網",
             "pattern": "cluster_ex",
-            "needsPassive": "shell"
+            "needsPassive": "pressure_fin"
           }
         }
       ]
@@ -187,20 +187,20 @@
           "pattern": "multi_homing",
           "needsPassive": "sonar_scope",
           "secondStage": {
-            "name": "深海追撃群",
+            "name": "深海群追尾弾",
             "pattern": "multi_homing_ex",
             "needsPassive": "battery"
           }
         },
         {
           "branchId": "swarm",
-          "name": "魚群襲撃",
+          "name": "群泳飽和ミサイル",
           "pattern": "swarm",
           "needsPassive": "chart",
           "secondStage": {
-            "name": "狂潮魚群襲撃",
+            "name": "大群飽和ミサイル",
             "pattern": "swarm_ex",
-            "needsPassive": "sonar_scope"
+            "needsPassive": "core"
           }
         }
       ]
@@ -222,20 +222,20 @@
           "pattern": "beam",
           "needsPassive": "core",
           "secondStage": {
-            "name": "深海崩壊砲",
+            "name": "深海崩壊音波砲",
             "pattern": "beam_ex",
             "needsPassive": "battery"
           }
         },
         {
           "branchId": "wave",
-          "name": "拡散音波砲",
+          "name": "拡散ソナー波",
           "pattern": "wave",
           "needsPassive": "pressure_fin",
           "secondStage": {
-            "name": "殲滅音波砲",
+            "name": "大拡散ソナー波",
             "pattern": "wave_ex",
-            "needsPassive": "core"
+            "needsPassive": "sonar_scope"
           }
         }
       ]
@@ -252,12 +252,9 @@
         "回収範囲 +24",
         "回収範囲 +36",
         "回収範囲 +48",
-        "回収範囲 +60",
-        "回収範囲 +72",
-        "回収範囲 +84",
-        "回収範囲 +96"
+        "回収範囲 +60"
       ],
-      "maxLevel": 8
+      "maxLevel": 5
     },
     {
       "id": "thruster",
@@ -269,14 +266,9 @@
         "移動速度 +20%",
         "移動速度 +30%",
         "移動速度 +40%",
-        "移動速度 +50%",
-        "移動速度 +60%",
-        "移動速度 +70%",
-        "移動速度 +80%",
-        "移動速度 +90%",
-        "移動速度 +100%"
+        "移動速度 +50%"
       ],
-      "maxLevel": 10
+      "maxLevel": 5
     },
     {
       "id": "shell",
@@ -288,14 +280,9 @@
         "最大HP +40",
         "最大HP +60",
         "最大HP +80",
-        "最大HP +100",
-        "最大HP +120",
-        "最大HP +140",
-        "最大HP +160",
-        "最大HP +180",
-        "最大HP +200"
+        "最大HP +100"
       ],
-      "maxLevel": 10
+      "maxLevel": 5
     },
     {
       "id": "core",
@@ -349,12 +336,9 @@
         "範囲 +20%",
         "範囲 +30%",
         "範囲 +40%",
-        "範囲 +50%",
-        "範囲 +60%",
-        "範囲 +70%",
-        "範囲 +80%"
+        "範囲 +50%"
       ],
-      "maxLevel": 8
+      "maxLevel": 5
     },
     {
       "id": "med_kit",
@@ -393,7 +377,23 @@
       "damage": 8,
       "xp": 1,
       "gold": 1,
-      "spriteIndex": 0
+      "spriteIndex": 0,
+      "ai": {
+        "type": "normal",
+        "preferRange": 0
+      },
+      "attacks": [
+        {
+          "type": "shot",
+          "cooldown": 2.8,
+          "triggerRange": 170,
+          "projectileSpeed": 160,
+          "life": 1.4,
+          "radius": 5,
+          "damageMul": 0.45,
+          "color": "#9fe8ff"
+        }
+      ]
     },
     "jellyfish": {
       "name": "クラゲ",
@@ -402,7 +402,23 @@
       "damage": 10,
       "xp": 5,
       "gold": 1,
-      "spriteIndex": 1
+      "spriteIndex": 1,
+      "ai": {
+        "type": "slow",
+        "preferRange": 18,
+        "wobbleMul": 0.8
+      },
+      "attacks": [
+        {
+          "type": "pulse",
+          "cooldown": 3.6,
+          "triggerRange": 110,
+          "radius": 48,
+          "telegraph": 0.55,
+          "damageMul": 0.85,
+          "color": "#b48fff"
+        }
+      ]
     },
     "crab": {
       "name": "カニ",
@@ -411,7 +427,24 @@
       "damage": 12,
       "xp": 5,
       "gold": 2,
-      "spriteIndex": 2
+      "spriteIndex": 2,
+      "ai": {
+        "type": "tank",
+        "preferRange": 8,
+        "burstSpeedMul": 1.2
+      },
+      "attacks": [
+        {
+          "type": "shot",
+          "cooldown": 3.2,
+          "triggerRange": 150,
+          "projectileSpeed": 145,
+          "life": 1.2,
+          "radius": 6,
+          "damageMul": 0.6,
+          "color": "#ffcf9a"
+        }
+      ]
     },
     "ray": {
       "name": "エイ",
@@ -420,7 +453,26 @@
       "damage": 11,
       "xp": 5,
       "gold": 2,
-      "spriteIndex": 3
+      "spriteIndex": 3,
+      "ai": {
+        "type": "weave",
+        "preferRange": 40,
+        "strafeSpeedMul": 0.85
+      },
+      "attacks": [
+        {
+          "type": "spread",
+          "cooldown": 3.2,
+          "triggerRange": 220,
+          "count": 3,
+          "spread": 0.28,
+          "projectileSpeed": 180,
+          "life": 1.8,
+          "radius": 5,
+          "damageMul": 0.55,
+          "color": "#9fd7ff"
+        }
+      ]
     },
     "moray": {
       "name": "ウツボ",
@@ -429,7 +481,25 @@
       "damage": 14,
       "xp": 5,
       "gold": 2,
-      "spriteIndex": 4
+      "spriteIndex": 4,
+      "ai": {
+        "type": "dash",
+        "preferRange": 28,
+        "burstSpeedMul": 2.1,
+        "rushDuration": 0.42,
+        "restDuration": 1.1
+      },
+      "attacks": [
+        {
+          "type": "pulse",
+          "cooldown": 4.0,
+          "triggerRange": 90,
+          "radius": 42,
+          "telegraph": 0.4,
+          "damageMul": 0.9,
+          "color": "#ffe08a"
+        }
+      ]
     },
     "electric_eel": {
       "name": "電気ウナギ",
@@ -438,7 +508,33 @@
       "damage": 16,
       "xp": 5,
       "gold": 2,
-      "spriteIndex": 5
+      "spriteIndex": 5,
+      "ai": {
+        "type": "weave",
+        "preferRange": 52,
+        "strafeSpeedMul": 1.05
+      },
+      "attacks": [
+        {
+          "type": "shot",
+          "cooldown": 2.3,
+          "triggerRange": 250,
+          "projectileSpeed": 210,
+          "life": 1.9,
+          "radius": 6,
+          "damageMul": 0.7,
+          "color": "#79f7ff"
+        },
+        {
+          "type": "pulse",
+          "cooldown": 4.2,
+          "triggerRange": 100,
+          "radius": 56,
+          "telegraph": 0.55,
+          "damageMul": 0.8,
+          "color": "#7bdcff"
+        }
+      ]
     },
     "octopus": {
       "name": "タコ",
@@ -447,7 +543,26 @@
       "damage": 18,
       "xp": 5,
       "gold": 3,
-      "spriteIndex": 6
+      "spriteIndex": 6,
+      "ai": {
+        "type": "orbit",
+        "preferRange": 112,
+        "strafeSpeedMul": 0.9
+      },
+      "attacks": [
+        {
+          "type": "spread",
+          "cooldown": 3.8,
+          "triggerRange": 260,
+          "count": 5,
+          "spread": 0.52,
+          "projectileSpeed": 165,
+          "life": 2.0,
+          "radius": 6,
+          "damageMul": 0.55,
+          "color": "#d7b6ff"
+        }
+      ]
     },
     "deep_fish": {
       "name": "深海魚",
@@ -456,16 +571,53 @@
       "damage": 20,
       "xp": 20,
       "gold": 3,
-      "spriteIndex": 7
+      "spriteIndex": 7,
+      "ai": {
+        "type": "slow",
+        "preferRange": 24,
+        "wobbleMul": 0.5
+      },
+      "attacks": [
+        {
+          "type": "shot",
+          "cooldown": 2.6,
+          "triggerRange": 200,
+          "projectileSpeed": 170,
+          "life": 1.8,
+          "radius": 6,
+          "damageMul": 0.75,
+          "color": "#84c7ff"
+        }
+      ]
     },
     "shark": {
       "name": "サメ",
       "hp": 92,
       "speed": 108,
-      "damage": 28,
+      "damage": 24,
       "xp": 20,
       "gold": 4,
-      "spriteIndex": 8
+      "spriteIndex": 8,
+      "ai": {
+        "type": "dash",
+        "preferRange": 34,
+        "burstSpeedMul": 2.4,
+        "rushDuration": 0.58,
+        "restDuration": 0.92
+      },
+      "attacks": [
+        {
+          "type": "line_burst",
+          "cooldown": 4.5,
+          "triggerRange": 200,
+          "count": 4,
+          "projectileSpeed": 220,
+          "life": 1.4,
+          "radius": 6,
+          "damageMul": 0.7,
+          "color": "#b7e8ff"
+        }
+      ]
     },
     "shrimp": {
       "name": "エビ",
@@ -474,43 +626,181 @@
       "damage": 15,
       "xp": 5,
       "gold": 2,
-      "spriteIndex": 9
+      "spriteIndex": 9,
+      "ai": {
+        "type": "rush",
+        "preferRange": 0,
+        "burstSpeedMul": 1.9,
+        "rushDuration": 0.55,
+        "restDuration": 0.75
+      },
+      "attacks": [
+        {
+          "type": "shot",
+          "cooldown": 2.4,
+          "triggerRange": 180,
+          "projectileSpeed": 175,
+          "life": 1.2,
+          "radius": 5,
+          "damageMul": 0.55,
+          "color": "#ffb0a0"
+        }
+      ]
     },
     "deep_ghost": {
       "name": "深海ゴースト",
-      "hp": 105,
+      "hp": 84,
       "speed": 74,
       "damage": 22,
       "xp": 20,
       "gold": 4,
-      "spriteIndex": 10
+      "spriteIndex": 10,
+      "ai": {
+        "type": "orbit",
+        "preferRange": 132,
+        "strafeSpeedMul": 1.1
+      },
+      "attacks": [
+        {
+          "type": "pulse",
+          "cooldown": 3.0,
+          "triggerRange": 120,
+          "radius": 60,
+          "telegraph": 0.65,
+          "damageMul": 0.75,
+          "color": "#cbbcff"
+        },
+        {
+          "type": "shot",
+          "cooldown": 2.1,
+          "triggerRange": 230,
+          "projectileSpeed": 185,
+          "life": 1.7,
+          "radius": 5,
+          "damageMul": 0.55,
+          "color": "#e6d7ff"
+        }
+      ]
     },
     "barracuda": {
       "name": "バラクーダ",
       "hp": 88,
-      "speed": 124,
+      "speed": 118,
       "damage": 23,
       "xp": 20,
       "gold": 4,
-      "spriteIndex": 11
+      "spriteIndex": 11,
+      "ai": {
+        "type": "rush",
+        "preferRange": 12,
+        "burstSpeedMul": 2.2,
+        "rushDuration": 0.62,
+        "restDuration": 0.72
+      },
+      "attacks": [
+        {
+          "type": "line_burst",
+          "cooldown": 3.8,
+          "triggerRange": 210,
+          "count": 3,
+          "projectileSpeed": 240,
+          "life": 1.1,
+          "radius": 5,
+          "damageMul": 0.65,
+          "color": "#c0f0ff"
+        }
+      ]
     },
     "boss_manta": {
       "name": "ボスエイ",
       "hp": 900,
       "speed": 76,
-      "damage": 32,
+      "damage": 28,
       "xp": 20,
       "gold": 25,
-      "spriteIndex": 0
+      "spriteIndex": 0,
+      "ai": {
+        "type": "boss_weave",
+        "preferRange": 160,
+        "strafeSpeedMul": 0.75,
+        "burstSpeedMul": 1.8,
+        "rushDuration": 0.7,
+        "restDuration": 0.8
+      },
+      "attacks": [
+        {
+          "type": "spread",
+          "cooldown": 2.6,
+          "triggerRange": 320,
+          "count": 7,
+          "spread": 0.9,
+          "projectileSpeed": 190,
+          "life": 2.0,
+          "radius": 7,
+          "damageMul": 0.8,
+          "color": "#ffb48f"
+        },
+        {
+          "type": "summon",
+          "cooldown": 8.5,
+          "count": 3,
+          "summonType": "ray",
+          "radius": 96
+        },
+        {
+          "type": "pulse",
+          "cooldown": 5.4,
+          "triggerRange": 140,
+          "radius": 78,
+          "telegraph": 0.8,
+          "damageMul": 1.1,
+          "color": "#ffb48f"
+        }
+      ]
     },
     "leviathan": {
       "name": "リヴァイアサン",
-      "hp": 2500,
+      "hp": 2200,
       "speed": 82,
       "damage": 40,
       "xp": 20,
       "gold": 80,
-      "spriteIndex": 0
+      "spriteIndex": 0,
+      "ai": {
+        "type": "boss_dash",
+        "preferRange": 180,
+        "burstSpeedMul": 2.6,
+        "rushDuration": 0.9,
+        "restDuration": 0.9
+      },
+      "attacks": [
+        {
+          "type": "ring",
+          "cooldown": 3.4,
+          "count": 12,
+          "projectileSpeed": 160,
+          "life": 2.2,
+          "radius": 7,
+          "damageMul": 0.8,
+          "color": "#a590ff"
+        },
+        {
+          "type": "summon",
+          "cooldown": 10.0,
+          "count": 4,
+          "summonType": "deep_ghost",
+          "radius": 120
+        },
+        {
+          "type": "pulse",
+          "cooldown": 4.8,
+          "triggerRange": 170,
+          "radius": 92,
+          "telegraph": 0.7,
+          "damageMul": 1.0,
+          "color": "#c48cff"
+        }
+      ]
     }
   },
   "shopItems": [
@@ -553,7 +843,7 @@
     {
       "id": "vacuum",
       "name": "XP全回収",
-      "desc": "画面上のXPをすべて吸収する。各Waveで1回のみ。",
+      "desc": "画面上のXPをすべて吸収する。",
       "effect": "absorbXp",
       "value": 1,
       "price": 40,

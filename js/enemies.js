@@ -12,7 +12,10 @@ function getEnemySpriteIndex(typeId) {
 }
 
 function getEnemyAiPreset(typeId, isBoss = false, bossKind = "boss") {
-  if (isBoss) {
+  const def = getEnemyDef(typeId) || {};
+  const ai = def.ai || {};
+
+  if (isBoss && !ai.type) {
     if (bossKind === "leviathan") {
       return {
         aiType: "boss_dash",
@@ -32,22 +35,20 @@ function getEnemyAiPreset(typeId, isBoss = false, bossKind = "boss") {
     };
   }
 
-  const table = {
-    small_fish:   { aiType: "normal", preferRange: 0 },
-    jellyfish:    { aiType: "slow", preferRange: 18, wobbleMul: 0.8 },
-    crab:         { aiType: "tank", preferRange: 8, burstSpeedMul: 1.2 },
-    ray:          { aiType: "weave", preferRange: 40, strafeSpeedMul: 0.85 },
-    moray:        { aiType: "dash", preferRange: 28, burstSpeedMul: 2.1, rushDuration: 0.42, restDuration: 1.1 },
-    electric_eel: { aiType: "weave", preferRange: 52, strafeSpeedMul: 1.05 },
-    shrimp:       { aiType: "rush", preferRange: 0, burstSpeedMul: 1.9, rushDuration: 0.55, restDuration: 0.75 },
-    octopus:      { aiType: "orbit", preferRange: 112, strafeSpeedMul: 0.9 },
-    deep_fish:    { aiType: "slow", preferRange: 24, wobbleMul: 0.5 },
-    shark:        { aiType: "dash", preferRange: 34, burstSpeedMul: 2.4, rushDuration: 0.58, restDuration: 0.92 },
-    deep_ghost:   { aiType: "orbit", preferRange: 132, strafeSpeedMul: 1.1 },
-    barracuda:    { aiType: "rush", preferRange: 12, burstSpeedMul: 2.2, rushDuration: 0.62, restDuration: 0.72 }
+  return {
+    aiType: ai.type || "normal",
+    preferRange: ai.preferRange || 0,
+    burstSpeedMul: ai.burstSpeedMul || 1.8,
+    strafeSpeedMul: ai.strafeSpeedMul || 0.8,
+    wobbleMul: ai.wobbleMul || 0.6,
+    rushDuration: ai.rushDuration || 0.5,
+    restDuration: ai.restDuration || 0.8
   };
+}
 
-  return table[typeId] || { aiType: "normal", preferRange: 0 };
+function cloneEnemyAttacks(typeId) {
+  const def = getEnemyDef(typeId) || {};
+  return (def.attacks || []).map((a) => ({ ...a, timer: rand(0.1, Math.max(0.25, (a.cooldown || 2) * 0.7)) }));
 }
 
 function spawnEnemy(typeId, x, y, isBoss = false, bossKind = "boss") {
@@ -84,7 +85,8 @@ function spawnEnemy(typeId, x, y, isBoss = false, bossKind = "boss") {
     restDuration: aiPreset.restDuration || 0.8,
     contactMul: 1,
     lastDx: 1,
-    lastDy: 0
+    lastDy: 0,
+    attacks: cloneEnemyAttacks(typeId)
   };
 
   STATE.enemies.push(enemy);
@@ -115,6 +117,7 @@ function updateEnemies(dt) {
     if (e.dead) continue;
 
     updateEnemyAi(e, p, dt);
+    updateEnemyAttacks(e, p, dt);
     e.hitFlash = Math.max(0, e.hitFlash - dt * 6);
 
     if (dist(e.x, e.y, p.x, p.y) <= e.r + p.r) {
@@ -351,6 +354,164 @@ function updateBossDashEnemy(e, p, dt, nx, ny, len) {
   moveEnemyByVector(e, nx, ny, e.speed * 0.82 * dt);
 }
 
+function updateEnemyAttacks(e, p, dt) {
+  if (!Array.isArray(e.attacks) || e.attacks.length === 0) return;
+  const playerDist = dist(e.x, e.y, p.x, p.y);
+
+  for (const atk of e.attacks) {
+    atk.timer -= dt;
+    if (atk.timer > 0) continue;
+    if (playerDist > (atk.triggerRange || Infinity)) continue;
+
+    executeEnemyAttack(e, p, atk);
+    atk.timer = Math.max(0.2, atk.cooldown || 2);
+  }
+}
+
+function executeEnemyAttack(e, p, atk) {
+  switch (atk.type) {
+    case "shot":
+      spawnAimedEnemyProjectile(e, p, atk, 1, 0);
+      break;
+    case "spread":
+      spawnAimedEnemyProjectile(e, p, atk, atk.count || 3, atk.spread || 0.3);
+      break;
+    case "line_burst":
+      spawnAimedEnemyProjectile(e, p, atk, atk.count || 4, 0.16);
+      break;
+    case "ring":
+      spawnRingEnemyProjectiles(e, atk);
+      break;
+    case "pulse":
+      spawnEnemyPulse(e, atk);
+      break;
+    case "summon":
+      summonEnemiesFromAttack(e, atk);
+      break;
+    default:
+      break;
+  }
+}
+
+function spawnAimedEnemyProjectile(e, p, atk, count = 1, spread = 0) {
+  const baseAng = angle(e.x, e.y, p.x, p.y);
+  const center = (count - 1) / 2;
+  for (let i = 0; i < count; i++) {
+    const ang = baseAng + (i - center) * spread;
+    spawnEnemyProjectile({
+      x: e.x,
+      y: e.y,
+      vx: Math.cos(ang) * (atk.projectileSpeed || 180),
+      vy: Math.sin(ang) * (atk.projectileSpeed || 180),
+      life: atk.life || 1.5,
+      radius: atk.radius || 6,
+      damage: Math.max(4, e.damage * (atk.damageMul || 0.6)),
+      color: atk.color || "#ffd2aa"
+    });
+  }
+}
+
+function spawnRingEnemyProjectiles(e, atk) {
+  const count = atk.count || 8;
+  for (let i = 0; i < count; i++) {
+    const ang = (Math.PI * 2 * i) / count;
+    spawnEnemyProjectile({
+      x: e.x,
+      y: e.y,
+      vx: Math.cos(ang) * (atk.projectileSpeed || 170),
+      vy: Math.sin(ang) * (atk.projectileSpeed || 170),
+      life: atk.life || 1.9,
+      radius: atk.radius || 6,
+      damage: Math.max(5, e.damage * (atk.damageMul || 0.7)),
+      color: atk.color || "#c7b7ff"
+    });
+  }
+}
+
+function spawnEnemyPulse(e, atk) {
+  STATE.enemyBullets.push({
+    id: `epulse_${Math.random().toString(36).slice(2)}`,
+    type: "pulse",
+    x: e.x,
+    y: e.y,
+    vx: 0,
+    vy: 0,
+    life: (atk.telegraph || 0.5) + 0.12,
+    delay: atk.telegraph || 0.5,
+    radius: atk.radius || 48,
+    damage: Math.max(4, e.damage * (atk.damageMul || 0.8)),
+    color: atk.color || "#ffc999",
+    triggered: false
+  });
+}
+
+function summonEnemiesFromAttack(e, atk) {
+  const count = atk.count || 2;
+  const radius = atk.radius || 90;
+  for (let i = 0; i < count; i++) {
+    const ang = rand(0, Math.PI * 2);
+    const x = clamp(e.x + Math.cos(ang) * radius, 28, STATE.world.width - 28);
+    const y = clamp(e.y + Math.sin(ang) * radius, 28, STATE.world.height - 28);
+    spawnEnemy(atk.summonType || "small_fish", x, y, false, "normal");
+  }
+}
+
+function spawnEnemyProjectile(opts) {
+  STATE.enemyBullets.push({
+    id: `eb_${Math.random().toString(36).slice(2)}`,
+    type: opts.type || "projectile",
+    x: opts.x,
+    y: opts.y,
+    vx: opts.vx || 0,
+    vy: opts.vy || 0,
+    life: opts.life || 1.2,
+    delay: opts.delay || 0,
+    radius: opts.radius || 5,
+    damage: opts.damage || 4,
+    color: opts.color || "#ffd0a0",
+    triggered: false
+  });
+}
+
+function updateEnemyProjectiles(dt) {
+  const p = STATE.player;
+  if (!p) return;
+
+  const next = [];
+  for (const b of STATE.enemyBullets || []) {
+    b.life -= dt;
+    if (b.life <= 0) continue;
+
+    if (b.type === "pulse") {
+      b.delay -= dt;
+      if (b.delay <= 0 && !b.triggered) {
+        b.triggered = true;
+        if (dist(b.x, b.y, p.x, p.y) <= b.radius + p.r) {
+          damagePlayer(b.damage);
+        }
+      }
+      next.push(b);
+      continue;
+    }
+
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+
+    if (dist(b.x, b.y, p.x, p.y) <= b.radius + p.r) {
+      damagePlayer(b.damage);
+      continue;
+    }
+
+    if (b.x < -64 || b.y < -64 || b.x > STATE.world.width + 64 || b.y > STATE.world.height + 64) {
+      continue;
+    }
+
+    next.push(b);
+  }
+
+  STATE.enemyBullets = next;
+}
+
 function damageEnemy(enemy, amount) {
   if (!enemy || enemy.dead) return;
   enemy.hp -= amount;
@@ -456,4 +617,37 @@ function renderEnemyHpBar(ctx, e, x, y) {
 
   ctx.fillStyle = e.isBoss ? "#ff9f7d" : "#ff6b6b";
   ctx.fillRect(x - w * 0.5, y - (e.isBoss ? 44 : 28), w * ratio, h);
+}
+
+function renderEnemyProjectiles(ctx) {
+  const cam = STATE.camera;
+  for (const b of STATE.enemyBullets || []) {
+    const x = b.x - cam.x;
+    const y = b.y - cam.y;
+
+    if (b.type === "pulse") {
+      ctx.save();
+      const warnAlpha = b.triggered ? 0.45 : 0.18;
+      ctx.globalAlpha = warnAlpha;
+      ctx.fillStyle = b.color;
+      ctx.beginPath();
+      ctx.arc(x, y, b.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = b.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, b.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      continue;
+    }
+
+    ctx.save();
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.arc(x, y, b.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 }
