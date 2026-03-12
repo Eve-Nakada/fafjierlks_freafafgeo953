@@ -39,14 +39,14 @@
     {
       "index": 6,
       "at": 210,
-      "spawnInterval": 0.74,
+      "spawnInterval": 0.70,
       "count": 5,
       "enemyTypes": ["octopus", "deep_fish", "shark", "deep_ghost"]
     },
     {
       "index": 7,
       "at": 270,
-      "spawnInterval": 0.68,
+      "spawnInterval": 0.63,
       "count": 5,
       "enemyTypes": ["shark", "deep_ghost", "barracuda", "electric_eel"],
       "boss": {
@@ -57,15 +57,15 @@
     {
       "index": 8,
       "at": 340,
-      "spawnInterval": 0.6,
-      "count": 6,
+      "spawnInterval": 0.56,
+      "count": 7,
       "enemyTypes": ["deep_fish", "shark", "deep_ghost", "barracuda", "octopus"]
     },
     {
       "index": 9,
       "at": 410,
-      "spawnInterval": 0.54,
-      "count": 6,
+      "spawnInterval": 0.50,
+      "count": 7,
       "enemyTypes": ["shark", "deep_ghost", "barracuda"],
       "leviathan": {
         "at": 430,
