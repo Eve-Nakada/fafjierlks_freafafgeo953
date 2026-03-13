@@ -110,6 +110,8 @@ function damagePlayer(amount) {
   if (STATE.scoreState) {
     STATE.scoreState.noDamageTimer = 0;
     STATE.scoreState.noDamageTier = 0;
+    STATE.scoreState.killChainTimer = 0;
+    STATE.scoreState.killChainCount = 0;
   }
 }
 

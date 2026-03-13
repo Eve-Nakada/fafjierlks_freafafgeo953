@@ -93,6 +93,32 @@ function getPassiveNameFromId(id) {
   return (STATE.gameData?.passives || []).find(p => p.id === id)?.name || id || "なし";
 }
 
+function buildEvolutionHintText(def, inst = null) {
+  const branches = getWeaponGrowthBranches(def);
+  if (!branches.length) return "";
+
+  const stage = inst?.evolutionStage || 0;
+  const prefix = stage >= 1 ? "第2進化ヒント" : "進化ヒント";
+
+  if (stage >= 1 && inst?.branchId) {
+    const branch = branches.find((b) => b.branchId === inst.branchId);
+    const second = branch?.secondStage;
+    if (!second) return `${prefix}: Lv6 + 宝箱`;
+    return `${prefix}: Lv6 + ${getPassiveNameFromId(second.needsPassive)} + 宝箱`;
+  }
+
+  const names = branches.map((b) => getPassiveNameFromId(b.needsPassive)).filter(Boolean);
+  const uniq = [...new Set(names)];
+  return `${prefix}: Lv6 + ${uniq.join(" / ")} + 宝箱`;
+}
+
+function buildWeaponChoiceHint(def, inst = null) {
+  if (!def) return "";
+  const hint = buildEvolutionHintText(def, inst);
+  return hint ? ` / ${hint}` : "";
+}
+
+
 function getWeaponFeelText(def) {
   return def?.feel || "扱いやすさや役割の説明はまだ設定されていません。";
 }
@@ -376,8 +402,12 @@ function setupUI() {
   const startBtn = getEl("startBtn");
   if (startBtn) {
     startBtn.onclick = () => {
-      showScreen("weaponSelectScreen");
-      renderWeaponSelect();
+      if (hasSeenFirstTutorial()) {
+        showScreen("weaponSelectScreen");
+        renderWeaponSelect();
+      } else {
+        showScreen("firstTutorialScreen");
+      }
     };
   }
 
@@ -397,6 +427,15 @@ function setupUI() {
 
   const rankingBackBtn = getEl("rankingBackBtn");
   if (rankingBackBtn) rankingBackBtn.onclick = () => showScreen("titleScreen");
+
+  const firstTutorialStartBtn = getEl("firstTutorialStartBtn");
+  if (firstTutorialStartBtn) {
+    firstTutorialStartBtn.onclick = () => {
+      markFirstTutorialSeen();
+      showScreen("weaponSelectScreen");
+      renderWeaponSelect();
+    };
+  }
 
   const weaponCodexBackBtn = getEl("weaponCodexBackBtn");
   if (weaponCodexBackBtn) weaponCodexBackBtn.onclick = () => closeCodexToTitle();
@@ -604,12 +643,15 @@ function renderDetailLists() {
     weaponDetailList.innerHTML = (p.weapons || []).map((w) => {
       const def = getWeaponDef(w.id);
       return `
-        <div class="detailEntry">
-          <div class="detailName">${def?.name || w.id}</div>
-          <div class="detailValue">
-            <span>${getWeaponStageLabel(w)}</span>
-            <button class="miniBtn" type="button" data-open-growth="1" data-weapon-id="${w.id}">成長表</button>
+        <div class="detailEntryBlock">
+          <div class="detailEntry">
+            <div class="detailName">${def?.name || w.id}</div>
+            <div class="detailValue">
+              <span>${getWeaponStageLabel(w)}</span>
+              <button class="miniBtn" type="button" data-open-growth="1" data-weapon-id="${w.id}">成長表</button>
+            </div>
           </div>
+          <div class="detailSub detailSubAccent">${buildEvolutionHintText(def, w)}</div>
         </div>`;
     }).join("");
   }
@@ -682,7 +724,7 @@ function buildLevelUpChoices() {
       key: `weapon_${w.id}`,
       name: w.name,
       desc: inst ? `武器レベルを ${nextLv} に強化` : w.desc,
-      meta: inst ? `Lv${inst.level} → Lv${nextLv}` : "新規武器",
+      meta: `${inst ? `Lv${inst.level} → Lv${nextLv}` : "新規武器"}${buildWeaponChoiceHint(w, inst)}`,
       apply() {
         return addWeapon(w.id);
       }

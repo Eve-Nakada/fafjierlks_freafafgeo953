@@ -579,17 +579,23 @@ function updateScoreBonuses(dt) {
   }
 }
 
+function getChainBonus(count, isBoss = false) {
+  if (isBoss || count < 3) return 0;
+  if (count === 3) return 10;
+  if (count === 4) return 14;
+  if (count === 5) return 18;
+  return 18 + (count - 5) * 4;
+}
+
 function registerKillChain(enemy) {
   const s = STATE.scoreState;
   if (!s) return;
   s.killChainCount = (s.killChainTimer > 0 ? s.killChainCount : 0) + 1;
-  s.killChainTimer = 2.4;
-  if (s.killChainCount >= 3) {
-    const bonus = enemy?.isBoss ? 0 : 25 * (s.killChainCount - 2);
-    if (bonus > 0) {
-      STATE.score += bonus;
-      setScorePopup(`${s.killChainCount}連続撃破 +${bonus}`);
-    }
+  s.killChainTimer = 2.0;
+  const bonus = getChainBonus(s.killChainCount, !!enemy?.isBoss);
+  if (bonus > 0) {
+    STATE.score += bonus;
+    setScorePopup(`${s.killChainCount}連続撃破 +${bonus}`);
   }
 }
 

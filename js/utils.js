@@ -66,7 +66,8 @@ function getDefaultProgress() {
   return {
     unlockedWeapons: { harpoon: true },
     seenWeapons: { harpoon: true },
-    defeatedEnemies: {}
+    defeatedEnemies: {},
+    seenFirstTutorial: false
   };
 }
 
@@ -76,7 +77,8 @@ function normalizeProgress(data) {
   return {
     unlockedWeapons: { ...base.unlockedWeapons, ...(data.unlockedWeapons || {}) },
     seenWeapons: { ...base.seenWeapons, ...(data.seenWeapons || {}) },
-    defeatedEnemies: { ...base.defeatedEnemies, ...(data.defeatedEnemies || {}) }
+    defeatedEnemies: { ...base.defeatedEnemies, ...(data.defeatedEnemies || {}) },
+    seenFirstTutorial: !!data.seenFirstTutorial
   };
 }
 
@@ -134,5 +136,16 @@ function markEnemyDefeated(typeId) {
   if (!typeId) return;
   const progress = ensureProgressState();
   progress.defeatedEnemies[typeId] = true;
+  saveProgressState();
+}
+
+
+function hasSeenFirstTutorial() {
+  return !!ensureProgressState().seenFirstTutorial;
+}
+
+function markFirstTutorialSeen() {
+  const progress = ensureProgressState();
+  progress.seenFirstTutorial = true;
   saveProgressState();
 }
