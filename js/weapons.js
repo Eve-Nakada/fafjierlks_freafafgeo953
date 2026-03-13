@@ -239,7 +239,7 @@ function fireMine(w, def) {
       y: pos.y,
       vx: 0,
       vy: 0,
-      life: pattern === "burst_ex" ? 2.3 : pattern ? 2.0 : 1.7,
+      life: pattern === "burst_ex" ? 3.25 : pattern ? 2.9 : 2.5,
       radius: pattern && pattern.startsWith("cluster") ? 14 : 16,
       damage: getWeaponDamage(w, def) * (pattern === "burst_ex" ? 1.2 : 1),
       pierce: 999,
@@ -249,7 +249,8 @@ function fireMine(w, def) {
       type: "mine",
       color: pattern && pattern.startsWith("cluster") ? "#ffe08a" : "#ffd166",
       explodeRadius: (pattern === "burst_ex" ? 120 : pattern === "burst" ? 95 : pattern === "cluster_ex" ? 86 : pattern === "cluster" ? 72 : 70) * STATE.player.stats.areaMul,
-      armDelay: 0.25
+      warningRadius: (pattern === "burst_ex" ? 120 : pattern === "burst" ? 95 : pattern === "cluster_ex" ? 86 : pattern === "cluster" ? 72 : 70) * STATE.player.stats.areaMul,
+      armDelay: 0.35
     });
   }
 }

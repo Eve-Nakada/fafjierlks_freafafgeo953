@@ -734,3 +734,57 @@ button:disabled{
   color:var(--sub);
   text-align:center;
 }
+
+
+.detailValue .miniBtn{
+  pointer-events:auto;
+}
+
+.growthTreeTree{
+  display:grid;
+  gap:16px;
+}
+
+.growthTreeHeader{
+  display:grid;
+  gap:6px;
+}
+
+.growthTreeCanvas{
+  position:relative;
+  display:grid;
+  gap:14px;
+}
+
+.growthCenterLine{
+  width:2px;
+  height:18px;
+  margin:0 auto;
+  background:rgba(124,247,255,0.32);
+}
+
+.growthBranchesWrap{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+  gap:14px;
+  align-items:start;
+}
+
+.growthBranchColumn{
+  display:grid;
+  gap:10px;
+  align-content:start;
+}
+
+.growthBranchConnector,
+.growthChildConnector{
+  width:2px;
+  height:14px;
+  margin:0 auto;
+  background:rgba(124,247,255,0.32);
+}
+
+.growthNodeDisabled{
+  opacity:0.72;
+  border-style:dashed;
+}

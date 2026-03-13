@@ -55,7 +55,7 @@ function renderRanking(targetId = "rankingList") {
     return `
       <div class="rankRow">
         <div class="rankPos">${i + 1}位</div>
-        <div class="rankDate">${formatDateJP(r.date)}</div>
+        <div class="rankDate">${formatDateJP(r.date, true)}</div>
         <div class="rankScore">${r.score}点</div>
       </div>
     `;

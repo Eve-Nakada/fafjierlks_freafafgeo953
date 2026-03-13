@@ -161,6 +161,7 @@ function updateGame(dt) {
   // 死亡
   if (STATE.player.hp <= 0) {
     STATE.player.hp = 0;
+    updateHUD();
     endGame(false);
     return;
   }

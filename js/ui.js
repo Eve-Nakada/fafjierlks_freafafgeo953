@@ -158,68 +158,80 @@ function buildGrowthNodeHtml(title, name, meta1, meta2, active, extraClass = "")
     </div>`;
 }
 
+function getPassiveName(id) {
+  if (!id) return "なし";
+  return getPassiveDef(id)?.name || id;
+}
+
+function buildGrowthBranchColumnHtml(branch, inst) {
+  const branchMatch = !!inst && inst.branchId === branch.branchId;
+  const stage1Active = !!inst && (inst.evolutionStage || 0) >= 1 && branchMatch;
+  const stage2Active = !!inst && (inst.evolutionStage || 0) >= 2 && branchMatch;
+  const stage1Meta = `条件: ${getPassiveName(branch.needsPassive)}`;
+  const stage2 = branch.secondStage || null;
+
+  let html = `
+    <div class="growthBranchColumn">
+      <div class="growthBranchConnector"></div>
+      ${buildGrowthNodeHtml("第1進化", branch.name || "進化", stage1Meta, "Lv1 → Lv6", stage1Active, "growthStage1")}`;
+
+  if (stage2) {
+    html += `
+      <div class="growthChildConnector"></div>
+      ${buildGrowthNodeHtml("第2進化", stage2.name || "第2進化", `条件: ${getPassiveName(stage2.needsPassive)}`, "Lv1 → Lv3", stage2Active, "growthStage2")}`;
+  } else {
+    html += `
+      <div class="growthChildConnector"></div>
+      <div class="growthNode growthNodeDisabled">
+        <div class="growthNodeTitle">第2進化</div>
+        <div class="growthNodeName">未設定</div>
+        <div class="growthNodeMeta">この分岐には第2進化がありません</div>
+      </div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
 function openWeaponGrowth(weaponId) {
-  STATE._weaponGrowthPrevPaused = !!STATE.paused;
-  STATE.paused = true;
   const screen = getEl("weaponGrowthScreen");
   const content = getEl("weaponGrowthContent");
   const def = getWeaponDef(weaponId);
   const inst = getWeaponInstance(weaponId);
-  if (!screen || !content || !def) return;
+  if (!screen || !content || !def) return false;
+
+  STATE._weaponGrowthPrevPaused = !!STATE.paused;
+  STATE.paused = true;
 
   const branches = getWeaponGrowthBranches(def);
   const rootActive = !!inst && (inst.evolutionStage || 0) === 0;
+  const branchHtml = branches.length > 0
+    ? branches.map(branch => buildGrowthBranchColumnHtml(branch, inst)).join("")
+    : `<div class="growthEmpty">この武器には進化先がまだ設定されていません。</div>`;
 
-  let html = `
-    <div class="growthTreeTree">
+  content.innerHTML = `
+    <div class="growthTree growthTreeTree">
       <div class="growthTreeHeader">
         <div class="choiceTitle">${def.name}</div>
         <div class="choiceDesc">${getGrowthScreenDescription(def)}</div>
       </div>
       <div class="growthTreeCanvas">
-        <div class="growthCenterLine"></div>
         <div class="growthRootWrap">
           ${buildGrowthNodeHtml("通常", def.name, "Lv1 → Lv6", def.desc || "", rootActive, "growthRoot")}
         </div>
-        <div class="growthBranchesWrap">`;
-
-  if (branches.length === 0) {
-    html += `<div class="growthEmpty">この武器には進化先がまだ設定されていません。</div>`;
-  }
-
-  for (const branch of branches) {
-    const branchMatch = !inst?.branchId || inst.branchId === branch.branchId;
-    const stage1Active = !!inst && (inst.evolutionStage || 0) >= 1 && branchMatch;
-    const stage2Active = !!inst && (inst.evolutionStage || 0) >= 2 && branchMatch;
-    const need1 = `条件: ${branch.needsPassive || "なし"}`;
-    const second = branch.secondStage || null;
-
-    html += `
-      <div class="growthBranchColumn">
-        <div class="growthBranchConnector"></div>
-        ${buildGrowthNodeHtml("第1進化", branch.name || "進化", need1, "Lv1 → Lv6", stage1Active, "growthStage1")}`;
-
-    if (second) {
-      html += `
-        <div class="growthChildConnector"></div>
-        ${buildGrowthNodeHtml("第2進化", second.name || "第2進化", `条件: ${second.needsPassive || "なし"}`, "Lv1 → Lv3", stage2Active, "growthStage2")}`;
-    }
-
-    html += `</div>`;
-  }
-
-  html += `
-        </div>
+        <div class="growthCenterLine"></div>
+        <div class="growthBranchesWrap">${branchHtml}</div>
       </div>
     </div>`;
 
-  content.innerHTML = html;
   showScreen("weaponGrowthScreen");
+  return true;
 }
 
 function closeWeaponGrowth() {
   hideScreen("weaponGrowthScreen");
   STATE.paused = !!STATE._weaponGrowthPrevPaused;
+  updateHUD();
 }
 
 function updateHUD() {
@@ -245,7 +257,7 @@ function updateHUD() {
   }
 
   if (hpText) {
-    hpText.textContent = `HP ${Math.ceil(p.hp)} / ${p.maxHp}`;
+    hpText.textContent = `HP ${Math.max(0, Math.ceil(p.hp))} / ${p.maxHp}`;
     if (hpRatio <= 0.3) hpText.classList.add("hpLow");
     else hpText.classList.remove("hpLow");
   }
@@ -357,11 +369,16 @@ function renderDetailLists() {
       btn.className = "miniBtn";
       btn.type = "button";
       btn.textContent = "成長表";
-      btn.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
+      const openGrowth = (ev) => {
+        if (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
         openWeaponGrowth(w.id);
-      });
+      };
+      btn.addEventListener("click", openGrowth);
+      btn.addEventListener("pointerup", openGrowth);
+      btn.onclick = openGrowth;
 
       value.appendChild(label);
       value.appendChild(btn);

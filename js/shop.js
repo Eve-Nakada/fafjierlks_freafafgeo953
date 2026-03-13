@@ -45,7 +45,7 @@ function rerollShopChoices() {
 
   STATE.player.gold -= cost;
   STATE.player.rerollTickets += 1;
-  renderShop(true);
+  renderShop();
   updateHUD();
   return true;
 }
@@ -57,15 +57,7 @@ function renderShop(forceShuffle = false) {
   const allItems = getShopItems().slice();
 
   if (!STATE._shopDisplayItems || forceShuffle) {
-    const rerollItem = allItems.find(x => x.effect === "reroll") || null;
-    const normalItems = allItems.filter(x => x.effect !== "reroll");
-
-    shuffle(normalItems);
-
-    // 常時見せる数
-    const picked = normalItems.slice(0, Math.min(5, normalItems.length));
-
-    STATE._shopDisplayItems = rerollItem ? [...picked, rerollItem] : picked;
+    STATE._shopDisplayItems = allItems;
   }
 
   listEl.innerHTML = "";

@@ -27,6 +27,11 @@
       "src": "images/leviathan.png",
       "cols": 2,
       "rows": 2
+    },
+    "xp_gems": {
+      "src": "images/xp_gems.png",
+      "cols": 3,
+      "rows": 1
     }
   },
   "weapons": [
@@ -63,7 +68,8 @@
             "needsPassive": "battery"
           }
         }
-      ]
+      ],
+      "growthDesc": "単発射撃から、拡散トライデント型か高貫通型へ派生する。"
     },
     {
       "id": "water_cutter",
@@ -98,7 +104,8 @@
             "needsPassive": "pressure_fin"
           }
         }
-      ]
+      ],
+      "growthDesc": "自機周囲の刃から、周回刃型か大外周リング型へ派生する。"
     },
     {
       "id": "jelly_field",
@@ -133,7 +140,8 @@
             "needsPassive": "battery"
           }
         }
-      ]
+      ],
+      "growthDesc": "周囲電撃から、連鎖型か広域ストーム型へ派生する。"
     },
     {
       "id": "mine",
@@ -144,7 +152,7 @@
       "levelDamage": 6,
       "cooldown": 1.55,
       "speed": 0,
-      "life": 1.15,
+      "life": 1.35,
       "evolutions": [
         {
           "branchId": "burst",
@@ -168,7 +176,8 @@
             "needsPassive": "pressure_fin"
           }
         }
-      ]
+      ],
+      "growthDesc": "設置後に爆発する兵装。分岐により大爆発型か拡散設置型へ進化する。"
     },
     {
       "id": "fish_missile",
@@ -203,7 +212,8 @@
             "needsPassive": "core"
           }
         }
-      ]
+      ],
+      "growthDesc": "追尾ミサイルから、多重追尾型か飽和斉射型へ派生する。"
     },
     {
       "id": "sonar",
@@ -238,7 +248,8 @@
             "needsPassive": "sonar_scope"
           }
         }
-      ]
+      ],
+      "growthDesc": "直線音波から、高出力ビーム型か拡散波動型へ派生する。"
     }
   ],
   "passives": [

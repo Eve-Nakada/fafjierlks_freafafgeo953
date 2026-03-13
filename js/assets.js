@@ -28,6 +28,47 @@ async function loadAssets() {
       img: await loadImage(def.src)
     };
   }
+
+  if (!STATE.assets.xp_gems) {
+    STATE.assets.xp_gems = { cols: 3, rows: 1, img: null };
+  }
+
+  if (!STATE.assets.xp_gems.img) {
+    STATE.assets.xp_gems.img = createFallbackXpGemSheet();
+    STATE.assets.xp_gems.cols = 3;
+    STATE.assets.xp_gems.rows = 1;
+  }
+}
+
+
+function createFallbackXpGemSheet() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 96;
+  canvas.height = 32;
+  const ctx = canvas.getContext("2d");
+  const colors = [
+    { body: "#7fe7ff", glow: "rgba(127,231,255,0.45)" },
+    { body: "#66ff88", glow: "rgba(102,255,136,0.45)" },
+    { body: "#ff5c5c", glow: "rgba(255,92,92,0.45)" }
+  ];
+
+  colors.forEach((c, i) => {
+    const ox = i * 32;
+    ctx.save();
+    ctx.translate(ox + 16, 16);
+    ctx.fillStyle = c.glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = c.body;
+    ctx.fillRect(-7, -7, 14, 14);
+    ctx.fillStyle = "rgba(255,255,255,0.65)";
+    ctx.fillRect(-2, -7, 4, 5);
+    ctx.restore();
+  });
+
+  return canvas;
 }
 
 // ===============================
