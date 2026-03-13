@@ -72,6 +72,9 @@ function resetGameState() {
   STATE.effects = [];
   STATE.xpGems = [];
   STATE.chests = [];
+  STATE.hazards = [];
+  STATE.bossEvent = { active: false, bossId: null, bossName: "", warningTimer: 0, warningText: "", hazardTimer: 0 };
+  STATE.scoreState = { noDamageTimer: 0, noDamageTier: 0, killChainTimer: 0, killChainCount: 0, popupTimer: 0, popupText: "" };
 
   STATE.camera.x = 0;
   STATE.camera.y = 0;
@@ -151,6 +154,9 @@ function updateGame(dt) {
   updateXPGems(dt);
   updateChests(dt);
   updateWaves(dt);
+  updateBossEvent(dt);
+  updateScoreBonuses(dt);
+  updateBossHazards(dt);
   applyMapDamage(dt);
   updateCamera(false);
 
@@ -162,6 +168,7 @@ function updateGame(dt) {
   // 死亡
   if (STATE.player.hp <= 0) {
     STATE.player.hp = 0;
+    updateHUD();
     endGame(false);
     return;
   }
@@ -182,6 +189,7 @@ function renderGame() {
   if (!STATE.player) return;
 
   renderMap(ctx);
+  renderBossHazards(ctx);
   renderXPGems(ctx);
   renderChests(ctx);
   renderEnemies(ctx);
@@ -273,6 +281,142 @@ function openChestReward() {
   STATE.player.gold += 25;
   STATE.score += 50;
   updateHUD();
+}
+
+
+function triggerBossEvent(boss, wave) {
+  if (!boss) return;
+  const def = getEnemyDef(boss.typeId) || {};
+  STATE.bossEvent = {
+    active: true,
+    bossId: boss.id,
+    bossName: def.name || wave?.theme || "BOSS",
+    warningTimer: 2.2,
+    warningText: `${wave?.theme || "BOSS"} - ${def.name || "大型反応"}`,
+    hazardTimer: 1.8
+  };
+}
+
+function getActiveBoss() {
+  const bossId = STATE.bossEvent?.bossId;
+  if (!bossId) return null;
+  return (STATE.enemies || []).find((e) => e.id === bossId && !e.dead) || null;
+}
+
+function onBossDefeated(enemy) {
+  if (STATE.bossEvent?.bossId !== enemy?.id) return;
+  STATE.bossEvent.active = false;
+  STATE.bossEvent.bossId = null;
+  STATE.bossEvent.warningTimer = 0;
+  STATE.hazards = [];
+}
+
+function updateBossEvent(dt) {
+  const boss = getActiveBoss();
+  if (STATE.bossEvent?.warningTimer > 0) {
+    STATE.bossEvent.warningTimer = Math.max(0, STATE.bossEvent.warningTimer - dt);
+  }
+  if (!boss) {
+    if (STATE.bossEvent) STATE.bossEvent.active = false;
+    return;
+  }
+  STATE.bossEvent.active = true;
+  STATE.bossEvent.bossName = (getEnemyDef(boss.typeId)?.name || STATE.bossEvent.bossName || 'BOSS');
+  STATE.bossEvent.hazardTimer -= dt;
+  if (STATE.bossEvent.hazardTimer <= 0) {
+    spawnBossHazard(boss);
+    const lowHpFactor = boss.hp / Math.max(1, boss.maxHp);
+    STATE.bossEvent.hazardTimer = lowHpFactor < 0.35 ? 1.3 : lowHpFactor < 0.7 ? 1.8 : 2.4;
+  }
+}
+
+function spawnBossHazard(boss) {
+  const p = STATE.player;
+  if (!p) return;
+  const nearPlayer = Math.random() < 0.58;
+  const radius = boss.bossKind === 'leviathan' ? rand(72, 132) : rand(62, 112);
+  const x = nearPlayer ? clamp(p.x + rand(-120, 120), radius + 8, STATE.world.width - radius - 8) : clamp(boss.x + rand(-180, 180), radius + 8, STATE.world.width - radius - 8);
+  const y = nearPlayer ? clamp(p.y + rand(-120, 120), radius + 8, STATE.world.height - radius - 8) : clamp(boss.y + rand(-180, 180), radius + 8, STATE.world.height - radius - 8);
+  STATE.hazards.push({ x, y, radius, telegraph: boss.bossKind === 'leviathan' ? 1.0 : 0.85, life: boss.bossKind === 'leviathan' ? 1.15 : 1.0, damage: boss.damage * 0.9, color: boss.bossKind === 'leviathan' ? 'rgba(170,120,255,0.42)' : 'rgba(255,145,110,0.42)' });
+}
+
+function updateBossHazards(dt) {
+  const p = STATE.player;
+  const next = [];
+  for (const hz of STATE.hazards || []) {
+    hz.life -= dt;
+    hz.telegraph -= dt;
+    if (hz.life <= 0) continue;
+    if (hz.telegraph <= 0 && !hz.triggered) {
+      hz.triggered = true;
+      if (p && dist(hz.x, hz.y, p.x, p.y) <= hz.radius + p.r) {
+        damagePlayer(hz.damage);
+      }
+    }
+    next.push(hz);
+  }
+  STATE.hazards = next;
+}
+
+function renderBossHazards(ctx) {
+  const cam = STATE.camera;
+  for (const hz of STATE.hazards || []) {
+    const x = hz.x - cam.x;
+    const y = hz.y - cam.y;
+    ctx.save();
+    const pulse = 0.72 + Math.sin(STATE.time * 7 + hz.x * 0.01) * 0.16;
+    ctx.globalAlpha = hz.triggered ? 0.32 : 0.12 * pulse;
+    ctx.fillStyle = hz.color;
+    ctx.beginPath();
+    ctx.arc(x, y, hz.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = hz.triggered ? 0.95 : 0.78;
+    ctx.strokeStyle = hz.triggered ? '#ffd8c7' : '#ffb28f';
+    ctx.lineWidth = hz.triggered ? 4 : 2.5;
+    ctx.setLineDash(hz.triggered ? [] : [12, 10]);
+    ctx.beginPath();
+    ctx.arc(x, y, hz.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function setScorePopup(text) {
+  if (!STATE.scoreState) return;
+  STATE.scoreState.popupText = text;
+  STATE.scoreState.popupTimer = 1.8;
+}
+
+function updateScoreBonuses(dt) {
+  const s = STATE.scoreState;
+  const p = STATE.player;
+  if (!s || !p) return;
+  s.noDamageTimer += dt;
+  if (s.killChainTimer > 0) s.killChainTimer -= dt;
+  else s.killChainCount = 0;
+  if (s.popupTimer > 0) s.popupTimer -= dt;
+
+  const thresholds = [12, 24, 40, 60];
+  if (s.noDamageTier < thresholds.length && s.noDamageTimer >= thresholds[s.noDamageTier]) {
+    const bonus = 120 + s.noDamageTier * 90;
+    STATE.score += bonus;
+    s.noDamageTier += 1;
+    setScorePopup(`ノーダメ継続 +${bonus}`);
+  }
+}
+
+function registerKillChain(enemy) {
+  const s = STATE.scoreState;
+  if (!s) return;
+  s.killChainCount = (s.killChainTimer > 0 ? s.killChainCount : 0) + 1;
+  s.killChainTimer = 2.4;
+  if (s.killChainCount >= 3) {
+    const bonus = enemy?.isBoss ? 0 : 25 * (s.killChainCount - 2);
+    if (bonus > 0) {
+      STATE.score += bonus;
+      setScorePopup(`${s.killChainCount}連続撃破 +${bonus}`);
+    }
+  }
 }
 
 // ===============================

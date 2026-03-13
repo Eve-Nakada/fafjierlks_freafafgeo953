@@ -106,6 +106,11 @@ function damagePlayer(amount) {
   p.hp = Math.max(0, p.hp - reduced);
   p.invincibleTimer = p.hp > 0 ? 0.35 : 0;
   p.damageFlash = 0.25;
+
+  if (STATE.scoreState) {
+    STATE.scoreState.noDamageTimer = 0;
+    STATE.scoreState.noDamageTier = 0;
+  }
 }
 
 function healPlayer(amount) {

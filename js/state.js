@@ -107,6 +107,33 @@ const STATE = {
 
   shopOpen: false,
   lastShopWave: 0,
-  shopVacuumBoughtByWave: {}
+  shopVacuumBoughtByWave: {},
+
+  // ----------------
+  // ボスイベント / 危険地帯
+  // ----------------
+
+  bossEvent: {
+    active: false,
+    bossId: null,
+    bossName: "",
+    warningTimer: 0,
+    warningText: "",
+    hazardTimer: 0
+  },
+  hazards: [],
+
+  // ----------------
+  // スコアボーナス
+  // ----------------
+
+  scoreState: {
+    noDamageTimer: 0,
+    noDamageTier: 0,
+    killChainTimer: 0,
+    killChainCount: 0,
+    popupTimer: 0,
+    popupText: ""
+  },
 
 };

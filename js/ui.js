@@ -479,7 +479,12 @@ function updateHUD() {
   if (xpText) xpText.textContent = `Lv ${p.level}`;
   if (waveText) waveText.textContent = `Wave ${STATE.currentWave}`;
   if (goldText) goldText.textContent = `Gold ${Math.floor(p.gold)}`;
-  if (scoreText) scoreText.textContent = `Score ${Math.floor(STATE.score)}`;
+  if (scoreText) {
+    const chain = STATE.scoreState?.killChainCount || 0;
+    const noDamage = Math.floor(STATE.scoreState?.noDamageTimer || 0);
+    scoreText.textContent = `Score ${Math.floor(STATE.score)}${chain >= 2 ? ` / Chain ${chain}` : ""}${noDamage >= 10 ? ` / ND ${noDamage}s` : ""}`;
+    scoreText.classList.toggle("scoreBonusGlow", !!(STATE.scoreState?.popupTimer > 0));
+  }
 
   if (xpBar) {
     const need = requiredXP(p.level);
@@ -489,6 +494,29 @@ function updateHUD() {
 
   if (weaponBar) renderWeaponBar(weaponBar);
   renderDetailLists();
+  updateBossHud();
+}
+
+function updateBossHud() {
+  const warningEl = getEl("bossWarningText");
+  const wrap = getEl("bossBarWrap");
+  const nameEl = getEl("bossBarName");
+  const bar = getEl("bossBar");
+  const boss = typeof getActiveBoss === "function" ? getActiveBoss() : null;
+  const be = STATE.bossEvent || {};
+
+  if (warningEl) {
+    const showWarning = be.warningTimer > 0 && be.warningText;
+    warningEl.style.display = showWarning ? "block" : "none";
+    warningEl.textContent = showWarning ? `WARNING  ${be.warningText}` : "";
+    warningEl.style.opacity = showWarning ? String(0.7 + Math.sin(STATE.time * 10) * 0.25) : "0";
+  }
+
+  if (wrap) wrap.style.display = boss ? "block" : "none";
+  if (boss && nameEl && bar) {
+    nameEl.textContent = be.bossName || getEnemyDef(boss.typeId)?.name || "BOSS";
+    bar.style.width = `${clamp(boss.hp / Math.max(1, boss.maxHp), 0, 1) * 100}%`;
+  }
 }
 
 function openChestEvolutionScreen(choices) {

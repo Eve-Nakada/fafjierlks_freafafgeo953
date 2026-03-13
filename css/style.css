@@ -920,3 +920,58 @@ button:disabled{
 .weaponSelectBtn.lockedChoice .choiceMeta{
   color:var(--sub);
 }
+
+
+#bossEventHud{
+  position:absolute;
+  top:calc(var(--safe-top) + 8px);
+  left:50%;
+  transform:translateX(-50%);
+  z-index:18;
+  width:min(86vw, 760px);
+  pointer-events:none;
+  display:grid;
+  gap:8px;
+}
+#bossWarningText{
+  display:none;
+  text-align:center;
+  font-weight:800;
+  letter-spacing:0.08em;
+  color:#ffd7a8;
+  text-shadow:0 0 18px rgba(255,136,88,0.45);
+  padding:6px 12px;
+  border-radius:999px;
+  background:rgba(70,10,0,0.5);
+  border:1px solid rgba(255,175,120,0.35);
+}
+#bossBarWrap{
+  display:none;
+  padding:10px 12px;
+  border-radius:16px;
+  background:rgba(10,18,26,0.72);
+  border:1px solid rgba(255,170,120,0.28);
+  box-shadow:0 10px 30px rgba(0,0,0,0.28);
+}
+#bossBarName{
+  color:#ffd7a8;
+  font-weight:700;
+  margin-bottom:6px;
+  text-align:center;
+}
+#bossBarOuter{
+  height:18px;
+  border-radius:999px;
+  overflow:hidden;
+  background:rgba(255,255,255,0.12);
+  border:1px solid rgba(255,255,255,0.08);
+}
+#bossBar{
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg,#ff8f70,#ffd08a);
+}
+.scoreBonusGlow{
+  color:#ffd166 !important;
+  border-color:rgba(255,209,102,0.35) !important;
+}

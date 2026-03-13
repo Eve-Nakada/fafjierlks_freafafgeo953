@@ -178,7 +178,8 @@ function handleWaveBossSpawn(wave) {
   if (STATE.elapsed < (wave.boss.at || 0)) return;
 
   wave._bossSpawned = true;
-  spawnEnemyAroundPlayer(wave.boss.typeId, 260, 300, true, 'boss');
+  const boss = spawnEnemyAroundPlayer(wave.boss.typeId, 260, 300, true, 'boss');
+  if (boss) triggerBossEvent(boss, wave);
 }
 
 function handleWaveLeviathanSpawn(wave) {
@@ -187,7 +188,8 @@ function handleWaveLeviathanSpawn(wave) {
   if (STATE.elapsed < (wave.leviathan.at || 0)) return;
 
   wave._leviathanSpawned = true;
-  spawnEnemyAroundPlayer(wave.leviathan.typeId, 280, 320, true, 'leviathan');
+  const boss = spawnEnemyAroundPlayer(wave.leviathan.typeId, 280, 320, true, 'leviathan');
+  if (boss) triggerBossEvent(boss, wave);
 }
 
 function handleWaveShop(newWaveIndex, prevWaveIndex) {

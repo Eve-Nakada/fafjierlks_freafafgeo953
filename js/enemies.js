@@ -548,9 +548,12 @@ function dropEnemyRewards(enemy) {
       y: enemy.y,
       r: 18
     });
+    onBossDefeated(enemy);
   } else {
     STATE.score += 20;
   }
+
+  registerKillChain(enemy);
 
   if (enemy.gold) {
     addGold(enemy.gold);
