@@ -108,6 +108,10 @@ const STATE = {
   shopOpen: false,
   lastShopWave: 0,
   shopVacuumBoughtByWave: {},
+  shopSession: {
+    startHp: 0,
+    allowedHeal: 0
+  },
 
   // ----------------
   // ボスイベント / 危険地帯

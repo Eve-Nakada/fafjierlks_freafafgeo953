@@ -65,6 +65,7 @@ function resetGameState() {
   STATE.levelUpQueue = 0;
   STATE.shopOpen = false;
   STATE.lastShopWave = 0;
+  STATE.shopSession = { startHp: 0, allowedHeal: 0 };
 
   STATE.enemies = [];
   STATE.enemyBullets = [];

@@ -182,8 +182,13 @@ function applyPassiveImmediateEffect(id, level) {
   if (!p) return;
 
   if (id === "shell") {
+    const prevHp = p.hp;
     p.maxHp = 100 + level * 20;
-    p.hp = Math.min(p.maxHp, p.hp + 20);
+    if (STATE._suppressImmediateShellHeal) {
+      p.hp = Math.min(p.maxHp, prevHp);
+    } else {
+      p.hp = Math.min(p.maxHp, prevHp + 20);
+    }
   }
 
   if (id === "chart") {

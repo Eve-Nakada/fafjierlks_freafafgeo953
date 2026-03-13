@@ -284,7 +284,7 @@ function fireMine(w, def) {
       y: pos.y,
       vx: 0,
       vy: 0,
-      life: pattern === "burst_ex" ? 3.0 : pattern === "burst" ? 2.65 : pattern === "cluster_ex" ? 2.7 : pattern === "cluster" ? 2.45 : 2.2,
+      life: 3.0,
       radius: pattern && pattern.startsWith("cluster") ? 14 : 16,
       damage: getWeaponDamage(w, def) * (pattern === "burst_ex" ? 1.2 : 1),
       pierce: 999,
@@ -295,7 +295,7 @@ function fireMine(w, def) {
       color: pattern && pattern.startsWith("cluster") ? "#ffe08a" : "#ffd166",
       explodeRadius: (pattern === "burst_ex" ? 120 : pattern === "burst" ? 95 : pattern === "cluster_ex" ? 86 : pattern === "cluster" ? 72 : 70) * STATE.player.stats.areaMul,
       warningRadius: (pattern === "burst_ex" ? 138 : pattern === "burst" ? 110 : pattern === "cluster_ex" ? 98 : pattern === "cluster" ? 82 : 78) * STATE.player.stats.areaMul,
-      armDelay: 0.25
+      armDelay: 0.35
     });
   }
 }
@@ -826,21 +826,31 @@ function renderMineBullet(ctx, b, cam) {
   const y = b.y - cam.y;
   ctx.save();
   const warnRadius = b.warningRadius || b.explodeRadius || 0;
+  const totalFuse = 3.0;
+  const fuseRatio = clamp(1 - (b.life / totalFuse), 0, 1);
   if (warnRadius > 0) {
-    const pulse = 0.7 + Math.sin(STATE.time * 6 + b.x * 0.01) * 0.14;
-    ctx.globalAlpha = (b.armDelay > 0 ? 0.12 : 0.2) * pulse;
+    const pulse = 0.68 + Math.sin(STATE.time * (5 + fuseRatio * 8) + b.x * 0.01) * (0.12 + fuseRatio * 0.08);
+    ctx.globalAlpha = (b.armDelay > 0 ? 0.12 : 0.16 + fuseRatio * 0.16) * pulse;
     ctx.fillStyle = b.armDelay > 0 ? '#fff2ba' : '#ffca68';
     ctx.beginPath();
     ctx.arc(x, y, warnRadius, 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = 0.92;
+
+    ctx.globalAlpha = 0.82 + fuseRatio * 0.18;
     ctx.strokeStyle = b.armDelay > 0 ? '#fff0b3' : '#ffcf70';
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([10, 8]);
+    ctx.lineWidth = 2.5 + fuseRatio * 1.4;
+    ctx.setLineDash([12 - fuseRatio * 4, 10 - fuseRatio * 3]);
     ctx.beginPath();
     ctx.arc(x, y, warnRadius, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
+
+    const innerWarn = Math.max(16, warnRadius * (0.18 + fuseRatio * 0.72));
+    ctx.globalAlpha = 0.16 + fuseRatio * 0.16;
+    ctx.fillStyle = '#ffd98a';
+    ctx.beginPath();
+    ctx.arc(x, y, innerWarn, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.globalAlpha = 1;
   ctx.fillStyle = b.color;

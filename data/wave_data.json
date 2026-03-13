@@ -1,12 +1,12 @@
 {
-  "clearTime": 480,
+  "clearTime": 760,
   "waves": [
     {
       "index": 1,
       "at": 0,
-      "spawnInterval": 1.3,
+      "spawnInterval": 1.55,
       "count": 2,
-      "theme": "慣らしの小群",
+      "theme": "慣らしの小群 I",
       "enemyTypes": [
         "small_fish"
       ],
@@ -16,10 +16,24 @@
     },
     {
       "index": 2,
-      "at": 38,
-      "spawnInterval": 1.12,
+      "at": 28,
+      "spawnInterval": 1.42,
+      "count": 2,
+      "theme": "慣らしの小群 II",
+      "enemyTypes": [
+        "small_fish",
+        "jellyfish"
+      ],
+      "guaranteedTypes": [
+        "small_fish"
+      ]
+    },
+    {
+      "index": 3,
+      "at": 56,
+      "spawnInterval": 1.32,
       "count": 3,
-      "theme": "感電注意",
+      "theme": "感電注意 I",
       "enemyTypes": [
         "small_fish",
         "jellyfish"
@@ -29,11 +43,27 @@
       ]
     },
     {
-      "index": 3,
-      "at": 76,
-      "spawnInterval": 0.98,
-      "count": 4,
-      "theme": "横圧の入口",
+      "index": 4,
+      "at": 86,
+      "spawnInterval": 1.22,
+      "count": 3,
+      "theme": "感電注意 II",
+      "enemyTypes": [
+        "small_fish",
+        "jellyfish",
+        "crab"
+      ],
+      "guaranteedTypes": [
+        "jellyfish",
+        "crab"
+      ]
+    },
+    {
+      "index": 5,
+      "at": 118,
+      "spawnInterval": 1.12,
+      "count": 3,
+      "theme": "横圧の入口 I",
       "enemyTypes": [
         "small_fish",
         "jellyfish",
@@ -46,11 +76,46 @@
       "formation": "side_sweep"
     },
     {
-      "index": 4,
-      "at": 116,
-      "spawnInterval": 0.88,
+      "index": 6,
+      "at": 150,
+      "spawnInterval": 1.04,
       "count": 4,
-      "theme": "通路殺し",
+      "theme": "横圧の入口 II",
+      "enemyTypes": [
+        "small_fish",
+        "jellyfish",
+        "crab",
+        "ray"
+      ],
+      "guaranteedTypes": [
+        "ray",
+        "crab"
+      ],
+      "formation": "side_sweep"
+    },
+    {
+      "index": 7,
+      "at": 184,
+      "spawnInterval": 0.98,
+      "count": 4,
+      "theme": "通路殺し I",
+      "enemyTypes": [
+        "ray",
+        "moray",
+        "electric_eel",
+        "shrimp"
+      ],
+      "guaranteedTypes": [
+        "moray"
+      ],
+      "formation": "pinch_cross"
+    },
+    {
+      "index": 8,
+      "at": 222,
+      "spawnInterval": 0.92,
+      "count": 4,
+      "theme": "通路殺し II",
       "enemyTypes": [
         "ray",
         "moray",
@@ -64,11 +129,11 @@
       "formation": "pinch_cross"
     },
     {
-      "index": 5,
-      "at": 156,
-      "spawnInterval": 0.77,
+      "index": 9,
+      "at": 264,
+      "spawnInterval": 0.86,
       "count": 5,
-      "theme": "射撃圧",
+      "theme": "射撃圧 I",
       "enemyTypes": [
         "moray",
         "electric_eel",
@@ -81,11 +146,29 @@
       "formation": "ranged_line"
     },
     {
-      "index": 6,
-      "at": 206,
-      "spawnInterval": 0.66,
+      "index": 10,
+      "at": 308,
+      "spawnInterval": 0.8,
       "count": 5,
-      "theme": "深海包囲",
+      "theme": "射撃圧 II",
+      "enemyTypes": [
+        "moray",
+        "electric_eel",
+        "octopus",
+        "deep_fish"
+      ],
+      "guaranteedTypes": [
+        "electric_eel",
+        "octopus"
+      ],
+      "formation": "ranged_line"
+    },
+    {
+      "index": 11,
+      "at": 354,
+      "spawnInterval": 0.75,
+      "count": 5,
+      "theme": "深海包囲 I",
       "enemyTypes": [
         "octopus",
         "deep_fish",
@@ -98,9 +181,27 @@
       "formation": "encircle"
     },
     {
-      "index": 7,
-      "at": 266,
-      "spawnInterval": 0.57,
+      "index": 12,
+      "at": 402,
+      "spawnInterval": 0.7,
+      "count": 6,
+      "theme": "深海包囲 II",
+      "enemyTypes": [
+        "octopus",
+        "deep_fish",
+        "shark",
+        "deep_ghost"
+      ],
+      "guaranteedTypes": [
+        "deep_ghost",
+        "shark"
+      ],
+      "formation": "encircle"
+    },
+    {
+      "index": 13,
+      "at": 454,
+      "spawnInterval": 0.61,
       "count": 6,
       "theme": "突進編成",
       "enemyTypes": [
@@ -115,14 +216,14 @@
       ],
       "formation": "rush_pack",
       "boss": {
-        "at": 300,
+        "at": 490,
         "typeId": "boss_manta"
       }
     },
     {
-      "index": 8,
-      "at": 336,
-      "spawnInterval": 0.5,
+      "index": 14,
+      "at": 536,
+      "spawnInterval": 0.53,
       "count": 7,
       "theme": "包囲と牽制",
       "enemyTypes": [
@@ -139,9 +240,9 @@
       "formation": "encircle"
     },
     {
-      "index": 9,
-      "at": 406,
-      "spawnInterval": 0.43,
+      "index": 15,
+      "at": 622,
+      "spawnInterval": 0.45,
       "count": 8,
       "theme": "終盤総力戦",
       "enemyTypes": [
@@ -157,7 +258,7 @@
       ],
       "formation": "finale_mix",
       "leviathan": {
-        "at": 430,
+        "at": 670,
         "typeId": "leviathan"
       }
     }

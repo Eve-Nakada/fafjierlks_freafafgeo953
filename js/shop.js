@@ -25,14 +25,29 @@ function calcShopPrice(item) {
 function openShop() {
   STATE.shopOpen = true;
   STATE.paused = true;
+  if (STATE.player) {
+    STATE.shopSession = {
+      startHp: STATE.player.hp,
+      allowedHeal: 0
+    };
+  } else {
+    STATE.shopSession = { startHp: 0, allowedHeal: 0 };
+  }
   showScreen("shopScreen");
   renderShop();
 }
 
 function closeShop() {
+  if (STATE.player && STATE.shopSession) {
+    const baseHp = Math.max(0, STATE.shopSession.startHp || 0);
+    const allowedHeal = Math.max(0, STATE.shopSession.allowedHeal || 0);
+    const maxAllowed = Math.min(STATE.player.maxHp, baseHp + allowedHeal);
+    STATE.player.hp = Math.min(STATE.player.hp, maxAllowed);
+  }
   STATE.shopOpen = false;
   STATE.paused = false;
   hideScreen("shopScreen");
+  STATE.shopSession = { startHp: 0, allowedHeal: 0 };
   updateHUD();
 }
 
@@ -45,7 +60,7 @@ function rerollShopChoices() {
 
   STATE.player.gold -= cost;
   STATE.player.rerollTickets += 1;
-  renderShop();
+  renderShop(true);
   updateHUD();
   return true;
 }
@@ -57,7 +72,12 @@ function renderShop(forceShuffle = false) {
   const allItems = getShopItems().slice();
 
   if (!STATE._shopDisplayItems || forceShuffle) {
-    STATE._shopDisplayItems = allItems;
+    const rerollItem = allItems.find(x => x.effect === "reroll") || null;
+    const normalItems = allItems.filter(x => x.effect !== "reroll");
+
+    const picked = normalItems.slice(0, Math.min(5, normalItems.length));
+
+    STATE._shopDisplayItems = rerollItem ? [...picked, rerollItem] : picked;
   }
 
   listEl.innerHTML = "";
@@ -97,11 +117,14 @@ function buyShopItem(item) {
   switch (item.effect) {
     case "heal":
       healPlayer(item.value || 0);
+      if (STATE.shopSession) {
+        STATE.shopSession.allowedHeal = (STATE.shopSession.allowedHeal || 0) + (item.value || 0);
+      }
       break;
 
     case "maxHp":
       STATE.player.maxHp += item.value || 0;
-      STATE.player.hp = Math.min(STATE.player.maxHp, STATE.player.hp + (item.value || 0));
+      STATE.player.hp = Math.min(STATE.player.maxHp, STATE.player.hp);
       break;
 
     case "gold":
@@ -125,7 +148,9 @@ function buyShopItem(item) {
       break;
 
     case "passiveLevelUp":
+      STATE._suppressImmediateShellHeal = true;
       success = levelUpRandomPassive();
+      STATE._suppressImmediateShellHeal = false;
       break;
 
     default:
