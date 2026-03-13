@@ -65,11 +65,14 @@ function updatePlayer(dt) {
 
   const prevX = p.x;
   const prevY = p.y;
+  const mapSlowMul = getMapSlowMulAt(p.x, p.y);
+  const moveSpeed = getPlayerSpeed() * mapSlowMul;
 
-  p.x += mx * getPlayerSpeed() * dt;
-  p.y += my * getPlayerSpeed() * dt;
+  p.x += mx * moveSpeed * dt;
+  p.y += my * moveSpeed * dt;
 
   resolvePlayerMapCollision(prevX, prevY);
+  applyMapCurrent(dt, prevX, prevY);
 
   p.x = clamp(p.x, p.r, STATE.world.width - p.r);
   p.y = clamp(p.y, p.r, STATE.world.height - p.r);

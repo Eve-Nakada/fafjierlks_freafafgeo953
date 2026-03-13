@@ -4,51 +4,116 @@
     {
       "index": 1,
       "at": 0,
-      "spawnInterval": 1.2,
+      "spawnInterval": 1.3,
       "count": 2,
-      "enemyTypes": ["small_fish"]
+      "theme": "慣らしの小群",
+      "enemyTypes": [
+        "small_fish"
+      ],
+      "guaranteedTypes": [
+        "small_fish"
+      ]
     },
     {
       "index": 2,
-      "at": 40,
-      "spawnInterval": 1.05,
+      "at": 38,
+      "spawnInterval": 1.12,
       "count": 3,
-      "enemyTypes": ["small_fish", "jellyfish"]
+      "theme": "感電注意",
+      "enemyTypes": [
+        "small_fish",
+        "jellyfish"
+      ],
+      "guaranteedTypes": [
+        "jellyfish"
+      ]
     },
     {
       "index": 3,
-      "at": 80,
-      "spawnInterval": 0.95,
-      "count": 3,
-      "enemyTypes": ["small_fish", "jellyfish", "crab", "ray"]
+      "at": 76,
+      "spawnInterval": 0.98,
+      "count": 4,
+      "theme": "横圧の入口",
+      "enemyTypes": [
+        "small_fish",
+        "jellyfish",
+        "crab",
+        "ray"
+      ],
+      "guaranteedTypes": [
+        "ray"
+      ],
+      "formation": "side_sweep"
     },
     {
       "index": 4,
-      "at": 120,
-      "spawnInterval": 0.9,
+      "at": 116,
+      "spawnInterval": 0.88,
       "count": 4,
-      "enemyTypes": ["ray", "moray", "electric_eel", "shrimp"]
+      "theme": "通路殺し",
+      "enemyTypes": [
+        "ray",
+        "moray",
+        "electric_eel",
+        "shrimp"
+      ],
+      "guaranteedTypes": [
+        "moray",
+        "ray"
+      ],
+      "formation": "pinch_cross"
     },
     {
       "index": 5,
-      "at": 160,
-      "spawnInterval": 0.82,
-      "count": 4,
-      "enemyTypes": ["moray", "electric_eel", "octopus", "deep_fish"]
+      "at": 156,
+      "spawnInterval": 0.77,
+      "count": 5,
+      "theme": "射撃圧",
+      "enemyTypes": [
+        "moray",
+        "electric_eel",
+        "octopus",
+        "deep_fish"
+      ],
+      "guaranteedTypes": [
+        "electric_eel"
+      ],
+      "formation": "ranged_line"
     },
     {
       "index": 6,
-      "at": 210,
-      "spawnInterval": 0.70,
+      "at": 206,
+      "spawnInterval": 0.66,
       "count": 5,
-      "enemyTypes": ["octopus", "deep_fish", "shark", "deep_ghost"]
+      "theme": "深海包囲",
+      "enemyTypes": [
+        "octopus",
+        "deep_fish",
+        "shark",
+        "deep_ghost"
+      ],
+      "guaranteedTypes": [
+        "deep_ghost"
+      ],
+      "formation": "encircle"
     },
     {
       "index": 7,
-      "at": 270,
-      "spawnInterval": 0.63,
-      "count": 5,
-      "enemyTypes": ["shark", "deep_ghost", "barracuda", "electric_eel"],
+      "at": 266,
+      "spawnInterval": 0.57,
+      "count": 6,
+      "theme": "突進編成",
+      "enemyTypes": [
+        "shark",
+        "deep_ghost",
+        "barracuda",
+        "electric_eel"
+      ],
+      "guaranteedTypes": [
+        "shark",
+        "barracuda"
+      ],
+      "formation": "rush_pack",
       "boss": {
         "at": 300,
         "typeId": "boss_manta"
@@ -56,17 +121,41 @@
     },
     {
       "index": 8,
-      "at": 340,
-      "spawnInterval": 0.56,
+      "at": 336,
+      "spawnInterval": 0.5,
       "count": 7,
-      "enemyTypes": ["deep_fish", "shark", "deep_ghost", "barracuda", "octopus"]
+      "theme": "包囲と牽制",
+      "enemyTypes": [
+        "deep_fish",
+        "shark",
+        "deep_ghost",
+        "barracuda",
+        "octopus"
+      ],
+      "guaranteedTypes": [
+        "deep_ghost",
+        "octopus"
+      ],
+      "formation": "encircle"
     },
     {
       "index": 9,
-      "at": 410,
-      "spawnInterval": 0.50,
-      "count": 7,
-      "enemyTypes": ["shark", "deep_ghost", "barracuda"],
+      "at": 406,
+      "spawnInterval": 0.43,
+      "count": 8,
+      "theme": "終盤総力戦",
+      "enemyTypes": [
+        "shark",
+        "deep_ghost",
+        "barracuda",
+        "electric_eel"
+      ],
+      "guaranteedTypes": [
+        "shark",
+        "deep_ghost",
+        "electric_eel"
+      ],
+      "formation": "finale_mix",
       "leviathan": {
         "at": 430,
         "typeId": "leviathan"
