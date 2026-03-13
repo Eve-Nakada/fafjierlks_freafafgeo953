@@ -122,6 +122,7 @@ const STATE = {
     hazardTimer: 0
   },
   hazards: [],
+  ambientBubbles: [],
 
   // ----------------
   // スコアボーナス

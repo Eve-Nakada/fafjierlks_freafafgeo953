@@ -193,8 +193,10 @@ function openWeaponGrowth(weaponId) {
   const content = getEl("weaponGrowthContent");
   const def = getWeaponDef(weaponId);
   if (!content || !def) return;
+  if (isScreenVisible("weaponGrowthScreen") && STATE._weaponGrowthWeaponId === weaponId) return;
 
   STATE._weaponGrowthPrevPaused = !!STATE.paused;
+  STATE._weaponGrowthWeaponId = weaponId;
   STATE.paused = true;
   content.innerHTML = buildWeaponGrowthTreeHtml(weaponId, true);
   showScreen("weaponGrowthScreen");
@@ -203,6 +205,7 @@ function openWeaponGrowth(weaponId) {
 function closeWeaponGrowth() {
   hideScreen("weaponGrowthScreen");
   STATE.paused = !!STATE._weaponGrowthPrevPaused;
+  STATE._weaponGrowthWeaponId = null;
 }
 
 function getEnemyAiLabel(type) {
@@ -605,7 +608,7 @@ function renderDetailLists() {
           <div class="detailName">${def?.name || w.id}</div>
           <div class="detailValue">
             <span>${getWeaponStageLabel(w)}</span>
-            <button class="miniBtn" type="button" data-open-growth="1" data-weapon-id="${w.id}" onclick="openWeaponGrowth('${w.id}'); return false;">成長表</button>
+            <button class="miniBtn" type="button" data-open-growth="1" data-weapon-id="${w.id}">成長表</button>
           </div>
         </div>`;
     }).join("");

@@ -73,6 +73,7 @@ function resetGameState() {
   STATE.xpGems = [];
   STATE.chests = [];
   STATE.hazards = [];
+  STATE.ambientBubbles = [];
   STATE.bossEvent = { active: false, bossId: null, bossName: "", warningTimer: 0, warningText: "", hazardTimer: 0 };
   STATE.scoreState = { noDamageTimer: 0, noDamageTier: 0, killChainTimer: 0, killChainCount: 0, popupTimer: 0, popupText: "" };
 
@@ -134,6 +135,8 @@ function gameLoop(timestamp) {
   STATE.delta = dt;
   STATE.time += dt;
 
+  updateAmbientBubbles(dt);
+
   if (!STATE.paused && STATE.player) {
     updateGame(dt);
   }
@@ -189,6 +192,7 @@ function renderGame() {
   if (!STATE.player) return;
 
   renderMap(ctx);
+  renderAmbientBubbles(ctx);
   renderBossHazards(ctx);
   renderXPGems(ctx);
   renderChests(ctx);
@@ -196,6 +200,7 @@ function renderGame() {
   renderEnemyProjectiles(ctx);
   renderBullets(ctx);
   renderPlayer(ctx);
+  renderDepthOverlay(ctx);
 }
 
 // ===============================
@@ -333,11 +338,65 @@ function updateBossEvent(dt) {
 function spawnBossHazard(boss) {
   const p = STATE.player;
   if (!p) return;
+
+  if (boss.typeId === 'leviathan' || boss.bossKind === 'leviathan') {
+    const cx = clamp((Math.random() < 0.55 ? p.x : boss.x) + rand(-90, 90), 180, STATE.world.width - 180);
+    const cy = clamp((Math.random() < 0.55 ? p.y : boss.y) + rand(-90, 90), 180, STATE.world.height - 180);
+    const innerRadius = rand(48, 78);
+    const outerRadius = innerRadius + rand(70, 118);
+    STATE.hazards.push({
+      kind: 'ring',
+      x: cx,
+      y: cy,
+      innerRadius,
+      radius: outerRadius,
+      telegraph: 1.05,
+      life: 1.24,
+      damage: boss.damage * 0.95,
+      color: 'rgba(160,120,255,0.42)',
+      stroke: '#d7c3ff'
+    });
+    return;
+  }
+
+  if (boss.typeId === 'boss_manta') {
+    const horizontal = Math.random() < 0.5;
+    const laneThickness = rand(88, 132);
+    const laneLength = horizontal ? STATE.world.width - 120 : STATE.world.height - 120;
+    const x = horizontal ? STATE.world.width * 0.5 : clamp((Math.random() < 0.65 ? p.x : boss.x) + rand(-150, 150), 80, STATE.world.width - 80);
+    const y = horizontal ? clamp((Math.random() < 0.65 ? p.y : boss.y) + rand(-150, 150), 80, STATE.world.height - 80) : STATE.world.height * 0.5;
+    STATE.hazards.push({
+      kind: 'lane',
+      x,
+      y,
+      width: horizontal ? laneLength : laneThickness,
+      height: horizontal ? laneThickness : laneLength,
+      telegraph: 0.9,
+      life: 1.05,
+      damage: boss.damage * 0.82,
+      color: 'rgba(110,220,255,0.34)',
+      stroke: '#c8f3ff'
+    });
+    return;
+  }
+
   const nearPlayer = Math.random() < 0.58;
-  const radius = boss.bossKind === 'leviathan' ? rand(72, 132) : rand(62, 112);
+  const radius = rand(62, 112);
   const x = nearPlayer ? clamp(p.x + rand(-120, 120), radius + 8, STATE.world.width - radius - 8) : clamp(boss.x + rand(-180, 180), radius + 8, STATE.world.width - radius - 8);
   const y = nearPlayer ? clamp(p.y + rand(-120, 120), radius + 8, STATE.world.height - radius - 8) : clamp(boss.y + rand(-180, 180), radius + 8, STATE.world.height - radius - 8);
-  STATE.hazards.push({ x, y, radius, telegraph: boss.bossKind === 'leviathan' ? 1.0 : 0.85, life: boss.bossKind === 'leviathan' ? 1.15 : 1.0, damage: boss.damage * 0.9, color: boss.bossKind === 'leviathan' ? 'rgba(170,120,255,0.42)' : 'rgba(255,145,110,0.42)' });
+  STATE.hazards.push({ kind: 'circle', x, y, radius, telegraph: 0.85, life: 1.0, damage: boss.damage * 0.9, color: 'rgba(255,145,110,0.42)', stroke: '#ffd8c7' });
+}
+
+function pointInBossHazard(hz, x, y, pad = 0) {
+  if (!hz) return false;
+  if (hz.kind === 'lane') {
+    return x >= hz.x - hz.width * 0.5 - pad && x <= hz.x + hz.width * 0.5 + pad && y >= hz.y - hz.height * 0.5 - pad && y <= hz.y + hz.height * 0.5 + pad;
+  }
+  const d = dist(hz.x, hz.y, x, y);
+  if (hz.kind === 'ring') {
+    return d <= (hz.radius || 0) + pad && d >= Math.max(0, (hz.innerRadius || 0) - pad);
+  }
+  return d <= (hz.radius || 0) + pad;
 }
 
 function updateBossHazards(dt) {
@@ -349,7 +408,7 @@ function updateBossHazards(dt) {
     if (hz.life <= 0) continue;
     if (hz.telegraph <= 0 && !hz.triggered) {
       hz.triggered = true;
-      if (p && dist(hz.x, hz.y, p.x, p.y) <= hz.radius + p.r) {
+      if (p && pointInBossHazard(hz, p.x, p.y, p.r)) {
         damagePlayer(hz.damage);
       }
     }
@@ -363,15 +422,50 @@ function renderBossHazards(ctx) {
   for (const hz of STATE.hazards || []) {
     const x = hz.x - cam.x;
     const y = hz.y - cam.y;
-    ctx.save();
     const pulse = 0.72 + Math.sin(STATE.time * 7 + hz.x * 0.01) * 0.16;
+    ctx.save();
+
+    if (hz.kind === 'lane') {
+      ctx.globalAlpha = hz.triggered ? 0.26 : 0.12 * pulse;
+      ctx.fillStyle = hz.color;
+      ctx.fillRect(x - hz.width * 0.5, y - hz.height * 0.5, hz.width, hz.height);
+      ctx.globalAlpha = hz.triggered ? 0.9 : 0.76;
+      ctx.strokeStyle = hz.stroke || '#c8f3ff';
+      ctx.lineWidth = hz.triggered ? 4 : 2.5;
+      ctx.setLineDash(hz.triggered ? [] : [16, 10]);
+      ctx.strokeRect(x - hz.width * 0.5, y - hz.height * 0.5, hz.width, hz.height);
+      ctx.restore();
+      continue;
+    }
+
+    if (hz.kind === 'ring') {
+      ctx.globalAlpha = hz.triggered ? 0.32 : 0.12 * pulse;
+      ctx.fillStyle = hz.color;
+      ctx.beginPath();
+      ctx.arc(x, y, hz.radius, 0, Math.PI * 2);
+      ctx.arc(x, y, hz.innerRadius || 0, 0, Math.PI * 2, true);
+      ctx.fill('evenodd');
+      ctx.globalAlpha = hz.triggered ? 0.95 : 0.8;
+      ctx.strokeStyle = hz.stroke || '#d7c3ff';
+      ctx.lineWidth = hz.triggered ? 4 : 2.5;
+      ctx.setLineDash(hz.triggered ? [] : [12, 9]);
+      ctx.beginPath();
+      ctx.arc(x, y, hz.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, hz.innerRadius || 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      continue;
+    }
+
     ctx.globalAlpha = hz.triggered ? 0.32 : 0.12 * pulse;
     ctx.fillStyle = hz.color;
     ctx.beginPath();
     ctx.arc(x, y, hz.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = hz.triggered ? 0.95 : 0.78;
-    ctx.strokeStyle = hz.triggered ? '#ffd8c7' : '#ffb28f';
+    ctx.strokeStyle = hz.stroke || '#ffb28f';
     ctx.lineWidth = hz.triggered ? 4 : 2.5;
     ctx.setLineDash(hz.triggered ? [] : [12, 10]);
     ctx.beginPath();
@@ -379,6 +473,86 @@ function renderBossHazards(ctx) {
     ctx.stroke();
     ctx.restore();
   }
+}
+
+
+
+function ensureAmbientBubbles() {
+  if (!canvas) return;
+  const target = Math.max(18, Math.min(44, Math.floor((canvas.width * canvas.height) / 48000)));
+  while ((STATE.ambientBubbles || []).length < target) {
+    STATE.ambientBubbles.push(createAmbientBubble(true));
+  }
+  if (STATE.ambientBubbles.length > target) {
+    STATE.ambientBubbles.length = target;
+  }
+}
+
+function createAmbientBubble(initial = false) {
+  const w = canvas?.width || window.innerWidth || 1280;
+  const h = canvas?.height || window.innerHeight || 720;
+  return {
+    x: rand(0, w),
+    y: initial ? rand(0, h) : h + rand(12, 90),
+    r: rand(2.2, 9.5),
+    vy: rand(12, 34),
+    drift: rand(-16, 16),
+    alpha: rand(0.08, 0.24),
+    wobble: rand(0.8, 2.2),
+    seed: rand(0, Math.PI * 2)
+  };
+}
+
+function updateAmbientBubbles(dt) {
+  if (!canvas) return;
+  ensureAmbientBubbles();
+  const w = canvas.width;
+  const h = canvas.height;
+  STATE.ambientBubbles = (STATE.ambientBubbles || []).map((b) => {
+    b.y -= b.vy * dt;
+    b.x += Math.sin(STATE.time * b.wobble + b.seed) * b.drift * dt;
+    if (b.y < -24 || b.x < -40 || b.x > w + 40) {
+      return createAmbientBubble(false);
+    }
+    return b;
+  });
+}
+
+function renderAmbientBubbles(ctx) {
+  for (const b of STATE.ambientBubbles || []) {
+    ctx.save();
+    ctx.globalAlpha = b.alpha;
+    ctx.strokeStyle = '#d9f8ff';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = b.alpha * 0.32;
+    ctx.fillStyle = '#9befff';
+    ctx.beginPath();
+    ctx.arc(b.x - b.r * 0.22, b.y - b.r * 0.2, b.r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function renderDepthOverlay(ctx) {
+  if (!canvas) return;
+  const clearTime = Math.max(1, STATE.waveData?.clearTime || 480);
+  const depth = clamp(STATE.elapsed / clearTime, 0, 1);
+  const waveDepth = clamp(((STATE.currentWave || 1) - 1) / 8, 0, 1);
+  const alpha = 0.04 + depth * 0.16 + waveDepth * 0.08;
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, `rgba(12, 58, 96, ${0.03 + depth * 0.05})`);
+  gradient.addColorStop(0.55, `rgba(8, 26, 52, ${alpha * 0.65})`);
+  gradient.addColorStop(1, `rgba(1, 8, 20, ${alpha})`);
+  ctx.save();
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.globalAlpha = 0.12 + waveDepth * 0.1;
+  ctx.fillStyle = `rgba(${20 + Math.floor(depth * 30)}, ${70 + Math.floor(depth * 35)}, ${110 + Math.floor(depth * 55)}, 1)`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
 }
 
 function setScorePopup(text) {
