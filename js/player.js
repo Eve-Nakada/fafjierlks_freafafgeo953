@@ -22,6 +22,7 @@ function createPlayer() {
     damageFlash: 0,
 
     rerollTickets: 0,
+    shopMaxHpBonus: 0,
     weapons: [],
     passives: [],
     passiveLevels: {},
@@ -239,7 +240,7 @@ function updatePlayerPassives() {
   p.stats.armor = (levels.armor_plate || 0) * 1.5;
   p.stats.regen = (levels.med_kit || 0) * 0.6;
 
-  p.maxHp = 100 + (levels.shell || 0) * 20;
+  p.maxHp = 100 + (levels.shell || 0) * 20 + (p.shopMaxHpBonus || 0);
   p.hp = Math.min(p.hp, p.maxHp);
 }
 

@@ -110,7 +110,9 @@ const STATE = {
   shopVacuumBoughtByWave: {},
   shopSession: {
     startHp: 0,
-    allowedHeal: 0
+    startMaxHp: 0,
+    allowedHeal: 0,
+    allowedMaxHp: 0
   },
 
   // ----------------

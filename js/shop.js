@@ -28,10 +28,12 @@ function openShop() {
   if (STATE.player) {
     STATE.shopSession = {
       startHp: STATE.player.hp,
-      allowedHeal: 0
+      startMaxHp: STATE.player.maxHp,
+      allowedHeal: 0,
+      allowedMaxHp: 0
     };
   } else {
-    STATE.shopSession = { startHp: 0, allowedHeal: 0 };
+    STATE.shopSession = { startHp: 0, startMaxHp: 0, allowedHeal: 0, allowedMaxHp: 0 };
   }
   showScreen("shopScreen");
   renderShop();
@@ -41,13 +43,14 @@ function closeShop() {
   if (STATE.player && STATE.shopSession) {
     const baseHp = Math.max(0, STATE.shopSession.startHp || 0);
     const allowedHeal = Math.max(0, STATE.shopSession.allowedHeal || 0);
-    const maxAllowed = Math.min(STATE.player.maxHp, baseHp + allowedHeal);
+    const allowedMaxHp = Math.max(0, STATE.shopSession.allowedMaxHp || 0);
+    const maxAllowed = Math.min(STATE.player.maxHp, baseHp + allowedHeal + allowedMaxHp);
     STATE.player.hp = Math.min(STATE.player.hp, maxAllowed);
   }
   STATE.shopOpen = false;
   STATE.paused = false;
   hideScreen("shopScreen");
-  STATE.shopSession = { startHp: 0, allowedHeal: 0 };
+  STATE.shopSession = { startHp: 0, startMaxHp: 0, allowedHeal: 0, allowedMaxHp: 0 };
   updateHUD();
 }
 
@@ -122,10 +125,16 @@ function buyShopItem(item) {
       }
       break;
 
-    case "maxHp":
-      STATE.player.maxHp += item.value || 0;
-      STATE.player.hp = Math.min(STATE.player.maxHp, STATE.player.hp);
+    case "maxHp": {
+      const add = Math.max(0, item.value || 0);
+      STATE.player.shopMaxHpBonus = (STATE.player.shopMaxHpBonus || 0) + add;
+      STATE.player.maxHp += add;
+      STATE.player.hp = Math.min(STATE.player.maxHp, STATE.player.hp + add);
+      if (STATE.shopSession) {
+        STATE.shopSession.allowedMaxHp = (STATE.shopSession.allowedMaxHp || 0) + add;
+      }
       break;
+    }
 
     case "gold":
       addGold(item.value || 0);
