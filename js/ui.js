@@ -54,65 +54,6 @@ function applyTitleTextToUI() {
   if (titleMain) titleMain.textContent = STATE.gameData?.title || "Ocean Survivor";
 }
 
-function setupUI() {
-  applyTitleTextToUI();
-  applyUiMode();
-
-  const startBtn = getEl("startBtn");
-  if (startBtn) {
-    startBtn.onclick = () => {
-      showScreen("weaponSelectScreen");
-      renderWeaponSelect();
-    };
-  }
-
-  const rankingBtn = getEl("rankingBtn");
-  if (rankingBtn) {
-    rankingBtn.onclick = () => {
-      showScreen("rankingScreen");
-      renderRanking("rankingList");
-    };
-  }
-
-  const rankingBackBtn = getEl("rankingBackBtn");
-  if (rankingBackBtn) rankingBackBtn.onclick = () => showScreen("titleScreen");
-
-  const resultToTitleBtn = getEl("resultToTitleBtn");
-  if (resultToTitleBtn) {
-    resultToTitleBtn.onclick = () => {
-      STATE.paused = true;
-      STATE.shopOpen = false;
-      STATE.player = null;
-      hideAllScreens();
-      showScreen("titleScreen");
-      renderRanking("rankingList");
-    };
-  }
-
-  const closeShopBtn = getEl("closeShopBtn");
-  if (closeShopBtn) closeShopBtn.onclick = () => closeShop();
-
-  const toggleUIBtn = getEl("toggleUIBtn");
-  if (toggleUIBtn) toggleUIBtn.onclick = () => toggleUiMode();
-
-  const absorbXPBtn = getEl("absorbXPBtn");
-  if (absorbXPBtn) {
-    absorbXPBtn.onclick = () => {
-      absorbAllXP();
-      updateHUD();
-    };
-  }
-
-  const levelUpRerollBtn = getEl("levelUpRerollBtn");
-  if (levelUpRerollBtn) levelUpRerollBtn.onclick = () => useRerollTicket();
-
-  const weaponGrowthBackBtn = getEl("weaponGrowthBackBtn");
-  if (weaponGrowthBackBtn) weaponGrowthBackBtn.onclick = () => closeWeaponGrowth();
-
-  const chestEvolutionCloseBtn = getEl("chestEvolutionCloseBtn");
-  if (chestEvolutionCloseBtn) chestEvolutionCloseBtn.onclick = () => closeChestEvolutionScreen();
-}
-
 function getWeaponStageLabel(w) {
   if (!w) return "";
   const stage = w.evolutionStage || 0;
@@ -158,80 +99,269 @@ function buildGrowthNodeHtml(title, name, meta1, meta2, active, extraClass = "")
     </div>`;
 }
 
-function getPassiveName(id) {
-  if (!id) return "なし";
-  return getPassiveDef(id)?.name || id;
-}
+function buildWeaponGrowthTreeHtml(weaponId, includeHeader = true) {
+  const def = getWeaponDef(weaponId);
+  if (!def) return "";
 
-function buildGrowthBranchColumnHtml(branch, inst) {
-  const branchMatch = !!inst && inst.branchId === branch.branchId;
-  const stage1Active = !!inst && (inst.evolutionStage || 0) >= 1 && branchMatch;
-  const stage2Active = !!inst && (inst.evolutionStage || 0) >= 2 && branchMatch;
-  const stage1Meta = `条件: ${getPassiveName(branch.needsPassive)}`;
-  const stage2 = branch.secondStage || null;
+  const inst = getWeaponInstance(weaponId);
+  const branches = getWeaponGrowthBranches(def);
+  const rootActive = !!inst && (inst.evolutionStage || 0) === 0;
 
-  let html = `
-    <div class="growthBranchColumn">
-      <div class="growthBranchConnector"></div>
-      ${buildGrowthNodeHtml("第1進化", branch.name || "進化", stage1Meta, "Lv1 → Lv6", stage1Active, "growthStage1")}`;
+  let html = `<div class="growthTree">`;
 
-  if (stage2) {
+  if (includeHeader) {
     html += `
-      <div class="growthChildConnector"></div>
-      ${buildGrowthNodeHtml("第2進化", stage2.name || "第2進化", `条件: ${getPassiveName(stage2.needsPassive)}`, "Lv1 → Lv3", stage2Active, "growthStage2")}`;
-  } else {
-    html += `
-      <div class="growthChildConnector"></div>
-      <div class="growthNode growthNodeDisabled">
-        <div class="growthNodeTitle">第2進化</div>
-        <div class="growthNodeName">未設定</div>
-        <div class="growthNodeMeta">この分岐には第2進化がありません</div>
+      <div class="growthTreeHeader">
+        <div class="choiceTitle">${def.name}</div>
+        <div class="choiceDesc">${getGrowthScreenDescription(def)}</div>
       </div>`;
   }
 
-  html += `</div>`;
+  html += `
+    <div class="growthTreeCanvas">
+      <div class="growthCenterLine"></div>
+      <div class="growthRootWrap">
+        ${buildGrowthNodeHtml("通常", def.name, "Lv1 → Lv6", def.desc || "", rootActive, "growthRoot")}
+      </div>
+      <div class="growthBranchesWrap">`;
+
+  if (branches.length === 0) {
+    html += `<div class="growthEmpty">この武器には進化先がまだ設定されていません。</div>`;
+  }
+
+  for (const branch of branches) {
+    const branchMatch = !inst?.branchId || inst.branchId === branch.branchId;
+    const stage1Active = !!inst && (inst.evolutionStage || 0) >= 1 && branchMatch;
+    const stage2Active = !!inst && (inst.evolutionStage || 0) >= 2 && branchMatch;
+    const second = branch.secondStage || null;
+
+    html += `
+      <div class="growthBranchColumn">
+        <div class="growthBranchConnector"></div>
+        ${buildGrowthNodeHtml("第1進化", branch.name || "進化", `条件: ${branch.needsPassive || "なし"}`, "Lv1 → Lv6", stage1Active, "growthStage1")}`;
+
+    if (second) {
+      html += `
+        <div class="growthChildConnector"></div>
+        ${buildGrowthNodeHtml("第2進化", second.name || "第2進化", `条件: ${second.needsPassive || "なし"}`, "Lv1 → Lv3", stage2Active, "growthStage2")}`;
+    }
+
+    html += `</div>`;
+  }
+
+  html += `
+      </div>
+    </div>
+  </div>`;
+
   return html;
 }
 
 function openWeaponGrowth(weaponId) {
-  const screen = getEl("weaponGrowthScreen");
   const content = getEl("weaponGrowthContent");
   const def = getWeaponDef(weaponId);
-  const inst = getWeaponInstance(weaponId);
-  if (!screen || !content || !def) return false;
+  if (!content || !def) return;
 
   STATE._weaponGrowthPrevPaused = !!STATE.paused;
   STATE.paused = true;
-
-  const branches = getWeaponGrowthBranches(def);
-  const rootActive = !!inst && (inst.evolutionStage || 0) === 0;
-  const branchHtml = branches.length > 0
-    ? branches.map(branch => buildGrowthBranchColumnHtml(branch, inst)).join("")
-    : `<div class="growthEmpty">この武器には進化先がまだ設定されていません。</div>`;
-
-  content.innerHTML = `
-    <div class="growthTree growthTreeTree">
-      <div class="growthTreeHeader">
-        <div class="choiceTitle">${def.name}</div>
-        <div class="choiceDesc">${getGrowthScreenDescription(def)}</div>
-      </div>
-      <div class="growthTreeCanvas">
-        <div class="growthRootWrap">
-          ${buildGrowthNodeHtml("通常", def.name, "Lv1 → Lv6", def.desc || "", rootActive, "growthRoot")}
-        </div>
-        <div class="growthCenterLine"></div>
-        <div class="growthBranchesWrap">${branchHtml}</div>
-      </div>
-    </div>`;
-
+  content.innerHTML = buildWeaponGrowthTreeHtml(weaponId, true);
   showScreen("weaponGrowthScreen");
-  return true;
 }
 
 function closeWeaponGrowth() {
   hideScreen("weaponGrowthScreen");
   STATE.paused = !!STATE._weaponGrowthPrevPaused;
-  updateHUD();
+}
+
+function getEnemyAiLabel(type) {
+  const map = {
+    normal: "ノーマル",
+    slow: "スロー",
+    tank: "タンク",
+    rush: "ラッシュ",
+    dash: "突進",
+    orbit: "周回",
+    weave: "蛇行",
+    boss_weave: "ボス蛇行",
+    boss_dash: "ボス突進"
+  };
+  return map[type] || type || "なし";
+}
+
+function getAttackTypeLabel(type) {
+  const map = {
+    shot: "単発弾",
+    spread: "扇状弾",
+    line_burst: "連射",
+    pulse: "範囲衝撃",
+    ring: "全周弾",
+    summon: "召喚"
+  };
+  return map[type] || type || "攻撃";
+}
+
+function renderWeaponCodex() {
+  const wrap = getEl("weaponCodexList");
+  if (!wrap) return;
+
+  const weapons = STATE.gameData?.weapons || [];
+  wrap.innerHTML = weapons.map((w) => {
+    const icon = `<canvas class="codexIcon" data-weapon-icon="${w.iconIndex || 0}" width="56" height="56"></canvas>`;
+    return `
+      <div class="codexCard">
+        <div class="codexHeader">
+          ${icon}
+          <div class="codexHeadText">
+            <div class="choiceTitle">${w.name}</div>
+            <div class="choiceDesc">${w.desc || ""}</div>
+            <div class="choiceMeta">威力 ${w.damage} / CD ${w.cooldown}</div>
+          </div>
+        </div>
+        ${buildWeaponGrowthTreeHtml(w.id, false)}
+      </div>`;
+  }).join("");
+
+  wrap.querySelectorAll("canvas[data-weapon-icon]").forEach((canvas) => {
+    drawWeaponIconToCanvas(canvas, Number(canvas.dataset.weaponIcon || 0));
+  });
+}
+
+function openWeaponCodex() {
+  renderWeaponCodex();
+  showScreen("weaponCodexScreen");
+}
+
+function renderEnemyCodex() {
+  const wrap = getEl("enemyCodexList");
+  if (!wrap) return;
+
+  const entries = Object.entries(STATE.gameData?.enemyStats || {});
+  wrap.innerHTML = entries.map(([id, def]) => {
+    const ai = def.ai || {};
+    const attacks = Array.isArray(def.attacks) ? def.attacks : [];
+    return `
+      <div class="codexCard">
+        <div class="codexHeader">
+          <canvas class="codexIcon" data-enemy-icon="${def.spriteIndex || 0}" width="56" height="56"></canvas>
+          <div class="codexHeadText">
+            <div class="choiceTitle">${def.name || id}</div>
+            <div class="choiceMeta">HP ${def.hp} / 速度 ${def.speed} / 接触 ${def.damage}</div>
+            <div class="choiceDesc">AI: ${getEnemyAiLabel(ai.type)}${ai.preferRange ? ` / 間合い ${ai.preferRange}` : ""}</div>
+          </div>
+        </div>
+        <div class="codexAttackList">
+          ${attacks.length === 0 ? `<div class="choiceDesc">特殊攻撃なし</div>` : attacks.map((atk) => `
+            <div class="codexAttackRow">
+              <div class="codexAttackName">${getAttackTypeLabel(atk.type)}</div>
+              <div class="codexAttackMeta">CD ${atk.cooldown || "-"} / 射程 ${atk.triggerRange || "-"}</div>
+            </div>`).join("")}
+        </div>
+      </div>`;
+  }).join("");
+
+  wrap.querySelectorAll("canvas[data-enemy-icon]").forEach((canvas) => {
+    const index = Number(canvas.dataset.enemyIcon || 0);
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const ok = drawSpriteFrame(ctx, "enemies", index, 0, 0, canvas.width, canvas.height);
+    if (!ok) {
+      ctx.fillStyle = "#ffcc88";
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, canvas.height / 2, 18, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+}
+
+function openEnemyCodex() {
+  renderEnemyCodex();
+  showScreen("enemyCodexScreen");
+}
+
+function closeCodexToTitle() {
+  showScreen("titleScreen");
+}
+
+function setupUI() {
+  applyTitleTextToUI();
+  applyUiMode();
+
+  const startBtn = getEl("startBtn");
+  if (startBtn) {
+    startBtn.onclick = () => {
+      showScreen("weaponSelectScreen");
+      renderWeaponSelect();
+    };
+  }
+
+  const rankingBtn = getEl("rankingBtn");
+  if (rankingBtn) {
+    rankingBtn.onclick = () => {
+      showScreen("rankingScreen");
+      renderRanking("rankingList");
+    };
+  }
+
+  const weaponCodexBtn = getEl("weaponCodexBtn");
+  if (weaponCodexBtn) weaponCodexBtn.onclick = () => openWeaponCodex();
+
+  const enemyCodexBtn = getEl("enemyCodexBtn");
+  if (enemyCodexBtn) enemyCodexBtn.onclick = () => openEnemyCodex();
+
+  const rankingBackBtn = getEl("rankingBackBtn");
+  if (rankingBackBtn) rankingBackBtn.onclick = () => showScreen("titleScreen");
+
+  const weaponCodexBackBtn = getEl("weaponCodexBackBtn");
+  if (weaponCodexBackBtn) weaponCodexBackBtn.onclick = () => closeCodexToTitle();
+
+  const enemyCodexBackBtn = getEl("enemyCodexBackBtn");
+  if (enemyCodexBackBtn) enemyCodexBackBtn.onclick = () => closeCodexToTitle();
+
+  const resultToTitleBtn = getEl("resultToTitleBtn");
+  if (resultToTitleBtn) {
+    resultToTitleBtn.onclick = () => {
+      STATE.paused = true;
+      STATE.shopOpen = false;
+      STATE.player = null;
+      hideAllScreens();
+      showScreen("titleScreen");
+      renderRanking("rankingList");
+    };
+  }
+
+  const closeShopBtn = getEl("closeShopBtn");
+  if (closeShopBtn) closeShopBtn.onclick = () => closeShop();
+
+  const toggleUIBtn = getEl("toggleUIBtn");
+  if (toggleUIBtn) toggleUIBtn.onclick = () => toggleUiMode();
+
+  const absorbXPBtn = getEl("absorbXPBtn");
+  if (absorbXPBtn) {
+    absorbXPBtn.onclick = () => {
+      absorbAllXP();
+      updateHUD();
+    };
+  }
+
+  const levelUpRerollBtn = getEl("levelUpRerollBtn");
+  if (levelUpRerollBtn) levelUpRerollBtn.onclick = () => useRerollTicket();
+
+  const weaponGrowthBackBtn = getEl("weaponGrowthBackBtn");
+  if (weaponGrowthBackBtn) weaponGrowthBackBtn.onclick = () => closeWeaponGrowth();
+
+  const chestEvolutionCloseBtn = getEl("chestEvolutionCloseBtn");
+  if (chestEvolutionCloseBtn) chestEvolutionCloseBtn.onclick = () => closeChestEvolutionScreen();
+
+  const weaponDetailList = getEl("weaponDetailList");
+  if (weaponDetailList) {
+    weaponDetailList.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-open-growth]");
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      openWeaponGrowth(btn.dataset.weaponId);
+    });
+  }
 }
 
 function updateHUD() {
@@ -257,7 +387,7 @@ function updateHUD() {
   }
 
   if (hpText) {
-    hpText.textContent = `HP ${Math.max(0, Math.ceil(p.hp))} / ${p.maxHp}`;
+    hpText.textContent = `HP ${Math.ceil(p.hp)} / ${p.maxHp}`;
     if (hpRatio <= 0.3) hpText.classList.add("hpLow");
     else hpText.classList.remove("hpLow");
   }
@@ -347,71 +477,47 @@ function renderDetailLists() {
 
   const weaponDetailList = getEl("weaponDetailList");
   const passiveDetailList = getEl("passiveDetailList");
+  const weaponSignature = JSON.stringify((p.weapons || []).map((w) => [w.id, w.level, w.evolutionStage || 0, w.branchId || ""]));
+  const passiveSignature = JSON.stringify({
+    passives: p.passives || [],
+    levels: p.passiveLevels || {},
+    rerolls: p.rerollTickets || 0
+  });
 
-  if (weaponDetailList) {
-    weaponDetailList.innerHTML = "";
-    for (const w of p.weapons) {
+  if (weaponDetailList && weaponDetailList.dataset.signature !== weaponSignature) {
+    weaponDetailList.dataset.signature = weaponSignature;
+    weaponDetailList.innerHTML = (p.weapons || []).map((w) => {
       const def = getWeaponDef(w.id);
-      const row = document.createElement("div");
-      row.className = "detailEntry";
-
-      const name = document.createElement("div");
-      name.className = "detailName";
-      name.textContent = def?.name || w.id;
-
-      const value = document.createElement("div");
-      value.className = "detailValue";
-
-      const label = document.createElement("span");
-      label.textContent = getWeaponStageLabel(w);
-
-      const btn = document.createElement("button");
-      btn.className = "miniBtn";
-      btn.type = "button";
-      btn.textContent = "成長表";
-      const openGrowth = (ev) => {
-        if (ev) {
-          ev.preventDefault();
-          ev.stopPropagation();
-        }
-        openWeaponGrowth(w.id);
-      };
-      btn.addEventListener("click", openGrowth);
-      btn.addEventListener("pointerup", openGrowth);
-      btn.onclick = openGrowth;
-
-      value.appendChild(label);
-      value.appendChild(btn);
-      row.appendChild(name);
-      row.appendChild(value);
-      weaponDetailList.appendChild(row);
-    }
+      return `
+        <div class="detailEntry">
+          <div class="detailName">${def?.name || w.id}</div>
+          <div class="detailValue">
+            <span>${getWeaponStageLabel(w)}</span>
+            <button class="miniBtn" type="button" data-open-growth="1" data-weapon-id="${w.id}">成長表</button>
+          </div>
+        </div>`;
+    }).join("");
   }
 
-  if (passiveDetailList) {
-    passiveDetailList.innerHTML = "";
-    for (const passiveId of p.passives) {
+  if (passiveDetailList && passiveDetailList.dataset.signature !== passiveSignature) {
+    passiveDetailList.dataset.signature = passiveSignature;
+    const passiveHtml = (p.passives || []).map((passiveId) => {
       const def = (STATE.gameData?.passives || []).find(x => x.id === passiveId);
       const lv = p.passiveLevels[passiveId] || 0;
-      const row = document.createElement("div");
-      row.className = "detailEntry";
-      row.innerHTML = `
-        <div class="detailName">${def?.name || passiveId}</div>
-        <div class="detailValue">Lv${lv}</div>
-      `;
-      passiveDetailList.appendChild(row);
-    }
+      return `
+        <div class="detailEntry">
+          <div class="detailName">${def?.name || passiveId}</div>
+          <div class="detailValue">Lv${lv}</div>
+        </div>`;
+    }).join("");
 
-    const rerollRow = document.createElement("div");
-    rerollRow.className = "detailEntry";
-    rerollRow.innerHTML = `
-      <div class="detailName">リロール券</div>
-      <div class="detailValue">${p.rerollTickets || 0}枚</div>
-    `;
-    passiveDetailList.appendChild(rerollRow);
+    passiveDetailList.innerHTML = `${passiveHtml}
+      <div class="detailEntry">
+        <div class="detailName">リロール券</div>
+        <div class="detailValue">${p.rerollTickets || 0}枚</div>
+      </div>`;
   }
 }
-
 
 function renderWeaponSelect() {
   const list = getEl("weaponSelectList");

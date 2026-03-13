@@ -40,12 +40,11 @@ function requiredXP(level) {
 }
 
 // 日付フォーマット
-function formatDateJP(ts, withTime = true) {
+function formatDateJP(ts) {
   const d = new Date(ts);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
-  if (!withTime) return `${y}/${m}/${day}`;
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
   return `${y}/${m}/${day} ${hh}:${mm}`;

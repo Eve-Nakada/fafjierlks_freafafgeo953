@@ -30,8 +30,8 @@
     },
     "xp_gems": {
       "src": "images/xp_gems.png",
-      "cols": 3,
-      "rows": 1
+      "cols": 2,
+      "rows": 2
     }
   },
   "weapons": [

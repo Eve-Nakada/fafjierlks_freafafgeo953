@@ -30,32 +30,33 @@ async function loadAssets() {
   }
 
   if (!STATE.assets.xp_gems) {
-    STATE.assets.xp_gems = { cols: 3, rows: 1, img: null };
+    STATE.assets.xp_gems = { cols: 2, rows: 2, img: null };
   }
 
   if (!STATE.assets.xp_gems.img) {
     STATE.assets.xp_gems.img = createFallbackXpGemSheet();
-    STATE.assets.xp_gems.cols = 3;
-    STATE.assets.xp_gems.rows = 1;
+    STATE.assets.xp_gems.cols = 2;
+    STATE.assets.xp_gems.rows = 2;
   }
 }
 
-
 function createFallbackXpGemSheet() {
   const canvas = document.createElement("canvas");
-  canvas.width = 96;
-  canvas.height = 32;
+  canvas.width = 64;
+  canvas.height = 64;
   const ctx = canvas.getContext("2d");
-  const colors = [
+  const cells = [
     { body: "#7fe7ff", glow: "rgba(127,231,255,0.45)" },
     { body: "#66ff88", glow: "rgba(102,255,136,0.45)" },
+    { body: "#ffd166", glow: "rgba(255,209,102,0.45)" },
     { body: "#ff5c5c", glow: "rgba(255,92,92,0.45)" }
   ];
 
-  colors.forEach((c, i) => {
-    const ox = i * 32;
+  cells.forEach((c, i) => {
+    const ox = (i % 2) * 32;
+    const oy = Math.floor(i / 2) * 32;
     ctx.save();
-    ctx.translate(ox + 16, 16);
+    ctx.translate(ox + 16, oy + 16);
     ctx.fillStyle = c.glow;
     ctx.beginPath();
     ctx.arc(0, 0, 12, 0, Math.PI * 2);

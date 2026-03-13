@@ -90,9 +90,12 @@ textarea{
 
 #titleScreen,
 #rankingScreen,
+#weaponCodexScreen,
+#enemyCodexScreen,
 #weaponSelectScreen,
 #levelUpScreen,
 #shopScreen,
+#weaponGrowthScreen,
 #resultScreen{
   flex-direction:column;
   gap:14px;
@@ -115,8 +118,11 @@ textarea{
 #weaponSelectList,
 #levelUpChoices,
 #shopList,
-#resultRanking{
-  width:min(92vw, 720px);
+#resultRanking,
+#weaponGrowthContent,
+#weaponCodexList,
+#enemyCodexList{
+  width:min(92vw, 900px);
 }
 
 .titleButtons{
@@ -533,6 +539,159 @@ button:disabled{
   border-color:rgba(255,107,107,0.4) !important;
 }
 
+.miniBtn{
+  margin-left:8px;
+  min-height:28px;
+  padding:4px 8px;
+  font-size:12px;
+  pointer-events:auto;
+}
+
+.codexCard{
+  display:grid;
+  gap:12px;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:rgba(0,0,0,0.26);
+}
+
+.codexHeader{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+}
+
+.codexHeadText{
+  display:grid;
+  gap:4px;
+  text-align:left;
+}
+
+.codexIcon{
+  width:56px;
+  height:56px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:rgba(0,0,0,0.24);
+  image-rendering:pixelated;
+}
+
+.codexAttackList{
+  display:grid;
+  gap:8px;
+}
+
+.codexAttackRow{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 0;
+  border-top:1px solid rgba(255,255,255,0.06);
+}
+
+.codexAttackName{
+  font-weight:700;
+}
+
+.codexAttackMeta{
+  color:var(--sub);
+  font-size:12px;
+}
+
+.growthTree{
+  display:grid;
+  gap:12px;
+  text-align:left;
+}
+
+.growthTreeHeader{
+  display:grid;
+  gap:4px;
+}
+
+.growthTreeCanvas{
+  position:relative;
+  display:grid;
+  gap:14px;
+}
+
+.growthRootWrap{
+  display:flex;
+  justify-content:center;
+}
+
+.growthCenterLine{
+  position:absolute;
+  top:92px;
+  left:50%;
+  width:2px;
+  height:28px;
+  transform:translateX(-50%);
+  background:rgba(124,247,255,0.28);
+}
+
+.growthBranchesWrap{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+  gap:16px;
+  align-items:start;
+}
+
+.growthBranchColumn{
+  display:grid;
+  gap:10px;
+  position:relative;
+}
+
+.growthBranchConnector,
+.growthChildConnector{
+  width:2px;
+  height:16px;
+  margin:0 auto;
+  background:rgba(124,247,255,0.35);
+}
+
+.growthNode{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:rgba(0,0,0,0.28);
+  padding:12px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.18);
+}
+
+.growthNode.active{
+  border-color:rgba(125,255,156,0.7);
+  box-shadow:0 0 0 1px rgba(125,255,156,0.4), 0 8px 20px rgba(0,0,0,0.2);
+}
+
+.growthNodeTitle{
+  color:var(--accent2);
+  font-weight:700;
+  font-size:13px;
+  margin-bottom:4px;
+}
+
+.growthNodeName{
+  font-weight:700;
+  margin-bottom:4px;
+}
+
+.growthNodeMeta{
+  color:var(--sub);
+  font-size:12px;
+  line-height:1.45;
+}
+
+.growthEmpty{
+  grid-column:1 / -1;
+  border:1px dashed var(--line);
+  border-radius:14px;
+  padding:14px;
+  color:var(--sub);
+  text-align:center;
+}
+
 ::-webkit-scrollbar{
   width:10px;
   height:10px;
@@ -628,6 +787,16 @@ button:disabled{
     right:calc(var(--safe-right) + 6px);
     top:calc(var(--safe-top) + 162px);
   }
+
+  .codexHeader{
+    grid-template-columns:1fr;
+    display:grid;
+  }
+
+  .codexAttackRow{
+    display:grid;
+    justify-content:stretch;
+  }
 }
 
 @media (min-width:901px){
@@ -638,153 +807,4 @@ button:disabled{
   #hudRight button{
     min-width:110px;
   }
-}
-
-.miniBtn{
-  margin-left:8px;
-  min-height:28px;
-  padding:4px 8px;
-  font-size:12px;
-}
-
-#weaponGrowthScreen{
-  flex-direction:column;
-  gap:14px;
-  text-align:center;
-}
-
-#weaponGrowthContent{
-  width:min(94vw, 900px);
-  text-align:left;
-}
-
-.growthTree{
-  display:grid;
-  gap:16px;
-}
-
-.growthRootWrap{
-  display:flex;
-  justify-content:center;
-}
-
-.growthBranchList{
-  display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
-  gap:14px;
-  align-items:start;
-}
-
-.growthBranch{
-  position:relative;
-  display:grid;
-  gap:10px;
-  padding-top:18px;
-}
-
-.growthStem,
-.growthChildLink{
-  width:2px;
-  height:14px;
-  margin:0 auto;
-  background:rgba(124,247,255,0.35);
-}
-
-.growthNode{
-  border:1px solid var(--line);
-  border-radius:14px;
-  background:rgba(0,0,0,0.28);
-  padding:12px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.18);
-}
-
-.growthNode.active{
-  border-color:rgba(125,255,156,0.7);
-  box-shadow:0 0 0 1px rgba(125,255,156,0.4), 0 8px 20px rgba(0,0,0,0.2);
-}
-
-.growthNodeTitle{
-  color:var(--accent2);
-  font-weight:700;
-  font-size:13px;
-  margin-bottom:4px;
-}
-
-.growthNodeName{
-  font-weight:700;
-  margin-bottom:4px;
-}
-
-.growthNodeMeta{
-  color:var(--sub);
-  font-size:12px;
-  line-height:1.45;
-}
-
-.growthNodeDesc{
-  color:var(--text);
-  font-size:14px;
-}
-
-.growthEmpty{
-  grid-column:1 / -1;
-  border:1px dashed var(--line);
-  border-radius:14px;
-  padding:14px;
-  color:var(--sub);
-  text-align:center;
-}
-
-
-.detailValue .miniBtn{
-  pointer-events:auto;
-}
-
-.growthTreeTree{
-  display:grid;
-  gap:16px;
-}
-
-.growthTreeHeader{
-  display:grid;
-  gap:6px;
-}
-
-.growthTreeCanvas{
-  position:relative;
-  display:grid;
-  gap:14px;
-}
-
-.growthCenterLine{
-  width:2px;
-  height:18px;
-  margin:0 auto;
-  background:rgba(124,247,255,0.32);
-}
-
-.growthBranchesWrap{
-  display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
-  gap:14px;
-  align-items:start;
-}
-
-.growthBranchColumn{
-  display:grid;
-  gap:10px;
-  align-content:start;
-}
-
-.growthBranchConnector,
-.growthChildConnector{
-  width:2px;
-  height:14px;
-  margin:0 auto;
-  background:rgba(124,247,255,0.32);
-}
-
-.growthNodeDisabled{
-  opacity:0.72;
-  border-style:dashed;
 }
