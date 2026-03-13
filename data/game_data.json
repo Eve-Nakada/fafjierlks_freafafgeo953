@@ -211,9 +211,20 @@
             "pattern": "swarm_ex",
             "needsPassive": "core"
           }
+        },
+        {
+          "branchId": "drone_bay",
+          "name": "護衛子機ベイ",
+          "pattern": "drone_bay",
+          "needsPassive": "battery",
+          "secondStage": {
+            "name": "深海護衛子機群",
+            "pattern": "drone_bay_ex",
+            "needsPassive": "sonar_scope"
+          }
         }
       ],
-      "growthDesc": "追尾ミサイルから、多重追尾型か飽和斉射型へ派生する。"
+      "growthDesc": "追尾ミサイルから、多重追尾型・飽和斉射型・護衛子機型へ派生する。"
     },
     {
       "id": "sonar",

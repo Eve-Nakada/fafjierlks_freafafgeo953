@@ -58,3 +58,81 @@ function shuffle(array) {
   }
   return array;
 }
+
+// 永続進行
+const PROGRESS_KEY = "ocean_survivor_progress_v1";
+
+function getDefaultProgress() {
+  return {
+    unlockedWeapons: { harpoon: true },
+    seenWeapons: { harpoon: true },
+    defeatedEnemies: {}
+  };
+}
+
+function normalizeProgress(data) {
+  const base = getDefaultProgress();
+  if (!data || typeof data !== "object") return base;
+  return {
+    unlockedWeapons: { ...base.unlockedWeapons, ...(data.unlockedWeapons || {}) },
+    seenWeapons: { ...base.seenWeapons, ...(data.seenWeapons || {}) },
+    defeatedEnemies: { ...base.defeatedEnemies, ...(data.defeatedEnemies || {}) }
+  };
+}
+
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(PROGRESS_KEY);
+    return normalizeProgress(raw ? JSON.parse(raw) : null);
+  } catch (e) {
+    console.warn("Progress load failed", e);
+    return getDefaultProgress();
+  }
+}
+
+function saveProgressState() {
+  try {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(normalizeProgress(STATE.progress)));
+  } catch (e) {
+    console.warn("Progress save failed", e);
+  }
+}
+
+function ensureProgressState() {
+  STATE.progress = normalizeProgress(STATE.progress);
+  return STATE.progress;
+}
+
+function isWeaponUnlocked(weaponId) {
+  return !!ensureProgressState().unlockedWeapons?.[weaponId];
+}
+
+function isWeaponSeen(weaponId) {
+  return !!ensureProgressState().seenWeapons?.[weaponId];
+}
+
+function unlockWeapon(weaponId) {
+  if (!weaponId) return;
+  const progress = ensureProgressState();
+  progress.unlockedWeapons[weaponId] = true;
+  progress.seenWeapons[weaponId] = true;
+  saveProgressState();
+}
+
+function markWeaponSeen(weaponId) {
+  if (!weaponId) return;
+  const progress = ensureProgressState();
+  progress.seenWeapons[weaponId] = true;
+  saveProgressState();
+}
+
+function isEnemyDefeated(typeId) {
+  return !!ensureProgressState().defeatedEnemies?.[typeId];
+}
+
+function markEnemyDefeated(typeId) {
+  if (!typeId) return;
+  const progress = ensureProgressState();
+  progress.defeatedEnemies[typeId] = true;
+  saveProgressState();
+}

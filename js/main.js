@@ -22,6 +22,7 @@ async function boot() {
   window.addEventListener("resize", resizeCanvas);
 
   await loadAllData();
+  STATE.progress = loadProgress();
   await loadAssets();
 
   setupInput();
@@ -161,7 +162,6 @@ function updateGame(dt) {
   // 死亡
   if (STATE.player.hp <= 0) {
     STATE.player.hp = 0;
-    updateHUD();
     endGame(false);
     return;
   }

@@ -808,3 +808,40 @@ button:disabled{
     min-width:110px;
   }
 }
+
+
+.lockedCard{
+  opacity:0.82;
+}
+
+.weaponSelectBtn{
+  display:block;
+}
+
+.weaponSelectCardInner{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+}
+
+.weaponSelectIcon{
+  width:56px;
+  height:56px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:rgba(0,0,0,0.24);
+  image-rendering:pixelated;
+  flex:0 0 auto;
+}
+
+.weaponSelectText{
+  display:grid;
+  gap:4px;
+  text-align:left;
+}
+
+.weaponSelectBtn.lockedChoice .choiceTitle,
+.weaponSelectBtn.lockedChoice .choiceDesc,
+.weaponSelectBtn.lockedChoice .choiceMeta{
+  color:var(--sub);
+}

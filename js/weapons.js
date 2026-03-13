@@ -58,6 +58,8 @@ function addWeapon(id) {
   };
 
   p.weapons.push(inst);
+  markWeaponSeen(id);
+  unlockWeapon(id);
   return true;
 }
 
@@ -239,7 +241,7 @@ function fireMine(w, def) {
       y: pos.y,
       vx: 0,
       vy: 0,
-      life: pattern === "burst_ex" ? 3.25 : pattern ? 2.9 : 2.5,
+      life: pattern === "burst_ex" ? 2.3 : pattern ? 2.0 : 1.7,
       radius: pattern && pattern.startsWith("cluster") ? 14 : 16,
       damage: getWeaponDamage(w, def) * (pattern === "burst_ex" ? 1.2 : 1),
       pierce: 999,
@@ -249,8 +251,7 @@ function fireMine(w, def) {
       type: "mine",
       color: pattern && pattern.startsWith("cluster") ? "#ffe08a" : "#ffd166",
       explodeRadius: (pattern === "burst_ex" ? 120 : pattern === "burst" ? 95 : pattern === "cluster_ex" ? 86 : pattern === "cluster" ? 72 : 70) * STATE.player.stats.areaMul,
-      warningRadius: (pattern === "burst_ex" ? 120 : pattern === "burst" ? 95 : pattern === "cluster_ex" ? 86 : pattern === "cluster" ? 72 : 70) * STATE.player.stats.areaMul,
-      armDelay: 0.35
+      armDelay: 0.25
     });
   }
 }
@@ -279,6 +280,35 @@ function fireJellyField(w, def) {
 function fireFishMissile(w, def) {
   const p = STATE.player;
   const pattern = getWeaponCurrentPattern(w);
+
+  if (pattern === "drone_bay" || pattern === "drone_bay_ex") {
+    const drones = pattern === "drone_bay_ex" ? 3 : 2;
+    for (let i = 0; i < drones; i++) {
+      spawnBullet({
+        x: p.x,
+        y: p.y,
+        vx: 0,
+        vy: 0,
+        life: pattern === "drone_bay_ex" ? 8.5 : 6.5,
+        radius: 10,
+        damage: getWeaponDamage(w, def) * (pattern === "drone_bay_ex" ? 0.52 : 0.42),
+        pierce: 2,
+        weaponId: w.id,
+        weaponPattern: pattern,
+        weaponStage: w.evolutionStage || 0,
+        type: "drone",
+        droneIndex: i,
+        droneCount: drones,
+        orbitAngle: rand(0, Math.PI * 2),
+        orbitRadius: pattern === "drone_bay_ex" ? 96 : 82,
+        shotTimer: rand(0.05, 0.35),
+        shotInterval: pattern === "drone_bay_ex" ? 0.42 : 0.58,
+        color: pattern === "drone_bay_ex" ? "#ffd6b0" : "#ffc18a"
+      });
+    }
+    return;
+  }
+
   const count = pattern === "multi_homing_ex" ? 5 : pattern === "multi_homing" ? 3 : pattern === "swarm_ex" ? 6 : pattern === "swarm" ? 4 : 1;
 
   const targets = [...STATE.enemies].sort((a, b) => dist(p.x, p.y, a.x, a.y) - dist(p.x, p.y, b.x, b.y));
@@ -464,6 +494,12 @@ function spawnBullet(b) {
     turnRate: b.turnRate || 0,
     length: b.length || 0,
     armDelay: b.armDelay || 0,
+    droneIndex: b.droneIndex || 0,
+    droneCount: b.droneCount || 0,
+    orbitAngle: b.orbitAngle || 0,
+    orbitRadius: b.orbitRadius || 0,
+    shotTimer: b.shotTimer || 0,
+    shotInterval: b.shotInterval || 0.6,
     alreadyHit: new Set()
   });
 }
@@ -493,6 +529,8 @@ function updateBullets(dt) {
       updateFieldBullet(b, dt);
     } else if (b.type === "beam") {
       updateBeamBullet(b, dt);
+    } else if (b.type === "drone") {
+      updateDroneBullet(b, dt);
     }
 
     if (b.life > 0) next.push(b);
@@ -655,6 +693,52 @@ function updateBeamBullet(b, dt) {
   }
 }
 
+
+
+function updateDroneBullet(b, dt) {
+  const p = STATE.player;
+  if (!p) {
+    b.life = 0;
+    return;
+  }
+
+  const count = Math.max(1, b.droneCount || 1);
+  const radius = b.orbitRadius || 84;
+  b.orbitAngle += dt * (1.5 + count * 0.12);
+
+  const slotAngle = b.orbitAngle + (Math.PI * 2 * (b.droneIndex || 0)) / count;
+  const bob = Math.sin(STATE.time * 4 + (b.droneIndex || 0)) * 8;
+  b.x = p.x + Math.cos(slotAngle) * (radius + bob);
+  b.y = p.y + Math.sin(slotAngle) * (radius + bob * 0.45);
+
+  b.shotTimer -= dt;
+  if (b.shotTimer > 0) return;
+
+  const target = getNearestEnemy(b.x, b.y, 320);
+  if (!target) {
+    b.shotTimer = 0.2;
+    return;
+  }
+
+  const ang = angle(b.x, b.y, target.x, target.y);
+  spawnBullet({
+    x: b.x,
+    y: b.y,
+    vx: Math.cos(ang) * 300 * (STATE.player?.stats?.projectileSpeedMul || 1),
+    vy: Math.sin(ang) * 300 * (STATE.player?.stats?.projectileSpeedMul || 1),
+    life: 1.25,
+    radius: 4,
+    damage: b.damage,
+    pierce: b.weaponPattern === "drone_bay_ex" ? 2 : 1,
+    weaponId: b.weaponId,
+    weaponPattern: b.weaponPattern,
+    weaponStage: b.weaponStage || 0,
+    type: "projectile",
+    color: b.weaponPattern === "drone_bay_ex" ? "#fff0c7" : "#ffd6a6"
+  });
+
+  b.shotTimer = b.shotInterval || 0.6;
+}
 function chainLightning(startEnemy, damage, jumps) {
   let current = startEnemy;
   const hitIds = new Set([startEnemy.id]);
@@ -713,6 +797,29 @@ function renderBullets(ctx) {
       ctx.beginPath();
       ctx.arc(b.x - cam.x, b.y - cam.y, b.radius, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+      continue;
+    }
+
+    if (b.type === "drone") {
+      const x = b.x - cam.x;
+      const y = b.y - cam.y;
+      ctx.save();
+      const px = STATE.player ? STATE.player.x - cam.x : x;
+      const py = STATE.player ? STATE.player.y - cam.y : y;
+      ctx.translate(x, y);
+      ctx.rotate(Math.atan2(y - py, x - px) + Math.PI * 0.5);
+      ctx.fillStyle = b.color || "#ffc18a";
+      ctx.beginPath();
+      ctx.moveTo(0, -11);
+      ctx.lineTo(8, 9);
+      ctx.lineTo(0, 4);
+      ctx.lineTo(-8, 9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.75)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
       ctx.restore();
       continue;
     }

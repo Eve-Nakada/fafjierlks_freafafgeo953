@@ -539,6 +539,8 @@ function resolveEnemyDeaths() {
 }
 
 function dropEnemyRewards(enemy) {
+  markEnemyDefeated(enemy.typeId);
+
   if (enemy.isBoss) {
     STATE.score += enemy.bossKind === "leviathan" ? 3000 : 1200;
     STATE.chests.push({

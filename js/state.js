@@ -41,6 +41,7 @@ const STATE = {
   // ----------------
 
   assets: {},
+  progress: null,
 
   // ----------------
   // 入力

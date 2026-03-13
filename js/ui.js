@@ -200,28 +200,75 @@ function getAttackTypeLabel(type) {
   return map[type] || type || "攻撃";
 }
 
+
+function getUnknownLabel() {
+  return "？";
+}
+
+function getWeaponDisplayName(def) {
+  return isWeaponSeen(def?.id) ? (def?.name || getUnknownLabel()) : getUnknownLabel();
+}
+
+function getEnemyDisplayName(id, def) {
+  return isEnemyDefeated(id) ? (def?.name || id) : getUnknownLabel();
+}
+
+function drawLockedIconToCanvas(canvas) {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "rgba(255,255,255,0.16)";
+  ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+  ctx.fillStyle = "#d9f7ff";
+  ctx.font = `bold ${Math.floor(canvas.height * 0.58)}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("？", canvas.width / 2, canvas.height / 2 + 1);
+}
+
+function buildWeaponSelectCardHtml(w, unlocked) {
+  const title = unlocked ? w.name : getUnknownLabel();
+  const desc = unlocked ? (w.desc || "") : "一度入手すると解放されます";
+  const meta = unlocked ? "初期武器" : "未解放";
+  return `
+    <div class="weaponSelectCardInner">
+      <canvas class="weaponSelectIcon" data-weapon-select-icon="${w.iconIndex || 0}" width="56" height="56"></canvas>
+      <div class="weaponSelectText">
+        <div class="choiceTitle">${title}</div>
+        <div class="choiceDesc">${desc}</div>
+        <div class="choiceMeta">${meta}</div>
+      </div>
+    </div>`;
+}
 function renderWeaponCodex() {
   const wrap = getEl("weaponCodexList");
   if (!wrap) return;
 
   const weapons = STATE.gameData?.weapons || [];
   wrap.innerHTML = weapons.map((w) => {
-    const icon = `<canvas class="codexIcon" data-weapon-icon="${w.iconIndex || 0}" width="56" height="56"></canvas>`;
+    const seen = isWeaponSeen(w.id);
+    const icon = `<canvas class="codexIcon ${seen ? "" : "locked"}" data-weapon-icon="${w.iconIndex || 0}" width="56" height="56"></canvas>`;
     return `
-      <div class="codexCard">
+      <div class="codexCard ${seen ? "" : "lockedCard"}">
         <div class="codexHeader">
           ${icon}
           <div class="codexHeadText">
-            <div class="choiceTitle">${w.name}</div>
-            <div class="choiceDesc">${w.desc || ""}</div>
-            <div class="choiceMeta">威力 ${w.damage} / CD ${w.cooldown}</div>
+            <div class="choiceTitle">${seen ? w.name : getUnknownLabel()}</div>
+            <div class="choiceDesc">${seen ? (w.desc || "") : "一度も使用していない武器"}</div>
+            <div class="choiceMeta">${seen ? `威力 ${w.damage} / CD ${w.cooldown}` : "未確認"}</div>
           </div>
         </div>
-        ${buildWeaponGrowthTreeHtml(w.id, false)}
+        ${seen ? buildWeaponGrowthTreeHtml(w.id, false) : `<div class="growthEmpty">この武器はまだ記録されていません。</div>`}
       </div>`;
   }).join("");
 
   wrap.querySelectorAll("canvas[data-weapon-icon]").forEach((canvas) => {
+    if (canvas.classList.contains("locked")) {
+      drawLockedIconToCanvas(canvas);
+      return;
+    }
     drawWeaponIconToCanvas(canvas, Number(canvas.dataset.weaponIcon || 0));
   });
 }
@@ -237,20 +284,21 @@ function renderEnemyCodex() {
 
   const entries = Object.entries(STATE.gameData?.enemyStats || {});
   wrap.innerHTML = entries.map(([id, def]) => {
+    const defeated = isEnemyDefeated(id);
     const ai = def.ai || {};
     const attacks = Array.isArray(def.attacks) ? def.attacks : [];
     return `
-      <div class="codexCard">
+      <div class="codexCard ${defeated ? "" : "lockedCard"}">
         <div class="codexHeader">
-          <canvas class="codexIcon" data-enemy-icon="${def.spriteIndex || 0}" width="56" height="56"></canvas>
+          <canvas class="codexIcon ${defeated ? "" : "locked"}" data-enemy-icon="${def.spriteIndex || 0}" width="56" height="56"></canvas>
           <div class="codexHeadText">
-            <div class="choiceTitle">${def.name || id}</div>
-            <div class="choiceMeta">HP ${def.hp} / 速度 ${def.speed} / 接触 ${def.damage}</div>
-            <div class="choiceDesc">AI: ${getEnemyAiLabel(ai.type)}${ai.preferRange ? ` / 間合い ${ai.preferRange}` : ""}</div>
+            <div class="choiceTitle">${getEnemyDisplayName(id, def)}</div>
+            <div class="choiceMeta">${defeated ? `HP ${def.hp} / 速度 ${def.speed} / 接触 ${def.damage}` : "未確認"}</div>
+            <div class="choiceDesc">${defeated ? `AI: ${getEnemyAiLabel(ai.type)}${ai.preferRange ? ` / 間合い ${ai.preferRange}` : ""}` : "一度も倒していない敵"}</div>
           </div>
         </div>
         <div class="codexAttackList">
-          ${attacks.length === 0 ? `<div class="choiceDesc">特殊攻撃なし</div>` : attacks.map((atk) => `
+          ${!defeated ? `<div class="choiceDesc">撃破後に詳細が記録されます</div>` : attacks.length === 0 ? `<div class="choiceDesc">特殊攻撃なし</div>` : attacks.map((atk) => `
             <div class="codexAttackRow">
               <div class="codexAttackName">${getAttackTypeLabel(atk.type)}</div>
               <div class="codexAttackMeta">CD ${atk.cooldown || "-"} / 射程 ${atk.triggerRange || "-"}</div>
@@ -260,6 +308,10 @@ function renderEnemyCodex() {
   }).join("");
 
   wrap.querySelectorAll("canvas[data-enemy-icon]").forEach((canvas) => {
+    if (canvas.classList.contains("locked")) {
+      drawLockedIconToCanvas(canvas);
+      return;
+    }
     const index = Number(canvas.dataset.enemyIcon || 0);
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -493,7 +545,7 @@ function renderDetailLists() {
           <div class="detailName">${def?.name || w.id}</div>
           <div class="detailValue">
             <span>${getWeaponStageLabel(w)}</span>
-            <button class="miniBtn" type="button" data-open-growth="1" data-weapon-id="${w.id}">成長表</button>
+            <button class="miniBtn" type="button" data-open-growth="1" data-weapon-id="${w.id}" onclick="openWeaponGrowth('${w.id}'); return false;">成長表</button>
           </div>
         </div>`;
     }).join("");
@@ -527,16 +579,26 @@ function renderWeaponSelect() {
   list.innerHTML = "";
 
   for (const w of weapons) {
+    const unlocked = isWeaponUnlocked(w.id);
     const btn = document.createElement("button");
-    btn.className = "choiceBtn";
-    btn.innerHTML = `
-      <div class="choiceTitle">${w.name}</div>
-      <div class="choiceDesc">${w.desc || ""}</div>
-      <div class="choiceMeta">初期武器</div>
-    `;
-    btn.onclick = () => startGame(w.id);
+    btn.className = `choiceBtn weaponSelectBtn ${unlocked ? "" : "lockedChoice"}`;
+    btn.innerHTML = buildWeaponSelectCardHtml(w, unlocked);
+    btn.disabled = !unlocked;
+    btn.onclick = () => {
+      if (!unlocked) return;
+      startGame(w.id);
+    };
     list.appendChild(btn);
   }
+
+  list.querySelectorAll("canvas[data-weapon-select-icon]").forEach((canvas) => {
+    const btn = canvas.closest("button");
+    if (btn && btn.disabled) {
+      drawLockedIconToCanvas(canvas);
+      return;
+    }
+    drawWeaponIconToCanvas(canvas, Number(canvas.dataset.weaponSelectIcon || 0));
+  });
 }
 
 function buildLevelUpChoices() {
