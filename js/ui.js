@@ -89,15 +89,43 @@ function getGrowthScreenDescription(def) {
   return def?.growthDesc || "通常武器から分岐進化し、さらに第2進化へ派生します。";
 }
 
+function getPassiveNameFromId(id) {
+  return (STATE.gameData?.passives || []).find(p => p.id === id)?.name || id || "なし";
+}
+
+function getWeaponFeelText(def) {
+  return def?.feel || "扱いやすさや役割の説明はまだ設定されていません。";
+}
+
+function buildWeaponSynergyHtml(def) {
+  const synergies = Array.isArray(def?.synergies) ? def.synergies : [];
+  if (synergies.length === 0) {
+    return `<div class="growthMetaBlock"><div class="growthMetaTitle">相性</div><div class="choiceDesc">特筆するシナジーはまだ設定されていません。</div></div>`;
+  }
+  return `
+    <div class="growthMetaBlock">
+      <div class="growthMetaTitle">相性・シナジー</div>
+      <div class="synergyList">
+        ${synergies.map((s) => `
+          <div class="synergyChip">
+            <div class="synergyChipName">${getPassiveNameFromId(s.passiveId)}</div>
+            <div class="synergyChipText">${s.effect || ""}</div>
+          </div>`).join("")}
+      </div>
+    </div>`;
+}
+
+
 function buildGrowthNodeHtml(title, name, meta1, meta2, active, extraClass = "") {
+  const lines = [meta1, meta2].filter(Boolean).map((line) => `<div class="growthNodeMeta">${line}</div>`).join("");
   return `
     <div class="growthNode ${extraClass} ${active ? "active" : ""}">
       <div class="growthNodeTitle">${title}</div>
       <div class="growthNodeName">${name}</div>
-      <div class="growthNodeMeta">${meta1}</div>
-      ${meta2 ? `<div class="growthNodeMeta">${meta2}</div>` : ""}
+      ${lines}
     </div>`;
 }
+
 
 function buildWeaponGrowthTreeHtml(weaponId, includeHeader = true) {
   const def = getWeaponDef(weaponId);
@@ -109,13 +137,17 @@ function buildWeaponGrowthTreeHtml(weaponId, includeHeader = true) {
 
   let html = `<div class="growthTree">`;
 
-  if (includeHeader) {
-    html += `
-      <div class="growthTreeHeader">
-        <div class="choiceTitle">${def.name}</div>
-        <div class="choiceDesc">${getGrowthScreenDescription(def)}</div>
-      </div>`;
-  }
+  
+if (includeHeader) {
+  html += `
+    <div class="growthTreeHeader">
+      <div class="choiceTitle">${def.name}</div>
+      <div class="choiceDesc">${getGrowthScreenDescription(def)}</div>
+      <div class="growthFeelText">触り心地: ${getWeaponFeelText(def)}</div>
+      ${buildWeaponSynergyHtml(def)}
+    </div>`;
+}
+
 
   html += `
     <div class="growthTreeCanvas">
@@ -138,12 +170,12 @@ function buildWeaponGrowthTreeHtml(weaponId, includeHeader = true) {
     html += `
       <div class="growthBranchColumn">
         <div class="growthBranchConnector"></div>
-        ${buildGrowthNodeHtml("第1進化", branch.name || "進化", `条件: ${branch.needsPassive || "なし"}`, "Lv1 → Lv6", stage1Active, "growthStage1")}`;
+        ${buildGrowthNodeHtml("第1進化", branch.name || "進化", `条件: ${getPassiveNameFromId(branch.needsPassive)}`, `型: ${branch.pattern || "standard"} / Lv1 → Lv6`, stage1Active, "growthStage1")}`;
 
     if (second) {
       html += `
         <div class="growthChildConnector"></div>
-        ${buildGrowthNodeHtml("第2進化", second.name || "第2進化", `条件: ${second.needsPassive || "なし"}`, "Lv1 → Lv3", stage2Active, "growthStage2")}`;
+        ${buildGrowthNodeHtml("第2進化", second.name || "第2進化", `条件: ${getPassiveNameFromId(second.needsPassive)}`, `型: ${second.pattern || branch.pattern || "standard"} / Lv1 → Lv3`, stage2Active, "growthStage2")}`;
     }
 
     html += `</div>`;
@@ -260,7 +292,7 @@ function renderWeaponCodex() {
             <div class="choiceMeta">${seen ? `威力 ${w.damage} / CD ${w.cooldown}` : "未確認"}</div>
           </div>
         </div>
-        ${seen ? buildWeaponGrowthTreeHtml(w.id, false) : `<div class="growthEmpty">この武器はまだ記録されていません。</div>`}
+        ${seen ? `<div class="choiceDesc">触り心地: ${getWeaponFeelText(w)}</div>${buildWeaponSynergyHtml(w)}${buildWeaponGrowthTreeHtml(w.id, false)}` : `<div class="growthEmpty">この武器はまだ記録されていません。</div>`}
       </div>`;
   }).join("");
 

@@ -92,6 +92,7 @@ function getWeaponCurrentPattern(w) {
   return branch?.secondStage?.pattern || branch?.pattern || null;
 }
 
+
 function updateWeapons(dt) {
   const p = STATE.player;
   if (!p) return;
@@ -102,17 +103,27 @@ function updateWeapons(dt) {
 
     w.cooldown -= dt;
 
+    if (updateWeaponCharge(w, def, dt)) {
+      if (w.id === "water_cutter") updateOrbitWeapon(w, def, dt);
+      continue;
+    }
+
     if (w.id === "water_cutter") {
       updateOrbitWeapon(w, def, dt);
       continue;
     }
 
     if (w.cooldown <= 0) {
+      if (w.id === "sonar") {
+        startSonarCharge(w, def);
+        continue;
+      }
       fireWeapon(w, def);
       w.cooldown = getWeaponCooldown(w, def);
     }
   }
 }
+
 
 function getWeaponCooldown(w, def) {
   const p = STATE.player;
@@ -139,6 +150,36 @@ function getNearestEnemy(fromX, fromY, maxRange = Infinity) {
   }
 
   return best;
+}
+
+function addEffect(x, y, r, color, life, fillAlpha = 0) {
+  STATE.effects.push({ x, y, r, color, life, fillAlpha });
+}
+
+function startSonarCharge(w, def) {
+  const p = STATE.player;
+  const target = p ? getNearestEnemy(p.x, p.y) : null;
+  const pattern = getWeaponCurrentPattern(w);
+  w.chargeTimer = pattern && pattern.startsWith("wave") ? 0.1 : 0.14;
+  w.pendingFire = true;
+  w.chargeColor = pattern && pattern.startsWith("wave") ? "#8be0ff" : pattern ? "#79f7ff" : "#50d7ff";
+  w.chargeAngle = target ? angle(p.x, p.y, target.x, target.y) : 0;
+}
+
+function updateWeaponCharge(w, def, dt) {
+  if (!w.chargeTimer || w.chargeTimer <= 0) return false;
+  w.chargeTimer -= dt;
+  const p = STATE.player;
+  if (p) {
+    const progress = clamp(1 - (w.chargeTimer / Math.max(0.001, (w.pendingFire ? (getWeaponCurrentPattern(w)?.startsWith("wave") ? 0.1 : 0.14) : 0.14))), 0, 1);
+    addEffect(p.x + Math.cos(w.chargeAngle || 0) * 24, p.y + Math.sin(w.chargeAngle || 0) * 24, 12 + progress * 18, w.chargeColor || "#79f7ff", 0.06, 0.16 + progress * 0.12);
+  }
+  if (w.chargeTimer <= 0 && w.pendingFire) {
+    w.pendingFire = false;
+    fireWeapon(w, def);
+    w.cooldown = getWeaponCooldown(w, def);
+  }
+  return true;
 }
 
 function fireWeapon(w, def) {
@@ -195,6 +236,8 @@ function fireHarpoon(w, def) {
     count = 3; spreadStep = 0.08; life = 1.9; radius = 8; damageMul = 1.35; pierce = 8;
   }
 
+  addEffect(p.x, p.y, 12 + count * 2, pattern && pattern.startsWith("pierce") ? "#d7f7ff" : "#8ef3ff", 0.12, 0.18);
+
   for (let i = 0; i < count; i++) {
     const center = (count - 1) / 2;
     const spread = count === 1 ? 0 : (i - center) * spreadStep;
@@ -241,7 +284,7 @@ function fireMine(w, def) {
       y: pos.y,
       vx: 0,
       vy: 0,
-      life: pattern === "burst_ex" ? 2.3 : pattern ? 2.0 : 1.7,
+      life: pattern === "burst_ex" ? 3.0 : pattern === "burst" ? 2.65 : pattern === "cluster_ex" ? 2.7 : pattern === "cluster" ? 2.45 : 2.2,
       radius: pattern && pattern.startsWith("cluster") ? 14 : 16,
       damage: getWeaponDamage(w, def) * (pattern === "burst_ex" ? 1.2 : 1),
       pierce: 999,
@@ -251,6 +294,7 @@ function fireMine(w, def) {
       type: "mine",
       color: pattern && pattern.startsWith("cluster") ? "#ffe08a" : "#ffd166",
       explodeRadius: (pattern === "burst_ex" ? 120 : pattern === "burst" ? 95 : pattern === "cluster_ex" ? 86 : pattern === "cluster" ? 72 : 70) * STATE.player.stats.areaMul,
+      warningRadius: (pattern === "burst_ex" ? 138 : pattern === "burst" ? 110 : pattern === "cluster_ex" ? 98 : pattern === "cluster" ? 82 : 78) * STATE.player.stats.areaMul,
       armDelay: 0.25
     });
   }
@@ -259,6 +303,7 @@ function fireMine(w, def) {
 function fireJellyField(w, def) {
   const p = STATE.player;
   const pattern = getWeaponCurrentPattern(w);
+  addEffect(p.x, p.y, 24 * p.stats.areaMul, pattern && pattern.startsWith("storm") ? "#d8a5ff" : "#6de4ff", 0.16, 0.16);
   spawnBullet({
     x: p.x,
     y: p.y,
@@ -280,6 +325,7 @@ function fireJellyField(w, def) {
 function fireFishMissile(w, def) {
   const p = STATE.player;
   const pattern = getWeaponCurrentPattern(w);
+  addEffect(p.x, p.y, pattern && pattern.startsWith("drone") ? 18 : 14, pattern && pattern.startsWith("swarm") ? "#ffb0a0" : "#ff8aa0", 0.12, 0.16);
 
   if (pattern === "drone_bay" || pattern === "drone_bay_ex") {
     const drones = pattern === "drone_bay_ex" ? 3 : 2;
@@ -345,6 +391,7 @@ function fireSonar(w, def) {
   if (!target) return;
 
   const baseAng = angle(p.x, p.y, target.x, target.y);
+  addEffect(p.x, p.y, pattern && pattern.startsWith("beam") ? 24 : 18, pattern && pattern.startsWith("wave") ? "#8be0ff" : "#79f7ff", 0.18, 0.22);
   const count = pattern === "wave_ex" ? 3 : pattern === "wave" ? 2 : 1;
   const spreadStep = pattern && pattern.startsWith("wave") ? 0.16 : 0;
 
@@ -500,6 +547,9 @@ function spawnBullet(b) {
     orbitRadius: b.orbitRadius || 0,
     shotTimer: b.shotTimer || 0,
     shotInterval: b.shotInterval || 0.6,
+    weaponPattern: b.weaponPattern || null,
+    weaponStage: b.weaponStage || 0,
+    fillAlpha: b.fillAlpha || 0,
     alreadyHit: new Set()
   });
 }
@@ -523,272 +573,66 @@ function updateBullets(dt) {
     } else if (b.type === "homing") {
       updateHomingBullet(b, dt);
       handleProjectileHits(b);
-    } else if (b.type === "mine") {
-      handleMineTrigger(b);
-    } else if (b.type === "field") {
-      updateFieldBullet(b, dt);
-    } else if (b.type === "beam") {
-      updateBeamBullet(b, dt);
-    } else if (b.type === "drone") {
-      updateDroneBullet(b, dt);
-    }
+    } else 
+if (b.type === "mine") {
+  const x = b.x - cam.x;
+  const y = b.y - cam.y;
 
-    if (b.life > 0) next.push(b);
+  ctx.save();
+
+  const warnRadius = b.warningRadius || b.explodeRadius || 0;
+  if (warnRadius > 0) {
+    const pulse = 0.65 + Math.sin(STATE.time * 6 + b.x * 0.01) * 0.12;
+    ctx.globalAlpha = (b.armDelay > 0 ? 0.10 : 0.18) * pulse;
+    ctx.fillStyle = b.armDelay > 0 ? "#fff2ba" : "#ffca68";
+    ctx.beginPath();
+    ctx.arc(x, y, warnRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = b.armDelay > 0 ? "#fff0b3" : "#ffcf70";
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.arc(x, y, warnRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
 
-  STATE.bullets = next;
-  updateEffects(dt);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = b.color;
+  ctx.beginPath();
+  ctx.arc(x, y, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#5b3b00";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x - 7, y);
+  ctx.lineTo(x + 7, y);
+  ctx.moveTo(x, y - 7);
+  ctx.lineTo(x, y + 7);
+  ctx.stroke();
+
+  const corePulse = 0.45 + Math.sin(STATE.time * 10 + b.y * 0.02) * 0.2;
+  ctx.globalAlpha = 0.65 + corePulse * 0.3;
+  ctx.fillStyle = "#fff5d6";
+  ctx.beginPath();
+  ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (b.armDelay > 0) {
+    ctx.globalAlpha = 0.3;
+    ctx.strokeStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(x, y, 14, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+  continue;
 }
 
-function updateHomingBullet(b, dt) {
-  let target = STATE.enemies.find(e => e.id === b.targetId);
-  if (!target) {
-    target = getNearestEnemy(b.x, b.y);
-    if (target) b.targetId = target.id;
-  }
-
-  if (target) {
-    const desired = angle(b.x, b.y, target.x, target.y);
-    const current = Math.atan2(b.vy, b.vx);
-    let diff = desired - current;
-
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-
-    const newAngle = current + clamp(diff, -b.turnRate * dt, b.turnRate * dt);
-    const speed = Math.hypot(b.vx, b.vy) || 1;
-    b.vx = Math.cos(newAngle) * speed;
-    b.vy = Math.sin(newAngle) * speed;
-  }
-
-  b.x += b.vx * dt;
-  b.y += b.vy * dt;
-}
-
-function handleProjectileHits(b) {
-  for (const e of STATE.enemies) {
-    if (b.alreadyHit.has(e.id)) continue;
-
-    if (dist(b.x, b.y, e.x, e.y) <= b.radius + e.r) {
-      damageEnemy(e, b.damage);
-      b.alreadyHit.add(e.id);
-
-      if (b.weaponId === "jelly_field" && (b.weaponPattern === "chain" || b.weaponPattern === "chain_ex")) {
-        chainLightning(e, b.damage * (b.weaponPattern === "chain_ex" ? 0.7 : 0.5), b.weaponPattern === "chain_ex" ? 3 : 2);
-      }
-
-      b.pierce -= 1;
-      if (b.pierce <= 0) {
-        b.life = 0;
-        return;
-      }
-    }
-  }
-}
-
-function handleMineTrigger(b) {
-  if (b.armDelay > 0) return;
-
-  for (const e of STATE.enemies) {
-    if (dist(b.x, b.y, e.x, e.y) <= b.radius + e.r + 6) {
-      explodeMine(b);
-      b.life = 0;
-      return;
-    }
-  }
-}
-
-function explodeMine(b) {
-  const radius = b.explodeRadius || 72;
-
-  for (const e of STATE.enemies) {
-    if (dist(b.x, b.y, e.x, e.y) <= radius + e.r) {
-      damageEnemy(e, b.damage);
-    }
-  }
-
-  const p = STATE.player;
-  if (p && dist(b.x, b.y, p.x, p.y) <= radius + p.r) {
-    damagePlayer(Math.max(8, b.damage * 0.75));
-  }
-
-  STATE.effects.push({
-    x: b.x,
-    y: b.y,
-    r: radius,
-    color: "#ffb347",
-    life: 0.28
-  });
-
-  if (b.weaponStage >= 1) {
-    STATE.effects.push({
-      x: b.x,
-      y: b.y,
-      r: radius * 1.35,
-      color: "#ff8c66",
-      life: 0.34
-    });
-
-    for (const e of STATE.enemies) {
-      if (dist(b.x, b.y, e.x, e.y) <= radius * 1.35 + e.r) {
-        damageEnemy(e, b.damage * 0.45);
-      }
-    }
-
-    if (p && dist(b.x, b.y, p.x, p.y) <= radius * 1.35 + p.r) {
-      damagePlayer(Math.max(4, b.damage * 0.3));
-    }
-  }
-}
-
-function updateFieldBullet(b, dt) {
-  b.x = STATE.player.x;
-  b.y = STATE.player.y;
-  b.tickTimer -= dt;
-
-  if (b.tickTimer <= 0) {
-    b.tickTimer = 0.12;
-
-    for (const e of STATE.enemies) {
-      if (dist(b.x, b.y, e.x, e.y) <= b.radius + e.r) {
-        damageEnemy(e, b.damage);
-      }
-    }
-  }
-}
-
-function updateBeamBullet(b, dt) {
-  const p = STATE.player;
-  b.x = p.x;
-  b.y = p.y;
-
-  const len = b.length || 220;
-  const nx = b.vx;
-  const ny = b.vy;
-
-  for (const e of STATE.enemies) {
-    const ex = e.x - p.x;
-    const ey = e.y - p.y;
-    const proj = ex * nx + ey * ny;
-
-    if (proj < 0 || proj > len) continue;
-
-    const px = p.x + nx * proj;
-    const py = p.y + ny * proj;
-    const d = dist(px, py, e.x, e.y);
-
-    if (d <= b.radius + e.r) {
-      if (!b.alreadyHit.has(e.id)) {
-        damageEnemy(e, b.damage);
-        b.alreadyHit.add(e.id);
-        if (b.pierce !== 999) {
-          b.pierce -= 1;
-          if (b.pierce <= 0) {
-            b.life = 0;
-            return;
-          }
-        }
-      }
-    }
-  }
-}
-
-
-
-function updateDroneBullet(b, dt) {
-  const p = STATE.player;
-  if (!p) {
-    b.life = 0;
-    return;
-  }
-
-  const count = Math.max(1, b.droneCount || 1);
-  const radius = b.orbitRadius || 84;
-  b.orbitAngle += dt * (1.5 + count * 0.12);
-
-  const slotAngle = b.orbitAngle + (Math.PI * 2 * (b.droneIndex || 0)) / count;
-  const bob = Math.sin(STATE.time * 4 + (b.droneIndex || 0)) * 8;
-  b.x = p.x + Math.cos(slotAngle) * (radius + bob);
-  b.y = p.y + Math.sin(slotAngle) * (radius + bob * 0.45);
-
-  b.shotTimer -= dt;
-  if (b.shotTimer > 0) return;
-
-  const target = getNearestEnemy(b.x, b.y, 320);
-  if (!target) {
-    b.shotTimer = 0.2;
-    return;
-  }
-
-  const ang = angle(b.x, b.y, target.x, target.y);
-  spawnBullet({
-    x: b.x,
-    y: b.y,
-    vx: Math.cos(ang) * 300 * (STATE.player?.stats?.projectileSpeedMul || 1),
-    vy: Math.sin(ang) * 300 * (STATE.player?.stats?.projectileSpeedMul || 1),
-    life: 1.25,
-    radius: 4,
-    damage: b.damage,
-    pierce: b.weaponPattern === "drone_bay_ex" ? 2 : 1,
-    weaponId: b.weaponId,
-    weaponPattern: b.weaponPattern,
-    weaponStage: b.weaponStage || 0,
-    type: "projectile",
-    color: b.weaponPattern === "drone_bay_ex" ? "#fff0c7" : "#ffd6a6"
-  });
-
-  b.shotTimer = b.shotInterval || 0.6;
-}
-function chainLightning(startEnemy, damage, jumps) {
-  let current = startEnemy;
-  const hitIds = new Set([startEnemy.id]);
-
-  for (let i = 0; i < jumps; i++) {
-    let next = null;
-    let best = Infinity;
-
-    for (const e of STATE.enemies) {
-      if (hitIds.has(e.id)) continue;
-      const d = dist(current.x, current.y, e.x, e.y);
-      if (d < best && d <= 140) {
-        best = d;
-        next = e;
-      }
-    }
-
-    if (!next) break;
-
-    damageEnemy(next, damage);
-    STATE.effects.push({
-      x: (current.x + next.x) * 0.5,
-      y: (current.y + next.y) * 0.5,
-      r: 14,
-      color: "#b692ff",
-      life: 0.12
-    });
-
-    hitIds.add(next.id);
-    current = next;
-  }
-}
-
-function updateEffects(dt) {
-  const next = [];
-  for (const ef of STATE.effects) {
-    ef.life -= dt;
-    if (ef.life > 0) next.push(ef);
-  }
-  STATE.effects = next;
-}
-
-function renderBullets(ctx) {
-  const cam = STATE.camera;
-
-  for (const b of STATE.bullets) {
-    if (b.type === "beam") {
-      renderBeam(ctx, b, cam);
-      continue;
-    }
 
     if (b.type === "field") {
       ctx.save();
@@ -903,7 +747,15 @@ function renderEffects(ctx) {
 
   for (const ef of STATE.effects) {
     ctx.save();
-    ctx.globalAlpha = clamp(ef.life * 4, 0, 0.7);
+    const alpha = clamp(ef.life * 4, 0, 0.7);
+    if (ef.fillAlpha) {
+      ctx.globalAlpha = Math.min(alpha, ef.fillAlpha);
+      ctx.fillStyle = ef.color || "#ffffff";
+      ctx.beginPath();
+      ctx.arc(ef.x - cam.x, ef.y - cam.y, ef.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = alpha;
     ctx.strokeStyle = ef.color || "#ffffff";
     ctx.lineWidth = 3;
     ctx.beginPath();

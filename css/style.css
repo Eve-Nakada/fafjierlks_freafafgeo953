@@ -692,6 +692,81 @@ button:disabled{
   text-align:center;
 }
 
+
+.detailEntryBlock{
+  display:grid;
+  gap:4px;
+}
+
+.detailRowTop{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  align-items:flex-start;
+}
+
+.detailSub{
+  color:var(--sub);
+  font-size:12px;
+  line-height:1.45;
+}
+
+.detailSubAccent{
+  color:var(--accent2);
+}
+
+.growthFeelText{
+  color:var(--text);
+  font-size:13px;
+  line-height:1.55;
+  padding:8px 10px;
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:12px;
+  background:rgba(0,0,0,0.22);
+}
+
+.growthMetaBlock{
+  display:grid;
+  gap:8px;
+  padding:10px;
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:12px;
+  background:rgba(0,0,0,0.22);
+}
+
+.growthMetaTitle{
+  color:var(--accent2);
+  font-size:12px;
+  font-weight:700;
+}
+
+.synergyList{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+  gap:8px;
+}
+
+.synergyChip{
+  display:grid;
+  gap:4px;
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid rgba(124,247,255,0.18);
+  background:rgba(5,38,55,0.75);
+}
+
+.synergyChipName{
+  color:var(--warn);
+  font-weight:700;
+  font-size:12px;
+}
+
+.synergyChipText{
+  color:var(--sub);
+  font-size:12px;
+  line-height:1.45;
+}
+
 ::-webkit-scrollbar{
   width:10px;
   height:10px;
