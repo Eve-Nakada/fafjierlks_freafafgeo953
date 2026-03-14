@@ -711,9 +711,16 @@ function buildLevelUpChoices() {
 
   const weaponCandidates = (STATE.gameData?.weapons || []).filter(w => canAddWeapon(w.id));
   const passiveCandidates = (STATE.gameData?.passives || []).filter(p => canLevelPassive(p.id));
+  const evolutions = typeof getAvailableEvolutions === "function" ? getAvailableEvolutions() : [];
 
   shuffle(weaponCandidates);
   shuffle(passiveCandidates);
+  shuffle(evolutions);
+
+  // 進化可能なら最低1つは優先的に入れる
+  if (evolutions.length > 0) {
+    choices.push(buildEvolutionLevelUpChoice(evolutions[0]));
+  }
 
   for (const w of weaponCandidates.slice(0, 6)) {
     const inst = getWeaponInstance(w.id);
@@ -733,7 +740,9 @@ function buildLevelUpChoices() {
 
   for (const p of passiveCandidates.slice(0, 6)) {
     const lv = getPassiveLevel(p.id);
-    const levelDesc = Array.isArray(p.levelDesc) ? (p.levelDesc[lv] || p.effectDesc || p.desc || "") : (p.effectDesc || p.desc || "");
+    const levelDesc = Array.isArray(p.levelDesc)
+      ? (p.levelDesc[lv] || p.effectDesc || p.desc || "")
+      : (p.effectDesc || p.desc || "");
 
     choices.push({
       type: "passive",
@@ -747,10 +756,33 @@ function buildLevelUpChoices() {
     });
   }
 
-  shuffle(choices);
+  // key重複を除去
+  const uniq = [];
+  const used = new Set();
 
-  if (choices.length === 0) {
-    choices.push({
+  for (const c of choices) {
+    if (used.has(c.key)) continue;
+    used.add(c.key);
+    uniq.push(c);
+  }
+
+  const evoChoices = uniq.filter(c => c.type === "evolution");
+  const otherChoices = uniq.filter(c => c.type !== "evolution");
+  shuffle(otherChoices);
+
+  const result = [];
+
+  if (evoChoices.length > 0) {
+    result.push(evoChoices[0]);
+  }
+
+  for (const c of otherChoices) {
+    if (result.length >= 3) break;
+    result.push(c);
+  }
+
+  if (result.length === 0) {
+    result.push({
       type: "gold",
       key: "gold_fallback",
       name: "ゴールド補給",
@@ -763,7 +795,7 @@ function buildLevelUpChoices() {
     });
   }
 
-  return choices.slice(0, 3);
+  return result.slice(0, 3);
 }
 
 function renderLevelUpChoices() {

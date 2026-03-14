@@ -87,6 +87,7 @@ const STATE = {
   effects: [],
   xpGems: [],
   chests: [],
+  mapCoins: [],
 
   // ----------------
   // Wave

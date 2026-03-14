@@ -156,6 +156,7 @@ function updateGame(dt) {
   updateEnemies(dt);
   updateEnemyProjectiles(dt);
   updateXPGems(dt);
+  updateMapCoins(dt);
   updateChests(dt);
   updateWaves(dt);
   updateBossEvent(dt);

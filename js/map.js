@@ -139,6 +139,7 @@ function renderMap(ctx) {
     ctx.fillStyle = '#06304a';
   }
   ctx.fillRect(-cam.x, -cam.y, STATE.world.width, STATE.world.height);
+  renderMapCoins(ctx);
 
   renderMapGrid(ctx, cam);
 
@@ -268,4 +269,121 @@ function renderMapGrid(ctx, cam) {
   }
 
   ctx.restore();
+}
+
+function isPointInsideObstacle(x, y, r = 0) {
+  const map = getCurrentMap();
+  if (!map) return false;
+
+  for (const wall of map.obstacles || []) {
+    if (circleRectHit(x, y, r, wall.x, wall.y, wall.w, wall.h)) return true;
+  }
+
+  return false;
+}
+
+function isPointInsideTrap(x, y, r = 0) {
+  const map = getCurrentMap();
+  if (!map) return false;
+
+  for (const trap of map.traps || []) {
+    if (circleRectHit(x, y, r, trap.x, trap.y, trap.w, trap.h)) return true;
+  }
+
+  return false;
+}
+
+function getWaveCoinCount(waveIndex) {
+  // Waveごとに増加
+  return Math.min(4 + Math.max(0, waveIndex - 1) * 2, 24);
+}
+
+function findRandomCoinPosition() {
+  const margin = 72;
+  const r = 12;
+
+  for (let i = 0; i < 80; i++) {
+    const x = rand(margin, STATE.world.width - margin);
+    const y = rand(margin, STATE.world.height - margin);
+
+    if (isPointInsideObstacle(x, y, r + 6)) continue;
+    if (isPointInsideTrap(x, y, r + 6)) continue;
+
+    const nearEnemy = STATE.enemies.some(e => dist(x, y, e.x, e.y) < 80 + e.r);
+    if (nearEnemy) continue;
+
+    return { x, y };
+  }
+
+  return {
+    x: rand(margin, STATE.world.width - margin),
+    y: rand(margin, STATE.world.height - margin)
+  };
+}
+
+function resetWaveCoins(waveIndex) {
+  const count = getWaveCoinCount(waveIndex);
+  STATE.mapCoins = [];
+
+  for (let i = 0; i < count; i++) {
+    const pos = findRandomCoinPosition();
+    STATE.mapCoins.push({
+      x: pos.x,
+      y: pos.y,
+      r: 12,
+      value: 10,
+      bobSeed: Math.random() * Math.PI * 2
+    });
+  }
+}
+
+function updateMapCoins(dt) {
+  const p = STATE.player;
+  if (!p) return;
+
+  const next = [];
+
+  for (const coin of STATE.mapCoins) {
+    if (dist(coin.x, coin.y, p.x, p.y) <= coin.r + p.r + 6) {
+      p.gold = (p.gold || 0) + (coin.value || 10);
+      STATE.score += (coin.value || 10) * 2;
+      addEffect(coin.x, coin.y, 20, "#ffd166", 0.18, 0.24);
+      updateHUD();
+      continue;
+    }
+
+    next.push(coin);
+  }
+
+  STATE.mapCoins = next;
+}
+
+function renderMapCoins(ctx) {
+  const cam = STATE.camera;
+
+  for (const coin of STATE.mapCoins) {
+    const x = coin.x - cam.x;
+    const y = coin.y - cam.y + Math.sin(STATE.time * 3 + (coin.bobSeed || 0)) * 3;
+
+    ctx.save();
+
+    ctx.fillStyle = "rgba(255, 215, 90, 0.22)";
+    ctx.beginPath();
+    ctx.arc(x, y, coin.r + 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#ffd166";
+    ctx.beginPath();
+    ctx.arc(x, y, coin.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#fff1a8";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255,255,255,0.65)";
+    ctx.fillRect(x - 2, y - 6, 4, 12);
+
+    ctx.restore();
+  }
 }

@@ -10,6 +10,7 @@ function resetWaveState() {
     delete wave._leviathanSpawned;
   }
   STATE.lastShopWave = 0;
+  STATE.mapCoins = [];
 }
 
 function getWaveDefs() {
@@ -41,6 +42,9 @@ function updateWaves(dt) {
   const newWaveIndex = wave.index || 1;
   const prevWaveIndex = STATE.currentWave || 1;
   STATE.currentWave = newWaveIndex;
+  if (newWaveIndex !== prevWaveIndex) {
+    resetWaveCoins(newWaveIndex);
+  }
 
   if (wave._spawnTimer == null) {
     wave._spawnTimer = wave.spawnInterval || 1.0;

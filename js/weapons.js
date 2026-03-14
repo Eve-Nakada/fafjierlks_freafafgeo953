@@ -54,7 +54,8 @@ function addWeapon(id) {
     cooldown: 0,
     evolutionStage: 0,
     branchId: null,
-    orbitAngle: 0
+    orbitAngle: 0,
+    orbitTickTimer: 0
   };
 
   p.weapons.push(inst);
@@ -137,6 +138,26 @@ function getWeaponDamage(w, def) {
   return (def.damage + (w.level - 1) * (def.levelDamage || 3)) * p.stats.damageMul;
 }
 
+function getSonarScopeLevel() {
+  if (typeof getPassiveLevel !== "function") return 0;
+  return getPassiveLevel("sonar_scope") || 0;
+}
+
+function getSonarScopeStats() {
+  const lv = getSonarScopeLevel();
+
+  return {
+    rangeMul: 1 + lv * 0.16,
+    lengthMul: 1 + lv * 0.14,
+    seekStrength: lv <= 0 ? 0 : 1.8 + lv * 0.55
+  };
+}
+
+function getScopedNearestEnemy(fromX, fromY, baseRange = Infinity) {
+  const scope = getSonarScopeStats();
+  return getNearestEnemy(fromX, fromY, baseRange * scope.rangeMul);
+}
+
 function getNearestEnemy(fromX, fromY, maxRange = Infinity) {
   let best = null;
   let bestD = Infinity;
@@ -158,12 +179,13 @@ function addEffect(x, y, r, color, life, fillAlpha = 0) {
 
 function startSonarCharge(w, def) {
   const p = STATE.player;
-  const target = p ? getNearestEnemy(p.x, p.y) : null;
+  const target = p ? getScopedNearestEnemy(p.x, p.y, 520) : null;
   const pattern = getWeaponCurrentPattern(w);
   w.chargeTimer = pattern && pattern.startsWith("wave") ? 0.1 : 0.14;
   w.pendingFire = true;
   w.chargeColor = pattern && pattern.startsWith("wave") ? "#8be0ff" : pattern ? "#79f7ff" : "#50d7ff";
   w.chargeAngle = target ? angle(p.x, p.y, target.x, target.y) : 0;
+  w.chargeTargetId = target ? target.id : null;
 }
 
 function updateWeaponCharge(w, def, dt) {
@@ -387,11 +409,16 @@ function fireFishMissile(w, def) {
 function fireSonar(w, def) {
   const p = STATE.player;
   const pattern = getWeaponCurrentPattern(w);
-  const target = getNearestEnemy(p.x, p.y);
+  const scope = getSonarScopeStats();
+
+  let target = STATE.enemies.find(e => e.id === w.chargeTargetId);
+  if (!target) target = getScopedNearestEnemy(p.x, p.y, 520);
+
   if (!target) return;
 
   const baseAng = angle(p.x, p.y, target.x, target.y);
   addEffect(p.x, p.y, pattern && pattern.startsWith("beam") ? 24 : 18, pattern && pattern.startsWith("wave") ? "#8be0ff" : "#79f7ff", 0.18, 0.22);
+
   const count = pattern === "wave_ex" ? 3 : pattern === "wave" ? 2 : 1;
   const spreadStep = pattern && pattern.startsWith("wave") ? 0.16 : 0;
 
@@ -413,29 +440,45 @@ function fireSonar(w, def) {
       weaponStage: w.evolutionStage || 0,
       type: "beam",
       color: pattern && pattern.startsWith("wave") ? "#8be0ff" : pattern ? "#79f7ff" : "#50d7ff",
-      length: pattern === "beam_ex" ? 380 : pattern === "beam" ? 320 : pattern === "wave_ex" ? 280 : pattern === "wave" ? 250 : 220
+      length: (pattern === "beam_ex" ? 380 : pattern === "beam" ? 320 : pattern === "wave_ex" ? 280 : pattern === "wave" ? 250 : 220) * scope.lengthMul,
+      targetId: target.id,
+      seekStrength: scope.seekStrength
     });
   }
+
+  w.chargeTargetId = null;
 }
 
 function updateOrbitWeapon(w, def, dt) {
   const p = STATE.player;
   const pattern = getWeaponCurrentPattern(w);
+  const cooldownMul = p.stats?.cooldownMul || 1;
+
   const count = pattern === "orbit_ex" ? 4 : pattern === "orbit" ? 3 : pattern === "tidal_ring_ex" ? 5 : pattern === "tidal_ring" ? 4 : 1;
   const orbitRadius = (pattern === "orbit_ex" ? 98 : pattern === "orbit" ? 86 : pattern === "tidal_ring_ex" ? 118 : pattern === "tidal_ring" ? 102 : 62) * p.stats.areaMul;
-  const damage = getWeaponDamage(w, def) * (pattern === "tidal_ring_ex" ? 0.4 : 0.45);
-  const speed = pattern === "orbit_ex" ? 4.2 : pattern === "orbit" ? 3.5 : pattern === "tidal_ring_ex" ? 2.5 : pattern === "tidal_ring" ? 2.0 : 2.4;
 
-  w.orbitAngle += dt * speed;
+  const baseDamage = getWeaponDamage(w, def) * (pattern === "tidal_ring_ex" ? 0.4 : 0.45);
+  const orbitSpeed = (pattern === "orbit_ex" ? 4.2 : pattern === "orbit" ? 3.5 : pattern === "tidal_ring_ex" ? 2.5 : pattern === "tidal_ring" ? 2.0 : 2.4) * (0.9 + cooldownMul * 0.22);
+  const hitInterval = Math.max(0.05, 0.16 / cooldownMul);
+
+  w.orbitAngle += dt * orbitSpeed;
+  w.orbitTickTimer = (w.orbitTickTimer || 0) - dt;
+
+  const canHit = w.orbitTickTimer <= 0;
+  if (canHit) {
+    w.orbitTickTimer = hitInterval;
+  }
 
   for (let i = 0; i < count; i++) {
     const ang = w.orbitAngle + (Math.PI * 2 / count) * i;
     const x = p.x + Math.cos(ang) * orbitRadius;
     const y = p.y + Math.sin(ang) * orbitRadius;
 
-    for (const e of STATE.enemies) {
-      if (dist(x, y, e.x, e.y) <= 18 + e.r) {
-        damageEnemy(e, damage * dt * 4.0);
+    if (canHit) {
+      for (const e of STATE.enemies) {
+        if (dist(x, y, e.x, e.y) <= 18 + e.r) {
+          damageEnemy(e, baseDamage);
+        }
       }
     }
 
@@ -519,6 +562,20 @@ function applyEvolutionChoice(evo) {
   if (evo.type === "first") return evolveWeaponToBranch(evo.weaponId, evo.branchId);
   if (evo.type === "second") return secondEvolveWeapon(evo.weaponId);
   return false;
+}
+
+function buildEvolutionLevelUpChoice(evo) {
+  const weaponDef = getWeaponDef(evo.weaponId);
+  return {
+    type: "evolution",
+    key: `evolution_${evo.weaponId}_${evo.branchId || "stage2"}_${evo.type}`,
+    name: `進化: ${evo.evolutionName}`,
+    desc: `${weaponDef?.name || evo.weaponId} を${evo.type === "second" ? "第2進化" : "進化"}させる`,
+    meta: `条件達成済み / ${evo.needPassive ? `必要: ${evo.needPassive}` : "宝箱不要"}`,
+    apply() {
+      return applyEvolutionChoice(evo);
+    }
+  };
 }
 
 function spawnBullet(b) {
@@ -689,9 +746,33 @@ function updateFieldBullet(b, dt) {
 function updateBeamBullet(b, dt) {
   const p = STATE.player;
   if (!p) return;
+
+  if (b.seekStrength > 0) {
+    let target = STATE.enemies.find(e => e.id === b.targetId);
+
+    if (!target) {
+      target = getNearestEnemy(p.x, p.y, (b.length || 220) * 1.15);
+      if (target) b.targetId = target.id;
+    }
+
+    if (target) {
+      const desired = angle(p.x, p.y, target.x, target.y);
+      const current = Math.atan2(b.vy, b.vx);
+      let diff = desired - current;
+
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+
+      const newAngle = current + clamp(diff, -b.seekStrength * dt, b.seekStrength * dt);
+      b.vx = Math.cos(newAngle);
+      b.vy = Math.sin(newAngle);
+    }
+  }
+
   const maxLen = b.length || 220;
   const x2 = p.x + b.vx * maxLen;
   const y2 = p.y + b.vy * maxLen;
+
   for (const e of STATE.enemies) {
     const t = clamp((((e.x - p.x) * (x2 - p.x)) + ((e.y - p.y) * (y2 - p.y))) / Math.max(1, (maxLen * maxLen)), 0, 1);
     const px = p.x + (x2 - p.x) * t;
