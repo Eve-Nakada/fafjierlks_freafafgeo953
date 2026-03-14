@@ -113,6 +113,7 @@ function startGame(initialWeaponId) {
   hideAllScreens();
   updateHUD();
   renderPlayerUiIcon();
+  resetWaveCoins(1);
 }
 
 function resetRunShopState() {
