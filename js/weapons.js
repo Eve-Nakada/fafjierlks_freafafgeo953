@@ -129,7 +129,15 @@ function updateWeapons(dt) {
 function getWeaponCooldown(w, def) {
   const p = STATE.player;
   const base = def.cooldown || 1;
-  const levelFactor = 1 - Math.min(0.35, (w.level - 1) * 0.04);
+
+  let levelFactor = 1 - Math.min(0.35, (w.level - 1) * 0.04);
+
+  if (w?.id === "harpoon" && (w.evolutionStage || 0) === 0) {
+    levelFactor = 1;
+    if ((w.level || 1) >= 3) levelFactor *= 0.82;
+    if ((w.level || 1) >= 5) levelFactor *= 0.78;
+  }
+
   return Math.max(0.08, base * levelFactor / p.stats.cooldownMul);
 }
 
@@ -240,6 +248,7 @@ function fireHarpoon(w, def) {
   const nx = dx / len;
   const ny = dy / len;
   const pattern = getWeaponCurrentPattern(w);
+  const level = Math.max(1, w.level || 1);
 
   let count = 1;
   let spreadStep = 0;
@@ -249,13 +258,33 @@ function fireHarpoon(w, def) {
   let pierce = 1;
 
   if (pattern === "trident") {
-    count = 3; spreadStep = 0.22; life = 1.5; radius = 8; damageMul = 1.15; pierce = 3;
+    count = level >= 5 ? 5 : level >= 3 ? 4 : 3;
+    spreadStep = count >= 5 ? 0.17 : count >= 4 ? 0.20 : 0.22;
+    life = 1.55;
+    radius = 8;
+    damageMul = 1.15;
+    pierce = level >= 5 ? 6 : level >= 3 ? 5 : 4;
   } else if (pattern === "trident_king") {
-    count = 5; spreadStep = 0.18; life = 1.7; radius = 9; damageMul = 1.35; pierce = 5;
+    count = 7;
+    spreadStep = 0.14;
+    life = 1.9;
+    radius = 9;
+    damageMul = 1.35;
+    pierce = 10;
   } else if (pattern === "pierce") {
-    count = 2; spreadStep = 0.08; life = 1.6; radius = 7; damageMul = 1.2; pierce = 5;
+    count = 2;
+    spreadStep = 0.08;
+    life = 1.6;
+    radius = 7;
+    damageMul = 1.2;
+    pierce = 5;
   } else if (pattern === "pierce_ex") {
-    count = 3; spreadStep = 0.08; life = 1.9; radius = 8; damageMul = 1.35; pierce = 8;
+    count = 3;
+    spreadStep = 0.08;
+    life = 1.9;
+    radius = 8;
+    damageMul = 1.35;
+    pierce = 8;
   }
 
   addEffect(p.x, p.y, 12 + count * 2, pattern && pattern.startsWith("pierce") ? "#d7f7ff" : "#8ef3ff", 0.12, 0.18);
