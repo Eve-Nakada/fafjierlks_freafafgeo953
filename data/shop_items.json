@@ -1,0 +1,65 @@
+{
+  "title": "Wave Shop Config",
+  "shopWaves": {
+    "1": [
+      { "id": "w1_heal_20", "name": "HP回復 +20", "desc": "HPを20回復する。", "effect": "heal", "value": 20, "price": 25, "persistent": true },
+      { "id": "w1_max_hp_10", "name": "最大HP +10", "desc": "最大HPを10増やし、同時に回復する。", "effect": "maxHp", "value": 10, "price": 25, "persistent": true },
+      { "id": "w1_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false },
+      { "id": "w1_reroll", "name": "リロール券", "desc": "レベルアップ選択肢を引き直す。", "effect": "reroll", "value": 1, "price": 25, "persistent": true }
+    ],
+    "2": [
+      { "id": "w2_weapon_gain", "name": "武器獲得", "desc": "持っていない武器をランダムで1個取得する。", "effect": "weaponGain", "value": 1, "price": 100, "persistent": true },
+      { "id": "w2_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ],
+    "3": [
+      { "id": "w3_passive_gain", "name": "装備獲得", "desc": "持っていない装備をランダムで1個取得する。", "effect": "passiveGain", "value": 1, "price": 100, "persistent": true },
+      { "id": "w3_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ],
+    "4": [
+      { "id": "w4_heal_50", "name": "HP回復 +50", "desc": "HPを50回復する。", "effect": "heal", "value": 50, "price": 60, "persistent": true },
+      { "id": "w4_max_hp_20", "name": "最大HP +20", "desc": "最大HPを20増やし、同時に回復する。", "effect": "maxHp", "value": 20, "price": 60, "persistent": true },
+      { "id": "w4_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ],
+    "5": [
+      { "id": "w5_weapon_upgrade", "name": "武器強化", "desc": "進化前の武器を1つ選び、1段階強化する。", "effect": "weaponUpgrade", "value": 1, "price": 150, "persistent": true },
+      { "id": "w5_passive_upgrade", "name": "装備強化", "desc": "装備を1つ選び、1段階強化する。", "effect": "passiveUpgrade", "value": 1, "price": 150, "persistent": true },
+      { "id": "w5_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ],
+    "6": [
+      { "id": "w6_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ],
+    "7": [
+      { "id": "w7_heal_100", "name": "HP回復 +100", "desc": "HPを100回復する。", "effect": "heal", "value": 100, "price": 150, "persistent": true },
+      { "id": "w7_max_hp_40", "name": "最大HP +40", "desc": "最大HPを40増やし、同時に回復する。", "effect": "maxHp", "value": 40, "price": 150, "persistent": true },
+      { "id": "w7_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ],
+    "8": [
+      { "id": "w8_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ],
+    "9": [
+      { "id": "w9_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ],
+    "10": [
+      { "id": "w10_heal_200", "name": "HP回復 +200", "desc": "HPを200回復する。", "effect": "heal", "value": 200, "price": 350, "persistent": true },
+      { "id": "w10_max_hp_80", "name": "最大HP +80", "desc": "最大HPを80増やし、同時に回復する。", "effect": "maxHp", "value": 80, "price": 350, "persistent": true },
+      { "id": "w10_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ],
+    "11": [
+      { "id": "w11_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ],
+    "12": [
+      { "id": "w12_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ],
+    "13": [
+      { "id": "w13_heal_500", "name": "HP回復 +500", "desc": "HPを500回復する。", "effect": "heal", "value": 500, "price": 500, "persistent": true },
+      { "id": "w13_max_hp_200", "name": "最大HP +200", "desc": "最大HPを200増やし、同時に回復する。", "effect": "maxHp", "value": 200, "price": 1000, "persistent": true },
+      { "id": "w13_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ],
+    "14": [
+      { "id": "w14_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ],
+    "15": [
+      { "id": "w15_absorb_xp", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false }
+    ]
+  }
+}

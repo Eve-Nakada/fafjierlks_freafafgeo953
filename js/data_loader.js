@@ -34,6 +34,15 @@ async function loadAllData() {
 
     ]);
 
+    try {
+      const shopRes = await fetch('shop_items.json');
+      if (shopRes.ok) {
+        STATE.shopItemsData = await shopRes.json();
+      }
+    } catch (err) {
+      console.warn('shop_items.json load skipped', err);
+    }
+
     STATE.gameData = gameData;
     STATE.mapData = mapData;
     STATE.waveData = waveData;

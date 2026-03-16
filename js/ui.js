@@ -488,7 +488,28 @@ function setupUI() {
       openWeaponGrowth(btn.dataset.weaponId);
     });
   }
+
+  setupShopPanelUi();
 }
+
+// ===============================
+// ショップUI補助
+// ===============================
+
+function setupShopPanelUi() {
+  if (typeof ensureShopHeaderUi === 'function') {
+    ensureShopHeaderUi();
+  }
+}
+
+function refreshShopPanelUi() {
+  if (typeof renderShop === 'function' && STATE.shopOpen) {
+    renderShop();
+  } else if (typeof ensureShopHeaderUi === 'function') {
+    ensureShopHeaderUi();
+  }
+}
+
 
 function updateHUD() {
   const p = STATE.player;

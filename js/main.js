@@ -121,6 +121,7 @@ function resetRunShopState() {
   STATE.shopPurchased = {};
   STATE.shopUnlockedWaves = {};
   STATE.shopSelectionOpen = false;
+  STATE.shopWave = 0;
   STATE._shopDisplayItems = null;
 }
 

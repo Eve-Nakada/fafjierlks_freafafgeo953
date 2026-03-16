@@ -69,6 +69,47 @@ function makeShopStock(id, name, desc, effect, value, price, persistent) {
   return { id, name, desc, effect, value, price, persistent: !!persistent };
 }
 
+function normalizeShopWaveDefs(source) {
+  if (!source || typeof source !== 'object') return null;
+  const out = {};
+
+  for (const [waveKey, items] of Object.entries(source)) {
+    const wave = Number(waveKey);
+    if (!Number.isFinite(wave) || wave <= 0 || !Array.isArray(items)) continue;
+
+    out[wave] = items
+      .map((item, index) => normalizeShopItem(item, wave, index))
+      .filter(Boolean);
+  }
+
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+function normalizeShopItem(item, wave, index) {
+  if (!item || typeof item !== 'object') return null;
+
+  const id = String(item.id || `wave${wave}_item${index + 1}`);
+  const name = String(item.name || `商品 ${index + 1}`);
+  const desc = String(item.desc || '');
+  const effect = String(item.effect || '');
+  const value = Number(item.value || 0);
+  const price = Math.max(0, Number(item.price || 0));
+  const persistent = !!item.persistent;
+
+  if (!effect) return null;
+  return { id, name, desc, effect, value, price, persistent };
+}
+
+function getConfiguredShopWaveDefs() {
+  const external = normalizeShopWaveDefs(STATE.shopItemsData?.shopWaves);
+  if (external) return external;
+
+  const embedded = normalizeShopWaveDefs(STATE.gameData?.shopConfig?.shopWaves);
+  if (embedded) return embedded;
+
+  return SHOP_WAVE_DEFS;
+}
+
 function ensureShopRunState() {
   STATE.shopStock = STATE.shopStock || {};
   STATE.shopPurchased = STATE.shopPurchased || {};
@@ -76,9 +117,17 @@ function ensureShopRunState() {
   STATE.shopSelectionOpen = !!STATE.shopSelectionOpen;
 }
 
+function getCurrentShopWave() {
+  const explicitWave = Number(STATE.shopWave || 0);
+  if (Number.isFinite(explicitWave) && explicitWave > 0) return Math.floor(explicitWave);
+
+  const currentWave = Math.max(1, Number(STATE.currentWave || 1));
+  return Math.max(1, currentWave - 1);
+}
+
 function getShopItems() {
   ensureShopRunState();
-  syncShopInventoryForWave(STATE.currentWave || 1);
+  syncShopInventoryForWave(getCurrentShopWave());
   return getDisplayShopItems();
 }
 
@@ -89,12 +138,13 @@ function calcShopPrice(item) {
 function syncShopInventoryForWave(waveIndex) {
   ensureShopRunState();
   const wave = Math.max(1, Number(waveIndex || 1));
+  const defsByWave = getConfiguredShopWaveDefs();
 
   for (let i = 1; i <= wave; i++) {
     if (STATE.shopUnlockedWaves[i]) continue;
     STATE.shopUnlockedWaves[i] = true;
 
-    const defs = SHOP_WAVE_DEFS[i] || [];
+    const defs = defsByWave[i] || [];
     for (const def of defs) {
       STATE.shopStock[def.id] = { ...def, unlockWave: i };
     }
@@ -103,7 +153,7 @@ function syncShopInventoryForWave(waveIndex) {
 
 function getDisplayShopItems() {
   ensureShopRunState();
-  const wave = Math.max(1, Number(STATE.currentWave || 1));
+  const wave = getCurrentShopWave();
   const out = [];
 
   for (const item of Object.values(STATE.shopStock)) {
@@ -123,7 +173,8 @@ function getDisplayShopItems() {
 
 function openShop() {
   ensureShopRunState();
-  syncShopInventoryForWave(STATE.currentWave || 1);
+  STATE.shopWave = getCurrentShopWave();
+  syncShopInventoryForWave(STATE.shopWave);
 
   STATE.shopOpen = true;
   STATE.paused = true;
@@ -152,6 +203,7 @@ function closeShop() {
     STATE.player.hp = Math.min(STATE.player.hp, maxAllowed);
   }
   STATE.shopOpen = false;
+  STATE.shopWave = 0;
   STATE.paused = false;
   hideScreen('shopScreen');
   STATE.shopSession = { startHp: 0, startMaxHp: 0, allowedHeal: 0, allowedMaxHp: 0 };
@@ -165,17 +217,230 @@ function rerollShopChoices() {
   return buyShopItem(item);
 }
 
+function ensureShopStyles() {
+  if (document.getElementById('shopDynamicStyle')) return;
+  const style = document.createElement('style');
+  style.id = 'shopDynamicStyle';
+  style.textContent = `
+    .shopPanelHead {
+      width:min(92vw, 900px);
+      display:grid;
+      gap:10px;
+      text-align:left;
+    }
+    .shopPanelCard {
+      border:1px solid rgba(120,220,255,0.22);
+      border-radius:16px;
+      background:rgba(0,18,30,0.92);
+      box-shadow:0 10px 30px rgba(0,0,0,0.35);
+      padding:12px 14px;
+    }
+    .shopPanelTitleRow {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .shopPanelTitle {
+      font-size:clamp(22px, 3.6vw, 30px);
+      font-weight:800;
+      letter-spacing:0.02em;
+    }
+    .shopPanelWave {
+      color:#7cf7ff;
+      font-size:13px;
+      font-weight:700;
+      padding:6px 10px;
+      border-radius:999px;
+      background:rgba(54,212,255,0.14);
+      border:1px solid rgba(120,220,255,0.20);
+    }
+    .shopPanelSub {
+      color:#9ed7e8;
+      font-size:13px;
+      line-height:1.55;
+    }
+    .shopPanelMetaRow {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    .shopBadge {
+      font-size:12px;
+      line-height:1;
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.10);
+      background:rgba(255,255,255,0.04);
+      color:#eaf8ff;
+    }
+    .shopBadgeGold {
+      color:#ffd166;
+      border-color:rgba(255,209,102,0.24);
+      background:rgba(255,209,102,0.10);
+    }
+    .shopBadgeCarry {
+      color:#7dff9c;
+      border-color:rgba(125,255,156,0.22);
+      background:rgba(125,255,156,0.10);
+    }
+    .shopBadgeLimited {
+      color:#ffcf78;
+      border-color:rgba(255,207,120,0.22);
+      background:rgba(255,207,120,0.10);
+    }
+    .choiceBtn.shopItemCard {
+      gap:8px;
+    }
+    .shopItemTopRow {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .shopItemPrice {
+      color:#ffd166;
+      font-size:15px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+    .shopItemBadges {
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      margin-top:2px;
+    }
+    .shopItemBadge {
+      display:inline-flex;
+      align-items:center;
+      min-height:24px;
+      padding:5px 8px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:0.02em;
+      border:1px solid rgba(255,255,255,0.10);
+      background:rgba(255,255,255,0.04);
+      color:#dff7ff;
+    }
+    .shopItemBadgeCarry {
+      color:#7dff9c;
+      border-color:rgba(125,255,156,0.22);
+      background:rgba(125,255,156,0.10);
+    }
+    .shopItemBadgeLimited {
+      color:#ffcf78;
+      border-color:rgba(255,207,120,0.22);
+      background:rgba(255,207,120,0.10);
+    }
+    .shopItemBadgeNew {
+      color:#7cf7ff;
+      border-color:rgba(124,247,255,0.24);
+      background:rgba(124,247,255,0.10);
+    }
+    .shopItemBadgeDisabled {
+      color:#ff9c9c;
+      border-color:rgba(255,156,156,0.22);
+      background:rgba(255,156,156,0.10);
+    }
+    @media (max-width: 640px) {
+      .shopPanelTitleRow,
+      .shopItemTopRow {
+        grid-template-columns:1fr;
+        display:grid;
+      }
+      .shopItemPrice {
+        justify-self:start;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function ensureShopHeaderUi() {
+  ensureShopStyles();
+
+  const listEl = document.getElementById('shopList');
+  if (!listEl || !listEl.parentElement) return null;
+  let header = document.getElementById('shopPanelHead');
+  if (header) return header;
+
+  header = document.createElement('div');
+  header.id = 'shopPanelHead';
+  header.className = 'shopPanelHead';
+  header.innerHTML = `
+    <div class="shopPanelCard">
+      <div class="shopPanelTitleRow">
+        <div class="shopPanelTitle" id="shopPanelTitle">ショップ</div>
+        <div class="shopPanelWave" id="shopWaveLabel">Wave 1</div>
+      </div>
+      <div class="shopPanelSub" id="shopPanelSub">このWaveで使える品と、次回へ持ち越される品が表示されます。</div>
+      <div class="shopPanelMetaRow" id="shopPanelMetaRow"></div>
+    </div>
+  `;
+
+  listEl.parentElement.insertBefore(header, listEl);
+  return header;
+}
+
+function updateShopHeaderUi(items) {
+  ensureShopHeaderUi();
+
+  const waveEl = document.getElementById('shopWaveLabel');
+  const subEl = document.getElementById('shopPanelSub');
+  const metaEl = document.getElementById('shopPanelMetaRow');
+  if (!waveEl || !subEl || !metaEl) return;
+
+  const wave = getCurrentShopWave();
+  const gold = Math.max(0, Number(STATE.player?.gold || 0));
+  const carry = items.filter((item) => item.persistent).length;
+  const limited = items.filter((item) => !item.persistent).length;
+  const unlocked = Object.values(STATE.shopStock || {}).filter((item) => item && !STATE.shopPurchased?.[item.id]).length;
+
+  waveEl.textContent = `Wave ${wave} ショップ`;
+  subEl.textContent = `購入すると商品は消えます。持ち越し品は次のショップにも残り、今回限定品はこのWaveでのみ販売されます。`;
+  metaEl.innerHTML = `
+    <div class="shopBadge shopBadgeGold">所持Gold: ${gold}G</div>
+    <div class="shopBadge">販売中: ${items.length}</div>
+    <div class="shopBadge shopBadgeCarry">持ち越し: ${carry}</div>
+    <div class="shopBadge shopBadgeLimited">今回限定: ${limited}</div>
+    <div class="shopBadge">未購入在庫: ${unlocked}</div>
+  `;
+}
+
+function getShopItemBadges(item, canBuy) {
+  const parts = [];
+  if (item.unlockWave === getCurrentShopWave()) {
+    parts.push('<span class="shopItemBadge shopItemBadgeNew">このWaveで追加</span>');
+  }
+  if (item.persistent) {
+    parts.push('<span class="shopItemBadge shopItemBadgeCarry">次回にも残る</span>');
+  } else {
+    parts.push('<span class="shopItemBadge shopItemBadgeLimited">今回限定</span>');
+  }
+  if (!canBuy) {
+    parts.push('<span class="shopItemBadge shopItemBadgeDisabled">購入不可</span>');
+  }
+  return parts.join('');
+}
+
 function renderShop() {
   const listEl = document.getElementById('shopList');
   if (!listEl) return;
 
   const items = getDisplayShopItems();
+  updateShopHeaderUi(items);
   listEl.innerHTML = '';
 
   if (items.length === 0) {
     const empty = document.createElement('div');
-    empty.className = 'choiceBtn';
-    empty.innerHTML = '<div class="choiceTitle">売り切れ</div><div class="choiceDesc">このWaveで購入できる品はありません。</div>';
+    empty.className = 'choiceBtn shopItemCard';
+    empty.innerHTML = `
+      <div class="choiceTitle">売り切れ</div>
+      <div class="choiceDesc">このWaveで購入できる品はありません。</div>
+      <div class="choiceMeta">次のWaveで新しい商品が追加されます。</div>
+    `;
     empty.disabled = true;
     listEl.appendChild(empty);
     return;
@@ -183,16 +448,20 @@ function renderShop() {
 
   for (const item of items) {
     const btn = document.createElement('button');
-    btn.className = 'choiceBtn';
+    btn.className = 'choiceBtn shopItemCard';
 
     const cost = calcShopPrice(item);
     const canBuy = (STATE.player?.gold || 0) >= cost && canBuyShopItem(item);
-    const remainText = item.persistent ? '次回以降も残る' : 'このWave限定';
 
     btn.innerHTML = `
-      <div class="choiceTitle">${item.name} - ${cost}G</div>
-      <div class="choiceDesc">${item.desc || ''}</div>
-      <div class="choiceMeta">${remainText}</div>
+      <div class="shopItemTopRow">
+        <div>
+          <div class="choiceTitle">${item.name}</div>
+          <div class="choiceDesc">${item.desc || ''}</div>
+        </div>
+        <div class="shopItemPrice">${cost}G</div>
+      </div>
+      <div class="shopItemBadges">${getShopItemBadges(item, canBuy)}</div>
     `;
 
     btn.disabled = !canBuy;
