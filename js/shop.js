@@ -2,68 +2,130 @@
 // ショップ
 // ===============================
 
-const SHOP_WAVE_DEFS = {
-  1: [
-    makeShopStock('w1_heal_20', 'HP回復 +20', 'HPを20回復する。', 'heal', 20, 25, true),
-    makeShopStock('w1_max_hp_10', '最大HP +10', '最大HPを10増やし、同時に回復する。', 'maxHp', 10, 25, true),
-    makeShopStock('w1_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false),
-    makeShopStock('w1_reroll', 'リロール券', 'レベルアップ選択肢を引き直す。', 'reroll', 1, 25, true)
-  ],
-  2: [
-    makeShopStock('w2_weapon_gain', '武器獲得', '持っていない武器をランダムで1個取得する。', 'weaponGain', 1, 100, true),
-    makeShopStock('w2_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ],
-  3: [
-    makeShopStock('w3_passive_gain', '装備獲得', '持っていない装備をランダムで1個取得する。', 'passiveGain', 1, 100, true),
-    makeShopStock('w3_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ],
-  4: [
-    makeShopStock('w4_heal_50', 'HP回復 +50', 'HPを50回復する。', 'heal', 50, 60, true),
-    makeShopStock('w4_max_hp_20', '最大HP +20', '最大HPを20増やし、同時に回復する。', 'maxHp', 20, 60, true),
-    makeShopStock('w4_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ],
-  5: [
-    makeShopStock('w5_weapon_upgrade', '武器強化', '進化前の武器を1つ選び、1段階強化する。', 'weaponUpgrade', 1, 150, true),
-    makeShopStock('w5_passive_upgrade', '装備強化', '装備を1つ選び、1段階強化する。', 'passiveUpgrade', 1, 150, true),
-    makeShopStock('w5_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ],
-  6: [
-    makeShopStock('w6_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ],
-  7: [
-    makeShopStock('w7_heal_100', 'HP回復 +100', 'HPを100回復する。', 'heal', 100, 150, true),
-    makeShopStock('w7_max_hp_40', '最大HP +40', '最大HPを40増やし、同時に回復する。', 'maxHp', 40, 150, true),
-    makeShopStock('w7_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ],
-  8: [
-    makeShopStock('w8_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ],
-  9: [
-    makeShopStock('w9_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ],
-  10: [
-    makeShopStock('w10_heal_200', 'HP回復 +200', 'HPを200回復する。', 'heal', 200, 350, true),
-    makeShopStock('w10_max_hp_80', '最大HP +80', '最大HPを80増やし、同時に回復する。', 'maxHp', 80, 350, true),
-    makeShopStock('w10_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ],
-  11: [
-    makeShopStock('w11_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ],
-  12: [
-    makeShopStock('w12_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ],
-  13: [
-    makeShopStock('w13_heal_500', 'HP回復 +500', 'HPを500回復する。', 'heal', 500, 500, true),
-    makeShopStock('w13_max_hp_200', '最大HP +200', '最大HPを200増やし、同時に回復する。', 'maxHp', 200, 1000, true),
-    makeShopStock('w13_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ],
-  14: [
-    makeShopStock('w14_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ],
-  15: [
-    makeShopStock('w15_absorb_xp', 'XP全回収', '画面上のXPをすべて吸収する。', 'absorbXp', 1, 40, false)
-  ]
-};
+const SHOP_WAVE_DEFS = buildDefaultShopWaveDefs();
+
+function buildDefaultShopWaveDefs() {
+  return normalizeShopWaveDefs({
+    1: [
+      { id: 'w1_heal_20_1', name: 'HP回復 +20', desc: 'HPを20回復する。', effect: 'heal', value: 20, price: 25, persistent: true },
+      { id: 'w1_max_hp_10_1', name: '最大HP +10', desc: '最大HPを10増やし、同時に回復する。', effect: 'maxHp', value: 10, price: 25, persistent: true },
+      { id: 'w1_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w1_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    2: [
+      { id: 'w2_heal_20_1', name: 'HP回復 +20', desc: 'HPを20回復する。', effect: 'heal', value: 20, price: 25, persistent: true },
+      { id: 'w2_max_hp_10_1', name: '最大HP +10', desc: '最大HPを10増やし、同時に回復する。', effect: 'maxHp', value: 10, price: 25, persistent: true },
+      { id: 'w2_weapon_gain_1', name: '武器獲得', desc: '持っていない武器をランダムで1個取得する。', effect: 'weaponGain', value: 1, price: 100, persistent: true },
+      { id: 'w2_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w2_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    3: [
+      { id: 'w3_heal_20_1', name: 'HP回復 +20', desc: 'HPを20回復する。', effect: 'heal', value: 20, price: 25, persistent: true },
+      { id: 'w3_max_hp_10_1', name: '最大HP +10', desc: '最大HPを10増やし、同時に回復する。', effect: 'maxHp', value: 10, price: 25, persistent: true },
+      { id: 'w3_weapon_gain_1', name: '武器獲得', desc: '持っていない武器をランダムで1個取得する。', effect: 'weaponGain', value: 1, price: 100, persistent: true },
+      { id: 'w3_passive_gain_1', name: '装備獲得', desc: '持っていない装備をランダムで1個取得する。', effect: 'passiveGain', value: 1, price: 100, persistent: true },
+      { id: 'w3_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w3_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    4: [
+      { id: 'w4_heal_50_1', name: 'HP回復 +50', desc: 'HPを50回復する。', effect: 'heal', value: 50, price: 60, persistent: true },
+      { id: 'w4_max_hp_20_1', name: '最大HP +20', desc: '最大HPを20増やし、同時に回復する。', effect: 'maxHp', value: 20, price: 60, persistent: true },
+      { id: 'w4_weapon_gain_1', name: '武器獲得', desc: '持っていない武器をランダムで1個取得する。', effect: 'weaponGain', value: 1, price: 100, persistent: true },
+      { id: 'w4_passive_gain_1', name: '装備獲得', desc: '持っていない装備をランダムで1個取得する。', effect: 'passiveGain', value: 1, price: 100, persistent: true },
+      { id: 'w4_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w4_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    5: [
+      { id: 'w5_heal_50_1', name: 'HP回復 +50', desc: 'HPを50回復する。', effect: 'heal', value: 50, price: 60, persistent: true },
+      { id: 'w5_max_hp_20_1', name: '最大HP +20', desc: '最大HPを20増やし、同時に回復する。', effect: 'maxHp', value: 20, price: 60, persistent: true },
+      { id: 'w5_weapon_upgrade_1', name: '武器強化', desc: '進化前の武器を1つ選び、1段階強化する。', effect: 'weaponUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w5_passive_gain_1', name: '装備獲得', desc: '持っていない装備をランダムで1個取得する。', effect: 'passiveGain', value: 1, price: 100, persistent: true },
+      { id: 'w5_passive_upgrade_1', name: '装備強化', desc: '装備を1つ選び、1段階強化する。', effect: 'passiveUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w5_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w5_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    6: [
+      { id: 'w6_heal_50_1', name: 'HP回復 +50', desc: 'HPを50回復する。', effect: 'heal', value: 50, price: 60, persistent: true },
+      { id: 'w6_max_hp_20_1', name: '最大HP +20', desc: '最大HPを20増やし、同時に回復する。', effect: 'maxHp', value: 20, price: 60, persistent: true },
+      { id: 'w6_weapon_upgrade_1', name: '武器強化', desc: '進化前の武器を1つ選び、1段階強化する。', effect: 'weaponUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w6_passive_upgrade_1', name: '装備強化', desc: '装備を1つ選び、1段階強化する。', effect: 'passiveUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w6_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w6_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    7: [
+      { id: 'w7_heal_100_1', name: 'HP回復 +100', desc: 'HPを100回復する。', effect: 'heal', value: 100, price: 150, persistent: true },
+      { id: 'w7_max_hp_40_1', name: '最大HP +40', desc: '最大HPを40増やし、同時に回復する。', effect: 'maxHp', value: 40, price: 150, persistent: true },
+      { id: 'w7_weapon_upgrade_1', name: '武器強化', desc: '進化前の武器を1つ選び、1段階強化する。', effect: 'weaponUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w7_passive_upgrade_1', name: '装備強化', desc: '装備を1つ選び、1段階強化する。', effect: 'passiveUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w7_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w7_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    8: [
+      { id: 'w8_heal_100_1', name: 'HP回復 +100', desc: 'HPを100回復する。', effect: 'heal', value: 100, price: 150, persistent: true },
+      { id: 'w8_max_hp_40_1', name: '最大HP +40', desc: '最大HPを40増やし、同時に回復する。', effect: 'maxHp', value: 40, price: 150, persistent: true },
+      { id: 'w8_weapon_upgrade_1', name: '武器強化', desc: '進化前の武器を1つ選び、1段階強化する。', effect: 'weaponUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w8_passive_upgrade_1', name: '装備強化', desc: '装備を1つ選び、1段階強化する。', effect: 'passiveUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w8_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w8_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    9: [
+      { id: 'w9_heal_100_1', name: 'HP回復 +100', desc: 'HPを100回復する。', effect: 'heal', value: 100, price: 150, persistent: true },
+      { id: 'w9_max_hp_40_1', name: '最大HP +40', desc: '最大HPを40増やし、同時に回復する。', effect: 'maxHp', value: 40, price: 150, persistent: true },
+      { id: 'w9_weapon_upgrade_1', name: '武器強化', desc: '進化前の武器を1つ選び、1段階強化する。', effect: 'weaponUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w9_passive_upgrade_1', name: '装備強化', desc: '装備を1つ選び、1段階強化する。', effect: 'passiveUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w9_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w9_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    10: [
+      { id: 'w10_heal_200_1', name: 'HP回復 +200', desc: 'HPを200回復する。', effect: 'heal', value: 200, price: 350, persistent: true },
+      { id: 'w10_max_hp_80_1', name: '最大HP +80', desc: '最大HPを80増やし、同時に回復する。', effect: 'maxHp', value: 80, price: 350, persistent: true },
+      { id: 'w10_weapon_upgrade_1', name: '武器強化', desc: '進化前の武器を1つ選び、1段階強化する。', effect: 'weaponUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w10_passive_upgrade_1', name: '装備強化', desc: '装備を1つ選び、1段階強化する。', effect: 'passiveUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w10_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w10_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    11: [
+      { id: 'w11_heal_200_1', name: 'HP回復 +200', desc: 'HPを200回復する。', effect: 'heal', value: 200, price: 350, persistent: true },
+      { id: 'w11_max_hp_80_1', name: '最大HP +80', desc: '最大HPを80増やし、同時に回復する。', effect: 'maxHp', value: 80, price: 350, persistent: true },
+      { id: 'w11_weapon_upgrade_1', name: '武器強化', desc: '進化前の武器を1つ選び、1段階強化する。', effect: 'weaponUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w11_passive_upgrade_1', name: '装備強化', desc: '装備を1つ選び、1段階強化する。', effect: 'passiveUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w11_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w11_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    12: [
+      { id: 'w12_heal_200_1', name: 'HP回復 +200', desc: 'HPを200回復する。', effect: 'heal', value: 200, price: 350, persistent: true },
+      { id: 'w12_max_hp_80_1', name: '最大HP +80', desc: '最大HPを80増やし、同時に回復する。', effect: 'maxHp', value: 80, price: 350, persistent: true },
+      { id: 'w12_weapon_upgrade_1', name: '武器強化', desc: '進化前の武器を1つ選び、1段階強化する。', effect: 'weaponUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w12_passive_upgrade_1', name: '装備強化', desc: '装備を1つ選び、1段階強化する。', effect: 'passiveUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w12_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w12_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    13: [
+      { id: 'w13_heal_500_1', name: 'HP回復 +500', desc: 'HPを500回復する。', effect: 'heal', value: 500, price: 500, persistent: true },
+      { id: 'w13_max_hp_200_1', name: '最大HP +200', desc: '最大HPを200増やし、同時に回復する。', effect: 'maxHp', value: 200, price: 1000, persistent: true },
+      { id: 'w13_weapon_upgrade_1', name: '武器強化', desc: '進化前の武器を1つ選び、1段階強化する。', effect: 'weaponUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w13_passive_upgrade_1', name: '装備強化', desc: '装備を1つ選び、1段階強化する。', effect: 'passiveUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w13_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w13_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    14: [
+      { id: 'w14_heal_500_1', name: 'HP回復 +500', desc: 'HPを500回復する。', effect: 'heal', value: 500, price: 500, persistent: true },
+      { id: 'w14_max_hp_200_1', name: '最大HP +200', desc: '最大HPを200増やし、同時に回復する。', effect: 'maxHp', value: 200, price: 1000, persistent: true },
+      { id: 'w14_weapon_upgrade_1', name: '武器強化', desc: '進化前の武器を1つ選び、1段階強化する。', effect: 'weaponUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w14_passive_upgrade_1', name: '装備強化', desc: '装備を1つ選び、1段階強化する。', effect: 'passiveUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w14_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w14_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ],
+    15: [
+      { id: 'w15_heal_500_1', name: 'HP回復 +500', desc: 'HPを500回復する。', effect: 'heal', value: 500, price: 500, persistent: true },
+      { id: 'w15_max_hp_200_1', name: '最大HP +200', desc: '最大HPを200増やし、同時に回復する。', effect: 'maxHp', value: 200, price: 1000, persistent: true },
+      { id: 'w15_weapon_upgrade_1', name: '武器強化', desc: '進化前の武器を1つ選び、1段階強化する。', effect: 'weaponUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w15_passive_upgrade_1', name: '装備強化', desc: '装備を1つ選び、1段階強化する。', effect: 'passiveUpgrade', value: 1, price: 150, persistent: true },
+      { id: 'w15_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
+      { id: 'w15_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
+    ]
+  });
+}
 
 function makeShopStock(id, name, desc, effect, value, price, persistent) {
   return { id, name, desc, effect, value, price, persistent: !!persistent };
@@ -394,19 +456,10 @@ function updateShopHeaderUi(items) {
 
   const wave = getCurrentShopWave();
   const gold = Math.max(0, Number(STATE.player?.gold || 0));
-  const carry = items.filter((item) => item.persistent).length;
-  const limited = items.filter((item) => !item.persistent).length;
-  const unlocked = Object.values(STATE.shopStock || {}).filter((item) => item && !STATE.shopPurchased?.[item.id]).length;
 
   waveEl.textContent = `Wave ${wave} ショップ`;
-  subEl.textContent = `購入すると商品は消えます。持ち越し品は次のショップにも残り、今回限定品はこのWaveでのみ販売されます。`;
-  metaEl.innerHTML = `
-    <div class="shopBadge shopBadgeGold">所持Gold: ${gold}G</div>
-    <div class="shopBadge">販売中: ${items.length}</div>
-    <div class="shopBadge shopBadgeCarry">持ち越し: ${carry}</div>
-    <div class="shopBadge shopBadgeLimited">今回限定: ${limited}</div>
-    <div class="shopBadge">未購入在庫: ${unlocked}</div>
-  `;
+  subEl.textContent = `購入すると商品は消えます。所持Goldを見ながら好きな順で購入してください。`;
+  metaEl.innerHTML = `<div class="shopBadge shopBadgeGold">所持Gold: ${gold}G</div>`;
 }
 
 function getShopItemBadges(item, canBuy) {
