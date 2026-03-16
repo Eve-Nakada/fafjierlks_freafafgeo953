@@ -22,13 +22,9 @@ function getCurrentWaveDef() {
   if (waves.length === 0) return null;
 
   let current = waves[0];
-
   for (const wave of waves) {
-    if (STATE.elapsed >= (wave.at || 0)) {
-      current = wave;
-    }
+    if (STATE.elapsed >= (wave.at || 0)) current = wave;
   }
-
   return current;
 }
 
@@ -51,8 +47,7 @@ function updateWaves(dt) {
   }
 
   wave._spawnTimer -= dt;
-
-  if (wave._spawnTimer <= 0) {
+  if ((wave.count || 0) > 0 && wave._spawnTimer <= 0) {
     wave._spawnTimer = wave.spawnInterval || 1.0;
     spawnWaveEnemies(wave);
   }
@@ -64,22 +59,67 @@ function updateWaves(dt) {
 }
 
 function spawnWaveEnemies(wave) {
-  const count = wave.count || 1;
-  const enemyTypes = wave.enemyTypes || [];
-  if (enemyTypes.length === 0) return;
+  const spawnList = buildWaveSpawnList(wave);
+  if (spawnList.length <= 0) return;
+  spawnByFormation(wave, shuffleCopy(spawnList));
+}
 
-  const guaranteed = [...(wave.guaranteedTypes || [])];
-  const themeIndex = wave.index || 1;
-  if (themeIndex === 4 && !guaranteed.includes('moray')) guaranteed.push('moray');
-  if (themeIndex === 5 && !guaranteed.includes('electric_eel')) guaranteed.push('electric_eel');
-  if (themeIndex >= 8 && !guaranteed.includes('deep_ghost')) guaranteed.push('deep_ghost');
+function buildWaveSpawnList(wave) {
+  const count = Math.max(0, wave.count || 0);
+  const enemyTypes = Array.isArray(wave.enemyTypes) ? wave.enemyTypes.filter(Boolean) : [];
+  if (count <= 0 || enemyTypes.length <= 0) return [];
 
-  const spawnList = guaranteed.slice(0, count);
-  while (spawnList.length < count) {
-    spawnList.push(pick(enemyTypes));
+  const spawnList = [];
+  const usedCounts = {};
+
+  for (const typeId of (wave.guaranteedTypes || [])) {
+    if (!typeId) continue;
+    if (spawnList.length >= count) break;
+    spawnList.push(typeId);
+    usedCounts[typeId] = (usedCounts[typeId] || 0) + 1;
   }
 
-  spawnByFormation(wave, spawnList);
+  while (spawnList.length < count) {
+    const picked = pickWaveEnemyType(wave, usedCounts, enemyTypes);
+    spawnList.push(picked);
+    usedCounts[picked] = (usedCounts[picked] || 0) + 1;
+  }
+
+  return spawnList;
+}
+
+function pickWaveEnemyType(wave, usedCounts, enemyTypes) {
+  const weights = wave.enemyWeights || {};
+  const weighted = [];
+
+  for (const typeId of enemyTypes) {
+    const baseWeight = Math.max(0.01, Number(weights[typeId] || 1));
+    const alreadyUsed = usedCounts[typeId] || 0;
+    const diversityBias = 1 / (1 + alreadyUsed * 0.85);
+    weighted.push({ typeId, weight: baseWeight * diversityBias });
+  }
+
+  let total = 0;
+  for (const item of weighted) total += item.weight;
+  let roll = Math.random() * total;
+
+  for (const item of weighted) {
+    roll -= item.weight;
+    if (roll <= 0) return item.typeId;
+  }
+
+  return enemyTypes[enemyTypes.length - 1];
+}
+
+function shuffleCopy(arr) {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = out[i];
+    out[i] = out[j];
+    out[j] = tmp;
+  }
+  return out;
 }
 
 function spawnByFormation(wave, spawnList) {
