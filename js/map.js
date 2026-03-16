@@ -294,23 +294,46 @@ function isPointInsideTrap(x, y, r = 0) {
 }
 
 function getWaveCoinCount(waveIndex) {
-  // Waveごとに増加
-  return Math.min(4 + Math.max(0, waveIndex - 1) * 2, 24);
+  const wave = (STATE.waveData?.waves || []).find((w) => (w.index || 0) === waveIndex);
+  if (!wave) return 0;
+  const cfg = wave.mapCoins || {};
+  return Math.max(0, Number(cfg.normal || 0)) + Math.max(0, Number(cfg.rare || 0));
 }
 
-function findRandomCoinPosition() {
+function getMapCoinRadius(kind) {
+  return kind === 'rare' ? 16 : 13;
+}
+
+function getMapCoinValue(kind) {
+  return kind === 'rare' ? 100 : 10;
+}
+
+function getMapCoinFrameIndex(kind) {
+  return kind === 'rare' ? 1 : 0;
+}
+
+function getMapCoinGlowColor(kind) {
+  return kind === 'rare' ? '#ffed8a' : '#ffd166';
+}
+
+function findRandomCoinPosition(kind = 'normal') {
   const margin = 72;
-  const r = 12;
+  const r = getMapCoinRadius(kind);
+  const coins = Array.isArray(STATE.mapCoins) ? STATE.mapCoins : [];
+  const enemies = Array.isArray(STATE.enemies) ? STATE.enemies : [];
 
   for (let i = 0; i < 80; i++) {
     const x = rand(margin, STATE.world.width - margin);
     const y = rand(margin, STATE.world.height - margin);
 
-    if (isPointInsideObstacle(x, y, r + 6)) continue;
-    if (isPointInsideTrap(x, y, r + 6)) continue;
+    if (isPointInsideObstacle(x, y, r + 8)) continue;
+    if (isPointInsideTrap(x, y, r + 8)) continue;
 
-    const nearEnemy = STATE.enemies.some(e => dist(x, y, e.x, e.y) < 80 + e.r);
+    const nearEnemy = enemies.some((e) => dist(x, y, e.x, e.y) < 84 + r + (e.r || 0));
     if (nearEnemy) continue;
+
+    const nearCoin = coins.some((coin) => dist(x, y, coin.x, coin.y) < r + (coin.r || 12) + 22);
+    if (nearCoin) continue;
 
     return { x, y };
   }
@@ -321,20 +344,30 @@ function findRandomCoinPosition() {
   };
 }
 
-function resetWaveCoins(waveIndex) {
-  const count = getWaveCoinCount(waveIndex);
-  STATE.mapCoins = [];
-
-  for (let i = 0; i < count; i++) {
-    const pos = findRandomCoinPosition();
-    STATE.mapCoins.push({
-      x: pos.x,
-      y: pos.y,
-      r: 12,
-      value: 10,
-      bobSeed: Math.random() * Math.PI * 2
-    });
+function spawnMapCoin(kind = 'normal') {
+  if (!Array.isArray(STATE.mapCoins)) {
+    STATE.mapCoins = [];
   }
+
+  const pos = findRandomCoinPosition(kind);
+  const value = getMapCoinValue(kind);
+  const r = getMapCoinRadius(kind);
+
+  STATE.mapCoins.push({
+    kind,
+    x: pos.x,
+    y: pos.y,
+    r,
+    value,
+    frameIndex: getMapCoinFrameIndex(kind),
+    bobSeed: Math.random() * Math.PI * 2,
+    rotateSeed: Math.random() * Math.PI * 2,
+    glowColor: getMapCoinGlowColor(kind)
+  });
+}
+
+function resetWaveCoins() {
+  // Wave切替ではリセットしない。ゲーム全体の開始時は resetWaveState 側で空になる。
 }
 
 function updateMapCoins(dt) {
@@ -343,11 +376,12 @@ function updateMapCoins(dt) {
 
   const next = [];
 
-  for (const coin of STATE.mapCoins) {
-    if (dist(coin.x, coin.y, p.x, p.y) <= coin.r + p.r + 6) {
-      p.gold = (p.gold || 0) + (coin.value || 10);
-      STATE.score += (coin.value || 10) * 2;
-      addEffect(coin.x, coin.y, 20, "#ffd166", 0.18, 0.24);
+  for (const coin of STATE.mapCoins || []) {
+    if (dist(coin.x, coin.y, p.x, p.y) <= (coin.r || 12) + p.r + 6) {
+      const gain = coin.value || 10;
+      p.gold = (p.gold || 0) + gain;
+      STATE.score += gain * 2;
+      addEffect(coin.x, coin.y, coin.kind === 'rare' ? 28 : 20, coin.kind === 'rare' ? '#ffeb99' : '#ffd166', 0.22, 0.28);
       updateHUD();
       continue;
     }
@@ -358,31 +392,59 @@ function updateMapCoins(dt) {
   STATE.mapCoins = next;
 }
 
+function renderMapCoinFallback(ctx, coin, x, y) {
+  const glow = coin.kind === 'rare' ? 'rgba(255, 235, 153, 0.28)' : 'rgba(255, 215, 90, 0.22)';
+  const body = coin.kind === 'rare' ? '#ffe27a' : '#ffd166';
+  const rim = coin.kind === 'rare' ? '#fff6bf' : '#fff1a8';
+
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(x, y, (coin.r || 12) + 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.arc(x, y, coin.r || 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = rim;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.fillRect(x - 2, y - 6, 4, 12);
+}
+
 function renderMapCoins(ctx) {
   const cam = STATE.camera;
+  const spriteOk = !!STATE.assets?.map_gold?.img;
 
-  for (const coin of STATE.mapCoins) {
+  for (const coin of STATE.mapCoins || []) {
+    const bobY = Math.sin(STATE.time * 3 + (coin.bobSeed || 0)) * 3;
     const x = coin.x - cam.x;
-    const y = coin.y - cam.y + Math.sin(STATE.time * 3 + (coin.bobSeed || 0)) * 3;
+    const y = coin.y - cam.y + bobY;
 
     ctx.save();
 
-    ctx.fillStyle = "rgba(255, 215, 90, 0.22)";
+    ctx.fillStyle = coin.kind === 'rare' ? 'rgba(255, 235, 153, 0.24)' : 'rgba(255, 215, 90, 0.18)';
     ctx.beginPath();
-    ctx.arc(x, y, coin.r + 6, 0, Math.PI * 2);
+    ctx.ellipse(x, y + (coin.r || 12) + 5, (coin.r || 12) + 7, 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = "#ffd166";
-    ctx.beginPath();
-    ctx.arc(x, y, coin.r, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = "#fff1a8";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(255,255,255,0.65)";
-    ctx.fillRect(x - 2, y - 6, 4, 12);
+    if (spriteOk) {
+      const drawSize = coin.kind === 'rare' ? 34 : 28;
+      drawSpriteFrame(
+        ctx,
+        'map_gold',
+        coin.frameIndex || 0,
+        x - drawSize * 0.5,
+        y - drawSize * 0.5,
+        drawSize,
+        drawSize
+      );
+    } else {
+      renderMapCoinFallback(ctx, coin, x, y);
+    }
 
     ctx.restore();
   }

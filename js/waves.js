@@ -8,6 +8,7 @@ function resetWaveState() {
     delete wave._spawnTimer;
     delete wave._bossSpawned;
     delete wave._leviathanSpawned;
+    delete wave._mapCoinsSpawned;
   }
   STATE.lastShopWave = 0;
   STATE.mapCoins = [];
@@ -38,8 +39,13 @@ function updateWaves(dt) {
   const newWaveIndex = wave.index || 1;
   const prevWaveIndex = STATE.currentWave || 1;
   STATE.currentWave = newWaveIndex;
+
   if (newWaveIndex !== prevWaveIndex) {
-    resetWaveCoins(newWaveIndex);
+    addWaveCoins(newWaveIndex);
+  }
+
+  if (!wave._mapCoinsSpawned) {
+    addWaveCoins(newWaveIndex);
   }
 
   if (wave._spawnTimer == null) {
@@ -56,6 +62,29 @@ function updateWaves(dt) {
   handleWaveLeviathanSpawn(wave);
   handleWaveShop(newWaveIndex, prevWaveIndex);
   handleClearCheck();
+}
+
+function addWaveCoins(waveIndex) {
+  const wave = getWaveDefs().find((w) => (w.index || 0) === waveIndex);
+  if (!wave || wave._mapCoinsSpawned) return;
+
+  wave._mapCoinsSpawned = true;
+
+  const cfg = wave.mapCoins || {};
+  const normalCount = Math.max(0, Number(cfg.normal || 0));
+  const rareCount = Math.max(0, Number(cfg.rare || 0));
+
+  for (let i = 0; i < normalCount; i++) {
+    if (typeof spawnMapCoin === 'function') {
+      spawnMapCoin('normal');
+    }
+  }
+
+  for (let i = 0; i < rareCount; i++) {
+    if (typeof spawnMapCoin === 'function') {
+      spawnMapCoin('rare');
+    }
+  }
 }
 
 function spawnWaveEnemies(wave) {
@@ -239,16 +268,17 @@ function handleWaveLeviathanSpawn(wave) {
 function handleWaveShop(newWaveIndex, prevWaveIndex) {
   if (newWaveIndex <= 1) return;
   if (newWaveIndex === prevWaveIndex) return;
-  if (STATE.shopOpen) return;
-  if (STATE.lastShopWave === newWaveIndex) return;
+  if (STATE.lastShopWave >= newWaveIndex) return;
 
   STATE.lastShopWave = newWaveIndex;
-  openShop();
+  if (typeof openShop === 'function') openShop();
 }
 
 function handleClearCheck() {
-  const clearTime = STATE.waveData?.clearTime || 480;
-  if (STATE.elapsed >= clearTime) {
-    endGame(true);
+  if (STATE.isGameClear) return;
+  const clearTime = Number(STATE.waveData?.clearTime || 0);
+  if (clearTime > 0 && STATE.elapsed >= clearTime) {
+    STATE.isGameClear = true;
+    if (typeof onGameClear === 'function') onGameClear();
   }
 }

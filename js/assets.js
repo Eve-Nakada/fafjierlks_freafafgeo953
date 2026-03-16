@@ -38,6 +38,21 @@ async function loadAssets() {
     STATE.assets.xp_gems.cols = 2;
     STATE.assets.xp_gems.rows = 2;
   }
+
+  if (!STATE.assets.map_gold) {
+    STATE.assets.map_gold = {
+      src: 'images/map_gold.png',
+      cols: 2,
+      rows: 1,
+      img: await loadImage('images/map_gold.png')
+    };
+  } else {
+    STATE.assets.map_gold.cols = STATE.assets.map_gold.cols || 2;
+    STATE.assets.map_gold.rows = STATE.assets.map_gold.rows || 1;
+    if (!STATE.assets.map_gold.img && STATE.assets.map_gold.src) {
+      STATE.assets.map_gold.img = await loadImage(STATE.assets.map_gold.src);
+    }
+  }
 }
 
 function createFallbackXpGemSheet() {
