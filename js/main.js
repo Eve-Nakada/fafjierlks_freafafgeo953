@@ -117,11 +117,11 @@ function startGame(initialWeaponId) {
 }
 
 function resetRunShopState() {
-  if (STATE.gameData) {
-    STATE.gameData.shopPriceMul = STATE.baseShopPriceMul || 1;
-  }
+  STATE.shopStock = {};
+  STATE.shopPurchased = {};
+  STATE.shopUnlockedWaves = {};
+  STATE.shopSelectionOpen = false;
   STATE._shopDisplayItems = null;
-  STATE.shopVacuumBoughtByWave = {};
 }
 
 // ===============================

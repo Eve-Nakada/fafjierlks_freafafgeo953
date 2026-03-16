@@ -10,7 +10,7 @@
       "enemyTypes": ["small_fish"],
       "guaranteedTypes": ["small_fish", "small_fish"],
       "formation": "scatter",
-      "mapCoins": { "normal": 2, "rare": 0 }
+      "mapCoins": { "normal": 4, "rare": 0 }
     },
     {
       "index": 2,
@@ -21,7 +21,7 @@
       "enemyTypes": ["small_fish"],
       "guaranteedTypes": ["small_fish", "small_fish", "small_fish"],
       "formation": "scatter",
-      "mapCoins": { "normal": 2, "rare": 0 }
+      "mapCoins": { "normal": 4, "rare": 0 }
     },
     {
       "index": 3,
@@ -36,7 +36,7 @@
         "jellyfish": 1
       },
       "formation": "scatter",
-      "mapCoins": { "normal": 2, "rare": 0 }
+      "mapCoins": { "normal": 5, "rare": 0 }
     },
     {
       "index": 4,
@@ -51,7 +51,7 @@
         "jellyfish": 4
       },
       "formation": "scatter",
-      "mapCoins": { "normal": 3, "rare": 0 }
+      "mapCoins": { "normal": 5, "rare": 0 }
     },
     {
       "index": 5,
@@ -67,7 +67,7 @@
         "crab": 3
       },
       "formation": "scatter",
-      "mapCoins": { "normal": 3, "rare": 0 }
+      "mapCoins": { "normal": 6, "rare": 0 }
     },
     {
       "index": 6,
@@ -84,7 +84,7 @@
         "ray": 2
       },
       "formation": "side_sweep",
-      "mapCoins": { "normal": 3, "rare": 0 }
+      "mapCoins": { "normal": 6, "rare": 1 }
     },
     {
       "index": 7,
@@ -101,7 +101,7 @@
         "ray": 3
       },
       "formation": "side_sweep",
-      "mapCoins": { "normal": 4, "rare": 0 }
+      "mapCoins": { "normal": 7, "rare": 1 }
     },
     {
       "index": 8,
@@ -118,7 +118,7 @@
         "moray": 3
       },
       "formation": "pinch_cross",
-      "mapCoins": { "normal": 4, "rare": 0 }
+      "mapCoins": { "normal": 7, "rare": 1 }
     },
     {
       "index": 9,
@@ -135,7 +135,7 @@
         "electric_eel": 3
       },
       "formation": "pinch_cross",
-      "mapCoins": { "normal": 4, "rare": 0 }
+      "mapCoins": { "normal": 8, "rare": 2 }
     },
     {
       "index": 10,
@@ -152,7 +152,7 @@
         "shrimp": 2
       },
       "formation": "ranged_line",
-      "mapCoins": { "normal": 5, "rare": 0 }
+      "mapCoins": { "normal": 8, "rare": 2 }
     },
     {
       "index": 11,
@@ -169,7 +169,7 @@
         "deep_fish": 5
       },
       "formation": "ranged_line",
-      "mapCoins": { "normal": 5, "rare": 0 }
+      "mapCoins": { "normal": 10, "rare": 3 }
     },
     {
       "index": 12,
@@ -186,7 +186,7 @@
         "deep_fish": 4
       },
       "formation": "encircle",
-      "mapCoins": { "normal": 6, "rare": 1 }
+      "mapCoins": { "normal": 10, "rare": 3 }
     },
     {
       "index": 13,
@@ -203,7 +203,7 @@
         "deep_ghost": 4
       },
       "formation": "encircle",
-      "mapCoins": { "normal": 6, "rare": 1 }
+      "mapCoins": { "normal": 12, "rare": 4 }
     },
     {
       "index": 14,
@@ -220,7 +220,7 @@
         "electric_eel": 2
       },
       "formation": "rush_pack",
-      "mapCoins": { "normal": 7, "rare": 2 },
+      "mapCoins": { "normal": 12, "rare": 5 },
       "boss": {
         "at": 654,
         "typeId": "boss_manta"
@@ -241,7 +241,7 @@
         "electric_eel": 2
       },
       "formation": "finale_mix",
-      "mapCoins": { "normal": 8, "rare": 2 }
+      "mapCoins": { "normal": 15, "rare": 6 }
     },
     {
       "index": 16,
@@ -252,7 +252,7 @@
       "enemyTypes": [],
       "guaranteedTypes": [],
       "formation": "boss_only",
-      "mapCoins": { "normal": 8, "rare": 3 },
+      "mapCoins": { "normal": 0, "rare": 0 },
       "leviathan": {
         "at": 792,
         "typeId": "leviathan"
