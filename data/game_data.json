@@ -69,7 +69,7 @@
           }
         }
       ],
-      "growthDesc": "単発射撃から、拡散トライデント型か高貫通型へ派生する。",
+      "growthDesc": "通常Lv1→Lv3、第1進化Lv1→Lv4、第2進化Lv1→Lv5。単発射撃から、拡散トライデント型か高貫通型へ派生する。",
       "feel": "狙った敵を素早く抜く主力。短い連射感と強い初速で、最初の一本として扱いやすい。",
       "synergies": [
         {
@@ -84,7 +84,135 @@
           "passiveId": "chart",
           "effect": "トライデント分岐の条件。広く拾って早進化しやすい。"
         }
-      ]
+      ],
+      "balance": {
+        "stages": [
+          {
+            "key": "normal",
+            "name": "通常",
+            "levelLabels": [
+              "単発",
+              "ダメージ +4",
+              "ダメージ +8 / 進化可能"
+            ],
+            "levels": [
+              {
+                "damageBonus": 0,
+                "projectileCount": 1,
+                "pierce": 1,
+                "projectileLife": 1.2,
+                "projectileRadius": 6
+              },
+              {
+                "damageBonus": 4,
+                "projectileCount": 1,
+                "pierce": 1,
+                "projectileLife": 1.2,
+                "projectileRadius": 6
+              },
+              {
+                "damageBonus": 8,
+                "projectileCount": 1,
+                "pierce": 1,
+                "projectileLife": 1.2,
+                "projectileRadius": 6
+              }
+            ]
+          },
+          {
+            "key": "evolution1",
+            "name": "第1進化",
+            "levelLabels": [
+              "ダメージ +10 / 3方向",
+              "ダメージ +12 / 4方向",
+              "ダメージ +14 / 5方向",
+              "ダメージ +16 / 6方向"
+            ],
+            "levels": [
+              {
+                "damageBonus": 10,
+                "projectileCount": 3,
+                "spreadStep": 0.2,
+                "projectileLife": 1.55,
+                "projectileRadius": 8,
+                "pierce": 2
+              },
+              {
+                "damageBonus": 12,
+                "projectileCount": 4,
+                "spreadStep": 0.19,
+                "projectileLife": 1.58,
+                "projectileRadius": 8,
+                "pierce": 2
+              },
+              {
+                "damageBonus": 14,
+                "projectileCount": 5,
+                "spreadStep": 0.18,
+                "projectileLife": 1.62,
+                "projectileRadius": 8,
+                "pierce": 2
+              },
+              {
+                "damageBonus": 16,
+                "projectileCount": 6,
+                "spreadStep": 0.17,
+                "projectileLife": 1.66,
+                "projectileRadius": 8,
+                "pierce": 2
+              }
+            ]
+          },
+          {
+            "key": "evolution2",
+            "name": "第2進化",
+            "levelLabels": [
+              "ダメージ +18 / 12方向 / 1貫通",
+              "ダメージ +20 / 12方向 / 2貫通",
+              "ダメージ +21 / 12方向 / 3貫通",
+              "ダメージ +22 / 12方向 / 4貫通",
+              "ダメージ +25 / 12方向 / 超貫通"
+            ],
+            "levels": [
+              {
+                "damageBonus": 18,
+                "projectileCount": 12,
+                "projectileLife": 1.9,
+                "projectileRadius": 9,
+                "pierce": 1
+              },
+              {
+                "damageBonus": 20,
+                "projectileCount": 12,
+                "projectileLife": 1.95,
+                "projectileRadius": 9,
+                "pierce": 2
+              },
+              {
+                "damageBonus": 21,
+                "projectileCount": 12,
+                "projectileLife": 2.0,
+                "projectileRadius": 9,
+                "pierce": 3
+              },
+              {
+                "damageBonus": 22,
+                "projectileCount": 12,
+                "projectileLife": 2.05,
+                "projectileRadius": 9,
+                "pierce": 4
+              },
+              {
+                "damageBonus": 25,
+                "projectileCount": 12,
+                "projectileLife": 2.1,
+                "projectileRadius": 10,
+                "pierce": 999
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "water_cutter",
@@ -120,7 +248,7 @@
           }
         }
       ],
-      "growthDesc": "自機周囲の刃から、周回刃型か大外周リング型へ派生する。",
+      "growthDesc": "通常Lv1→Lv3、第1進化Lv1→Lv4、第2進化Lv1→Lv5。自機周囲の刃から、周回刃型か大外周リング型へ派生する。",
       "feel": "常に周囲を削る近接武器。密着時の削り感と円運動の安心感が強い。",
       "synergies": [
         {
@@ -135,7 +263,132 @@
           "passiveId": "shell",
           "effect": "接近運用と相性が良く、被弾前提でも粘れる。"
         }
-      ]
+      ],
+      "balance": {
+        "stages": [
+          {
+            "key": "normal",
+            "name": "通常",
+            "levelLabels": [
+              "周囲カッター1枚",
+              "ダメージ +3",
+              "ダメージ +6 / 進化可能"
+            ],
+            "levels": [
+              {
+                "damageBonus": 0,
+                "orbitCount": 1,
+                "orbitRadius": 62,
+                "orbitSpeed": 2.4,
+                "orbitDamageMul": 0.45
+              },
+              {
+                "damageBonus": 3,
+                "orbitCount": 1,
+                "orbitRadius": 62,
+                "orbitSpeed": 2.45,
+                "orbitDamageMul": 0.46
+              },
+              {
+                "damageBonus": 6,
+                "orbitCount": 1,
+                "orbitRadius": 64,
+                "orbitSpeed": 2.5,
+                "orbitDamageMul": 0.47
+              }
+            ]
+          },
+          {
+            "key": "evolution1",
+            "name": "第1進化",
+            "levelLabels": [
+              "ダメージ +8 / カッター2枚",
+              "ダメージ +10 / カッター3枚",
+              "ダメージ +12 / カッター4枚",
+              "ダメージ +14 / カッター5枚"
+            ],
+            "levels": [
+              {
+                "damageBonus": 8,
+                "orbitCount": 2,
+                "orbitRadius": 88,
+                "orbitSpeed": 3.5,
+                "orbitDamageMul": 0.46
+              },
+              {
+                "damageBonus": 10,
+                "orbitCount": 3,
+                "orbitRadius": 88,
+                "orbitSpeed": 3.55,
+                "orbitDamageMul": 0.47
+              },
+              {
+                "damageBonus": 12,
+                "orbitCount": 4,
+                "orbitRadius": 88,
+                "orbitSpeed": 3.6,
+                "orbitDamageMul": 0.48
+              },
+              {
+                "damageBonus": 14,
+                "orbitCount": 5,
+                "orbitRadius": 88,
+                "orbitSpeed": 3.65,
+                "orbitDamageMul": 0.49
+              }
+            ]
+          },
+          {
+            "key": "evolution2",
+            "name": "第2進化",
+            "levelLabels": [
+              "ダメージ +16 / 高速回転",
+              "ダメージ +18 / カッター6枚",
+              "ダメージ +20 / カッター7枚",
+              "ダメージ +22 / カッター8枚",
+              "ダメージ +25 / 公転 + 自転"
+            ],
+            "levels": [
+              {
+                "damageBonus": 16,
+                "orbitCount": 5,
+                "orbitRadius": 110,
+                "orbitSpeed": 4.8,
+                "orbitDamageMul": 0.48
+              },
+              {
+                "damageBonus": 18,
+                "orbitCount": 6,
+                "orbitRadius": 110,
+                "orbitSpeed": 4.85,
+                "orbitDamageMul": 0.48
+              },
+              {
+                "damageBonus": 20,
+                "orbitCount": 7,
+                "orbitRadius": 110,
+                "orbitSpeed": 4.9,
+                "orbitDamageMul": 0.49
+              },
+              {
+                "damageBonus": 22,
+                "orbitCount": 8,
+                "orbitRadius": 110,
+                "orbitSpeed": 5.0,
+                "orbitDamageMul": 0.5
+              },
+              {
+                "damageBonus": 25,
+                "orbitCount": 8,
+                "orbitRadius": 110,
+                "orbitSpeed": 5.2,
+                "orbitDamageMul": 0.52,
+                "orbitSelfSpin": true
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "jelly_field",
@@ -171,7 +424,7 @@
           }
         }
       ],
-      "growthDesc": "周囲電撃から、連鎖型か広域ストーム型へ派生する。",
+      "growthDesc": "通常Lv1→Lv3、第1進化Lv1→Lv4、第2進化Lv1→Lv5。周囲電撃から、連鎖型か広域ストーム型へ派生する。",
       "feel": "足元を制圧する継続ダメージ型。敵が触れた瞬間からじわっと削れる。",
       "synergies": [
         {
@@ -186,7 +439,124 @@
           "passiveId": "core",
           "effect": "連鎖やストームの継続ダメージがしっかり伸びる。"
         }
-      ]
+      ],
+      "balance": {
+        "stages": [
+          {
+            "key": "normal",
+            "name": "通常",
+            "levelLabels": [
+              "電撃フィールド小",
+              "ダメージ +2 / 範囲拡大",
+              "ダメージ +4 / 進化可能"
+            ],
+            "levels": [
+              {
+                "damageBonus": 0,
+                "fieldRadius": 68,
+                "chainJumps": 0,
+                "fieldWaves": 0
+              },
+              {
+                "damageBonus": 2,
+                "fieldRadius": 84,
+                "chainJumps": 0,
+                "fieldWaves": 0
+              },
+              {
+                "damageBonus": 4,
+                "fieldRadius": 84,
+                "chainJumps": 0,
+                "fieldWaves": 0
+              }
+            ]
+          },
+          {
+            "key": "evolution1",
+            "name": "第1進化",
+            "levelLabels": [
+              "ダメージ +6 / チェイン2体",
+              "ダメージ +8 / チェイン3体",
+              "ダメージ +10 / チェイン4体",
+              "ダメージ +12 / チェイン5体"
+            ],
+            "levels": [
+              {
+                "damageBonus": 6,
+                "fieldRadius": 96,
+                "chainJumps": 2,
+                "chainRange": 140
+              },
+              {
+                "damageBonus": 8,
+                "fieldRadius": 96,
+                "chainJumps": 3,
+                "chainRange": 145
+              },
+              {
+                "damageBonus": 10,
+                "fieldRadius": 96,
+                "chainJumps": 4,
+                "chainRange": 150
+              },
+              {
+                "damageBonus": 12,
+                "fieldRadius": 96,
+                "chainJumps": 5,
+                "chainRange": 155
+              }
+            ]
+          },
+          {
+            "key": "evolution2",
+            "name": "第2進化",
+            "levelLabels": [
+              "ダメージ +14 / チェイン6体",
+              "ダメージ +16 / チェイン7体",
+              "ダメージ +18 / チェイン8体",
+              "ダメージ +20 / チェイン9体",
+              "ダメージ +24 / 4方向波状電撃"
+            ],
+            "levels": [
+              {
+                "damageBonus": 14,
+                "fieldRadius": 108,
+                "chainJumps": 6,
+                "chainRange": 160,
+                "fieldWaves": 0
+              },
+              {
+                "damageBonus": 16,
+                "fieldRadius": 108,
+                "chainJumps": 7,
+                "chainRange": 165,
+                "fieldWaves": 0
+              },
+              {
+                "damageBonus": 18,
+                "fieldRadius": 108,
+                "chainJumps": 8,
+                "chainRange": 170,
+                "fieldWaves": 0
+              },
+              {
+                "damageBonus": 20,
+                "fieldRadius": 108,
+                "chainJumps": 9,
+                "chainRange": 175,
+                "fieldWaves": 0
+              },
+              {
+                "damageBonus": 24,
+                "fieldRadius": 108,
+                "chainJumps": 9,
+                "chainRange": 180,
+                "fieldWaves": 4
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "mine",
@@ -222,7 +592,7 @@
           }
         }
       ],
-      "growthDesc": "設置後に爆発する兵装。分岐により大爆発型か拡散設置型へ進化する。",
+      "growthDesc": "通常Lv1→Lv3、第1進化Lv1→Lv4、第2進化Lv1→Lv5。設置後に爆発する兵装。分岐により大爆発型か拡散設置型へ進化する。",
       "feel": "置いて待つ重火力。予兆から爆発までの緊張感と一撃の重さが持ち味。",
       "synergies": [
         {
@@ -237,7 +607,134 @@
           "passiveId": "chart",
           "effect": "拡散機雷網の条件。広く動く編成に刺さりやすい。"
         }
-      ]
+      ],
+      "balance": {
+        "stages": [
+          {
+            "key": "normal",
+            "name": "通常",
+            "levelLabels": [
+              "機雷設置",
+              "ダメージ +6",
+              "ダメージ +12 / 進化可能"
+            ],
+            "levels": [
+              {
+                "damageBonus": 0,
+                "mineCount": 1,
+                "explodeRadius": 70,
+                "warningRadius": 78
+              },
+              {
+                "damageBonus": 6,
+                "mineCount": 1,
+                "explodeRadius": 74,
+                "warningRadius": 82
+              },
+              {
+                "damageBonus": 12,
+                "mineCount": 1,
+                "explodeRadius": 78,
+                "warningRadius": 88
+              }
+            ]
+          },
+          {
+            "key": "evolution1",
+            "name": "第1進化",
+            "levelLabels": [
+              "ダメージ +16 / 爆発範囲拡大",
+              "ダメージ +20 / 爆発範囲拡大",
+              "ダメージ +24 / 同時設置2個",
+              "ダメージ +28 / 同時設置3個"
+            ],
+            "levels": [
+              {
+                "damageBonus": 16,
+                "mineCount": 1,
+                "explodeRadius": 96,
+                "warningRadius": 110
+              },
+              {
+                "damageBonus": 20,
+                "mineCount": 1,
+                "explodeRadius": 116,
+                "warningRadius": 134
+              },
+              {
+                "damageBonus": 24,
+                "mineCount": 2,
+                "explodeRadius": 116,
+                "warningRadius": 134
+              },
+              {
+                "damageBonus": 28,
+                "mineCount": 3,
+                "explodeRadius": 116,
+                "warningRadius": 134
+              }
+            ]
+          },
+          {
+            "key": "evolution2",
+            "name": "第2進化",
+            "levelLabels": [
+              "ダメージ +32 / 爆発連鎖",
+              "ダメージ +36 / 連鎖強化",
+              "ダメージ +40 / 連鎖範囲拡大",
+              "ダメージ +44 / 連鎖増加",
+              "ダメージ +50 / 超爆発"
+            ],
+            "levels": [
+              {
+                "damageBonus": 32,
+                "mineCount": 3,
+                "explodeRadius": 126,
+                "warningRadius": 144,
+                "mineChainCount": 1,
+                "mineChainRadius": 90,
+                "mineChainDamageMul": 0.45
+              },
+              {
+                "damageBonus": 36,
+                "mineCount": 3,
+                "explodeRadius": 136,
+                "warningRadius": 155,
+                "mineChainCount": 2,
+                "mineChainRadius": 104,
+                "mineChainDamageMul": 0.53
+              },
+              {
+                "damageBonus": 40,
+                "mineCount": 3,
+                "explodeRadius": 150,
+                "warningRadius": 171,
+                "mineChainCount": 3,
+                "mineChainRadius": 118,
+                "mineChainDamageMul": 0.61
+              },
+              {
+                "damageBonus": 44,
+                "mineCount": 3,
+                "explodeRadius": 164,
+                "warningRadius": 187,
+                "mineChainCount": 4,
+                "mineChainRadius": 132,
+                "mineChainDamageMul": 0.69
+              },
+              {
+                "damageBonus": 50,
+                "mineCount": 3,
+                "explodeRadius": 184,
+                "warningRadius": 210,
+                "mineChainCount": 5,
+                "mineChainRadius": 150,
+                "mineChainDamageMul": 0.7
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "fish_missile",
@@ -284,7 +781,7 @@
           }
         }
       ],
-      "growthDesc": "追尾ミサイルから、多重追尾型・飽和斉射型・護衛子機型へ派生する。",
+      "growthDesc": "通常Lv1→Lv3、第1進化Lv1→Lv4、第2進化Lv1→Lv5。追尾ミサイルから、多重追尾型・飽和斉射型・護衛子機型へ派生する。",
       "feel": "狙った敵へ食らいつく追尾兵装。散る敵にも仕事ができる。",
       "synergies": [
         {
@@ -299,7 +796,112 @@
           "passiveId": "core",
           "effect": "子機型・飽和型の弾1発ごとの価値が上がる。"
         }
-      ]
+      ],
+      "balance": {
+        "stages": [
+          {
+            "key": "normal",
+            "name": "通常",
+            "levelLabels": [
+              "追尾ミサイル1発",
+              "ダメージ +5",
+              "ダメージ +10 / 進化可能"
+            ],
+            "levels": [
+              {
+                "damageBonus": 0,
+                "missileCount": 1,
+                "homingTurnRate": 3.2
+              },
+              {
+                "damageBonus": 5,
+                "missileCount": 1,
+                "homingTurnRate": 3.5
+              },
+              {
+                "damageBonus": 10,
+                "missileCount": 1,
+                "homingTurnRate": 3.8
+              }
+            ]
+          },
+          {
+            "key": "evolution1",
+            "name": "第1進化",
+            "levelLabels": [
+              "ダメージ +14 / 2発",
+              "ダメージ +18 / 3発",
+              "ダメージ +22 / 4発",
+              "ダメージ +26 / 5発"
+            ],
+            "levels": [
+              {
+                "damageBonus": 14,
+                "missileCount": 2,
+                "homingTurnRate": 4.8
+              },
+              {
+                "damageBonus": 18,
+                "missileCount": 3,
+                "homingTurnRate": 4.9
+              },
+              {
+                "damageBonus": 22,
+                "missileCount": 4,
+                "homingTurnRate": 5.0
+              },
+              {
+                "damageBonus": 26,
+                "missileCount": 5,
+                "homingTurnRate": 5.1
+              }
+            ]
+          },
+          {
+            "key": "evolution2",
+            "name": "第2進化",
+            "levelLabels": [
+              "ダメージ +30 / 超追尾",
+              "ダメージ +34 / 6発",
+              "ダメージ +38 / 7発",
+              "ダメージ +42 / 8発",
+              "ダメージ +48 / 着弾分裂"
+            ],
+            "levels": [
+              {
+                "damageBonus": 30,
+                "missileCount": 5,
+                "homingTurnRate": 7.2,
+                "missileSplit": 0
+              },
+              {
+                "damageBonus": 34,
+                "missileCount": 6,
+                "homingTurnRate": 7.2,
+                "missileSplit": 0
+              },
+              {
+                "damageBonus": 38,
+                "missileCount": 7,
+                "homingTurnRate": 7.4,
+                "missileSplit": 0
+              },
+              {
+                "damageBonus": 42,
+                "missileCount": 8,
+                "homingTurnRate": 7.6,
+                "missileSplit": 0
+              },
+              {
+                "damageBonus": 48,
+                "missileCount": 8,
+                "homingTurnRate": 7.8,
+                "missileSplit": 2
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "sonar",
@@ -335,7 +937,7 @@
           }
         }
       ],
-      "growthDesc": "直線音波から、高出力ビーム型か拡散波動型へ派生する。",
+      "growthDesc": "通常Lv1→Lv3、第1進化Lv1→Lv4、第2進化Lv1→Lv5。直線音波から、高出力ビーム型か拡散波動型へ派生する。",
       "feel": "短い溜めから一気に貫く高出力砲。撃つ瞬間の手応えが強い。",
       "synergies": [
         {
@@ -350,7 +952,131 @@
           "passiveId": "core",
           "effect": "単発高火力で倍率の伸びを最も感じやすい。"
         }
-      ]
+      ],
+      "balance": {
+        "stages": [
+          {
+            "key": "normal",
+            "name": "通常",
+            "levelLabels": [
+              "ソナービーム",
+              "ダメージ +7",
+              "ダメージ +14 / 進化可能"
+            ],
+            "levels": [
+              {
+                "damageBonus": 0,
+                "beamCount": 1,
+                "beamSpread": 0,
+                "beamRadius": 10,
+                "beamLength": 220
+              },
+              {
+                "damageBonus": 7,
+                "beamCount": 1,
+                "beamSpread": 0,
+                "beamRadius": 10,
+                "beamLength": 220
+              },
+              {
+                "damageBonus": 14,
+                "beamCount": 1,
+                "beamSpread": 0,
+                "beamRadius": 10,
+                "beamLength": 220
+              }
+            ]
+          },
+          {
+            "key": "evolution1",
+            "name": "第1進化",
+            "levelLabels": [
+              "ダメージ +18 / ビーム太化",
+              "ダメージ +22 / 射程延長",
+              "ダメージ +26 / 2本",
+              "ダメージ +30 / 3本"
+            ],
+            "levels": [
+              {
+                "damageBonus": 18,
+                "beamCount": 1,
+                "beamSpread": 0,
+                "beamRadius": 16,
+                "beamLength": 240
+              },
+              {
+                "damageBonus": 22,
+                "beamCount": 1,
+                "beamSpread": 0,
+                "beamRadius": 16,
+                "beamLength": 300
+              },
+              {
+                "damageBonus": 26,
+                "beamCount": 2,
+                "beamSpread": 0.12,
+                "beamRadius": 16,
+                "beamLength": 300
+              },
+              {
+                "damageBonus": 30,
+                "beamCount": 3,
+                "beamSpread": 0.16,
+                "beamRadius": 16,
+                "beamLength": 300
+              }
+            ]
+          },
+          {
+            "key": "evolution2",
+            "name": "第2進化",
+            "levelLabels": [
+              "ダメージ +34 / 超射程",
+              "ダメージ +38 / 4本",
+              "ダメージ +42 / 5本",
+              "ダメージ +46 / 6本",
+              "ダメージ +52 / 極太ビーム"
+            ],
+            "levels": [
+              {
+                "damageBonus": 34,
+                "beamCount": 3,
+                "beamSpread": 0.14,
+                "beamRadius": 16,
+                "beamLength": 360
+              },
+              {
+                "damageBonus": 38,
+                "beamCount": 4,
+                "beamSpread": 0.16,
+                "beamRadius": 16,
+                "beamLength": 360
+              },
+              {
+                "damageBonus": 42,
+                "beamCount": 5,
+                "beamSpread": 0.18,
+                "beamRadius": 16,
+                "beamLength": 360
+              },
+              {
+                "damageBonus": 46,
+                "beamCount": 6,
+                "beamSpread": 0.2,
+                "beamRadius": 16,
+                "beamLength": 360
+              },
+              {
+                "damageBonus": 52,
+                "beamCount": 6,
+                "beamSpread": 0.2,
+                "beamRadius": 24,
+                "beamLength": 380
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "passives": [

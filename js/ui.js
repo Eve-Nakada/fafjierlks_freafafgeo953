@@ -54,21 +54,64 @@ function applyTitleTextToUI() {
   if (titleMain) titleMain.textContent = STATE.gameData?.title || "Ocean Survivor";
 }
 
+
+function getWeaponBalanceStagesForUi(def) {
+  return Array.isArray(def?.balance?.stages) ? def.balance.stages : [];
+}
+
+function getWeaponStageMaxLevelUi(stage, def = null) {
+  if (typeof getStageMaxLevel === 'function') return getStageMaxLevel(stage, def || null);
+  const stages = def ? getWeaponBalanceStagesForUi(def) : [];
+  const configured = Array.isArray(stages[stage]?.levels) ? stages[stage].levels.length : 0;
+  if (configured > 0) return configured;
+  return [3, 4, 5][Math.max(0, Math.min(2, stage || 0))] || 3;
+}
+
+function getWeaponStageLabelsForUi(def, stage) {
+  const stages = getWeaponBalanceStagesForUi(def);
+  return Array.isArray(stages[stage]?.levelLabels) ? stages[stage].levelLabels : [];
+}
+
+function getWeaponStageLevelLabel(def, stage, level) {
+  const labels = getWeaponStageLabelsForUi(def, stage);
+  if (labels.length <= 0) return '';
+  const idx = Math.max(0, Math.min(labels.length - 1, (level || 1) - 1));
+  return labels[idx] || '';
+}
+
+function getWeaponStageRangeText(stage, def) {
+  return `Lv1 → Lv${getWeaponStageMaxLevelUi(stage, def)}`;
+}
+
+function getWeaponStageSummaryText(def, stage) {
+  const labels = getWeaponStageLabelsForUi(def, stage);
+  if (labels.length <= 0) return '';
+  return labels.join(' / ');
+}
+
+
 function getWeaponStageLabel(w) {
   if (!w) return "";
   const stage = w.evolutionStage || 0;
-  if (stage === 0) return `Lv.${w.level}`;
-  if (stage === 1) return `進化 Lv.${w.level}`;
-  return `第2進化 Lv.${w.level}`;
+  const def = getWeaponDef(w.id);
+  const max = getWeaponStageMaxLevelUi(stage, def);
+  if (stage === 0) return `通常 Lv.${w.level}/${max}`;
+  if (stage === 1) return `第1進化 Lv.${w.level}/${max}`;
+  return `第2進化 Lv.${w.level}/${max}`;
 }
+
+
 
 function getWeaponStageLabelShort(w) {
   if (!w) return "";
   const stage = w.evolutionStage || 0;
-  if (stage === 0) return `Lv${w.level}`;
-  if (stage === 1) return `E1-${w.level}`;
-  return `E2-${w.level}`;
+  const def = getWeaponDef(w.id);
+  const max = getWeaponStageMaxLevelUi(stage, def);
+  if (stage === 0) return `N ${w.level}/${max}`;
+  if (stage === 1) return `E1 ${w.level}/${max}`;
+  return `E2 ${w.level}/${max}`;
 }
+
 
 function getWeaponGrowthBranches(def) {
   if (!def) return [];
@@ -93,24 +136,27 @@ function getPassiveNameFromId(id) {
   return (STATE.gameData?.passives || []).find(p => p.id === id)?.name || id || "なし";
 }
 
+
 function buildEvolutionHintText(def, inst = null) {
   const branches = getWeaponGrowthBranches(def);
   if (!branches.length) return "";
 
   const stage = inst?.evolutionStage || 0;
-  const prefix = stage >= 1 ? "第2進化ヒント" : "進化ヒント";
+  const normalMax = getWeaponStageMaxLevelUi(0, def);
+  const evo1Max = getWeaponStageMaxLevelUi(1, def);
 
   if (stage >= 1 && inst?.branchId) {
     const branch = branches.find((b) => b.branchId === inst.branchId);
     const second = branch?.secondStage;
-    if (!second) return `${prefix}: Lv6 + 宝箱`;
-    return `${prefix}: Lv6 + ${getPassiveNameFromId(second.needsPassive)} + 宝箱`;
+    if (!second) return `第2進化条件: 第1進化Lv${evo1Max} + 宝箱`;
+    return `第2進化条件: 第1進化Lv${evo1Max} + ${getPassiveNameFromId(second.needsPassive)} + 宝箱`;
   }
 
   const names = branches.map((b) => getPassiveNameFromId(b.needsPassive)).filter(Boolean);
   const uniq = [...new Set(names)];
-  return `${prefix}: Lv6 + ${uniq.join(" / ")} + 宝箱`;
+  return `進化条件: 通常Lv${normalMax} + ${uniq.join(" / ")} + 宝箱`;
 }
+
 
 function buildWeaponChoiceHint(def, inst = null) {
   if (!def) return "";
@@ -179,7 +225,7 @@ if (includeHeader) {
     <div class="growthTreeCanvas">
       <div class="growthCenterLine"></div>
       <div class="growthRootWrap">
-        ${buildGrowthNodeHtml("通常", def.name, "Lv1 → Lv6", def.desc || "", rootActive, "growthRoot")}
+        ${buildGrowthNodeHtml("通常", def.name, getWeaponStageRangeText(0, def), getWeaponStageSummaryText(def, 0) || def.desc || "", rootActive, "growthRoot")}
       </div>
       <div class="growthBranchesWrap">`;
 
@@ -196,12 +242,12 @@ if (includeHeader) {
     html += `
       <div class="growthBranchColumn">
         <div class="growthBranchConnector"></div>
-        ${buildGrowthNodeHtml("第1進化", branch.name || "進化", `条件: ${getPassiveNameFromId(branch.needsPassive)}`, `型: ${branch.pattern || "standard"} / Lv1 → Lv6`, stage1Active, "growthStage1")}`;
+        ${buildGrowthNodeHtml("第1進化", branch.name || "進化", `条件: ${getPassiveNameFromId(branch.needsPassive)}`, getWeaponStageSummaryText(def, 1) || `型: ${branch.pattern || "standard"} / ${getWeaponStageRangeText(1, def)}`, stage1Active, "growthStage1")}`;
 
     if (second) {
       html += `
         <div class="growthChildConnector"></div>
-        ${buildGrowthNodeHtml("第2進化", second.name || "第2進化", `条件: ${getPassiveNameFromId(second.needsPassive)}`, `型: ${second.pattern || branch.pattern || "standard"} / Lv1 → Lv3`, stage2Active, "growthStage2")}`;
+        ${buildGrowthNodeHtml("第2進化", second.name || "第2進化", `条件: ${getPassiveNameFromId(second.needsPassive)}`, getWeaponStageSummaryText(def, 2) || `型: ${second.pattern || branch.pattern || "standard"} / ${getWeaponStageRangeText(2, def)}`, stage2Active, "growthStage2")}`;
     }
 
     html += `</div>`;
@@ -318,7 +364,7 @@ function renderWeaponCodex() {
           <div class="codexHeadText">
             <div class="choiceTitle">${seen ? w.name : getUnknownLabel()}</div>
             <div class="choiceDesc">${seen ? (w.desc || "") : "一度も使用していない武器"}</div>
-            <div class="choiceMeta">${seen ? `威力 ${w.damage} / CD ${w.cooldown}` : "未確認"}</div>
+            <div class="choiceMeta">${seen ? `威力 ${w.damage} / CD ${w.cooldown} / ${getWeaponStageRangeText(0, w)} / ${getWeaponStageRangeText(1, w)} / ${getWeaponStageRangeText(2, w)}` : "未確認"}</div>
           </div>
         </div>
         ${seen ? `<div class="choiceDesc">触り心地: ${getWeaponFeelText(w)}</div>${buildWeaponSynergyHtml(w)}${buildWeaponGrowthTreeHtml(w.id, false)}` : `<div class="growthEmpty">この武器はまだ記録されていません。</div>`}
@@ -751,8 +797,8 @@ function buildLevelUpChoices() {
       type: "weapon",
       key: `weapon_${w.id}`,
       name: w.name,
-      desc: inst ? `武器レベルを ${nextLv} に強化` : w.desc,
-      meta: `${inst ? `Lv${inst.level} → Lv${nextLv}` : "新規武器"}${buildWeaponChoiceHint(w, inst)}`,
+      desc: inst ? (getWeaponStageLevelLabel(w, inst.evolutionStage || 0, nextLv) || `武器レベルを ${nextLv} に強化`) : w.desc,
+      meta: `${inst ? `${getWeaponStageLabel(inst)} → Lv${nextLv}` : "新規武器"}${buildWeaponChoiceHint(w, inst)}`,
       apply() {
         return addWeapon(w.id);
       }

@@ -25,7 +25,7 @@ function isWeaponSecondEvolved(weaponId) {
 
 function getWeaponMaxLevel(w) {
   if (!w) return getStageMaxLevel(0);
-  return getStageMaxLevel(w.evolutionStage || 0);
+  return getStageMaxLevel(w.evolutionStage || 0, getWeaponDef(w.id));
 }
 
 function canAddWeapon(id) {
@@ -93,10 +93,59 @@ function getWeaponCurrentPattern(w) {
   return branch?.secondStage?.pattern || branch?.pattern || null;
 }
 
+
 const WEAPON_STAGE_MAX_LEVELS = [3, 4, 5];
 
-function getStageMaxLevel(stage) {
+function getWeaponBalanceConfig(def) {
+  return def?.balance || null;
+}
+
+function getWeaponBalanceStages(def) {
+  return Array.isArray(getWeaponBalanceConfig(def)?.stages) ? getWeaponBalanceConfig(def).stages : [];
+}
+
+function getWeaponStageConfigByDef(def, stage) {
+  const stages = getWeaponBalanceStages(def);
+  return stages[Math.max(0, Math.min(stages.length - 1, stage || 0))] || null;
+}
+
+function getWeaponStageLevelConfig(def, stage, level) {
+  const stageCfg = getWeaponStageConfigByDef(def, stage);
+  const levels = Array.isArray(stageCfg?.levels) ? stageCfg.levels : [];
+  if (levels.length <= 0) return null;
+  const index = Math.max(0, Math.min(levels.length - 1, (level || 1) - 1));
+  return levels[index] || null;
+}
+
+function getStageMaxLevel(stage, def = null) {
+  const stageCfg = def ? getWeaponStageConfigByDef(def, stage) : null;
+  const configuredMax = Array.isArray(stageCfg?.levels) ? stageCfg.levels.length : 0;
+  if (configuredMax > 0) return configuredMax;
   return WEAPON_STAGE_MAX_LEVELS[Math.max(0, Math.min(2, stage || 0))] || 3;
+}
+
+function applyWeaponTuningPatch(tuning, patch, areaMul, scope) {
+  if (!patch || typeof patch !== 'object') return tuning;
+
+  for (const [key, value] of Object.entries(patch)) {
+    switch (key) {
+      case 'fieldRadius':
+      case 'explodeRadius':
+      case 'warningRadius':
+      case 'mineChainRadius':
+      case 'orbitRadius':
+        tuning[key] = Number(value || 0) * areaMul;
+        break;
+      case 'beamLength':
+        tuning[key] = Number(value || 0) * (scope?.lengthMul || 1);
+        break;
+      default:
+        tuning[key] = value;
+        break;
+    }
+  }
+
+  return tuning;
 }
 
 function getWeaponTuning(w, def) {
@@ -138,111 +187,116 @@ function getWeaponTuning(w, def) {
     orbitSelfSpin: false
   };
 
+  const patch = getWeaponStageLevelConfig(def, stage, level);
+  if (patch) return applyWeaponTuningPatch(tuning, patch, areaMul, scope);
+
+  const fallbackMax = getStageMaxLevel(stage);
+  const safeLevel = Math.max(1, Math.min(fallbackMax, level));
+
   switch (w?.id) {
     case 'harpoon':
       if (stage === 0) {
-        tuning.damageBonus = [0, 4, 8][level - 1] || 8;
+        tuning.damageBonus = [0, 4, 8][safeLevel - 1] || 8;
       } else if (stage === 1) {
-        tuning.damageBonus = [10, 12, 14, 16][level - 1] || 16;
-        tuning.projectileCount = [3, 4, 5, 6][level - 1] || 6;
+        tuning.damageBonus = [10, 12, 14, 16][safeLevel - 1] || 16;
+        tuning.projectileCount = [3, 4, 5, 6][safeLevel - 1] || 6;
         tuning.spreadStep = 0.20;
         tuning.projectileLife = 1.55;
         tuning.projectileRadius = 8;
         tuning.pierce = 2;
       } else {
-        tuning.damageBonus = [18, 20, 21, 22, 25][level - 1] || 25;
+        tuning.damageBonus = [18, 20, 21, 22, 25][safeLevel - 1] || 25;
         tuning.projectileCount = 12;
         tuning.projectileLife = 1.9;
         tuning.projectileRadius = 9;
-        tuning.pierce = [1, 2, 3, 4, 999][level - 1] || 999;
+        tuning.pierce = [1, 2, 3, 4, 999][safeLevel - 1] || 999;
       }
       break;
     case 'water_cutter':
       if (stage === 0) {
-        tuning.damageBonus = [0, 3, 6][level - 1] || 6;
+        tuning.damageBonus = [0, 3, 6][safeLevel - 1] || 6;
       } else if (stage === 1) {
-        tuning.damageBonus = [8, 10, 12, 14][level - 1] || 14;
-        tuning.orbitCount = [2, 3, 4, 5][level - 1] || 5;
+        tuning.damageBonus = [8, 10, 12, 14][safeLevel - 1] || 14;
+        tuning.orbitCount = [2, 3, 4, 5][safeLevel - 1] || 5;
         tuning.orbitRadius = 88 * areaMul;
         tuning.orbitSpeed = 3.5;
       } else {
-        tuning.damageBonus = [16, 18, 20, 22, 25][level - 1] || 25;
-        tuning.orbitCount = [5, 6, 7, 8, 8][level - 1] || 8;
+        tuning.damageBonus = [16, 18, 20, 22, 25][safeLevel - 1] || 25;
+        tuning.orbitCount = [5, 6, 7, 8, 8][safeLevel - 1] || 8;
         tuning.orbitRadius = 110 * areaMul;
-        tuning.orbitSpeed = [4.8, 4.8, 4.9, 5.0, 5.2][level - 1] || 5.2;
-        tuning.orbitSelfSpin = level >= 5;
-        tuning.orbitDamageMul = level >= 5 ? 0.52 : 0.48;
+        tuning.orbitSpeed = [4.8, 4.8, 4.9, 5.0, 5.2][safeLevel - 1] || 5.2;
+        tuning.orbitSelfSpin = safeLevel >= 5;
+        tuning.orbitDamageMul = safeLevel >= 5 ? 0.52 : 0.48;
       }
       break;
     case 'jelly_field':
       if (stage === 0) {
-        tuning.damageBonus = [0, 2, 4][level - 1] || 4;
-        tuning.fieldRadius = [68, 84, 84][level - 1] * areaMul;
+        tuning.damageBonus = [0, 2, 4][safeLevel - 1] || 4;
+        tuning.fieldRadius = [68, 84, 84][safeLevel - 1] * areaMul;
       } else if (stage === 1) {
-        tuning.damageBonus = [6, 8, 10, 12][level - 1] || 12;
+        tuning.damageBonus = [6, 8, 10, 12][safeLevel - 1] || 12;
         tuning.fieldRadius = 96 * areaMul;
-        tuning.chainJumps = [2, 3, 4, 5][level - 1] || 5;
+        tuning.chainJumps = [2, 3, 4, 5][safeLevel - 1] || 5;
       } else {
-        tuning.damageBonus = [14, 16, 18, 20, 24][level - 1] || 24;
+        tuning.damageBonus = [14, 16, 18, 20, 24][safeLevel - 1] || 24;
         tuning.fieldRadius = 108 * areaMul;
-        tuning.chainJumps = [6, 7, 8, 9, 9][level - 1] || 9;
-        tuning.fieldWaves = level >= 5 ? 4 : 0;
+        tuning.chainJumps = [6, 7, 8, 9, 9][safeLevel - 1] || 9;
+        tuning.fieldWaves = safeLevel >= 5 ? 4 : 0;
       }
       break;
     case 'mine':
       if (stage === 0) {
-        tuning.damageBonus = [0, 6, 12][level - 1] || 12;
+        tuning.damageBonus = [0, 6, 12][safeLevel - 1] || 12;
       } else if (stage === 1) {
-        tuning.damageBonus = [16, 20, 24, 28][level - 1] || 28;
-        tuning.mineCount = [1, 1, 2, 3][level - 1] || 3;
-        tuning.explodeRadius = [96, 116, 116, 116][level - 1] * areaMul;
+        tuning.damageBonus = [16, 20, 24, 28][safeLevel - 1] || 28;
+        tuning.mineCount = [1, 1, 2, 3][safeLevel - 1] || 3;
+        tuning.explodeRadius = [96, 116, 116, 116][safeLevel - 1] * areaMul;
         tuning.warningRadius = tuning.explodeRadius * 1.15;
       } else {
-        tuning.damageBonus = [32, 36, 40, 44, 50][level - 1] || 50;
+        tuning.damageBonus = [32, 36, 40, 44, 50][safeLevel - 1] || 50;
         tuning.mineCount = 3;
-        tuning.explodeRadius = [126, 136, 150, 164, 184][level - 1] * areaMul;
+        tuning.explodeRadius = [126, 136, 150, 164, 184][safeLevel - 1] * areaMul;
         tuning.warningRadius = tuning.explodeRadius * 1.14;
-        tuning.mineChainCount = [1, 2, 3, 4, 5][level - 1] || 5;
-        tuning.mineChainRadius = [90, 104, 118, 132, 150][level - 1] * areaMul;
-        tuning.mineChainDamageMul = level >= 5 ? 0.7 : 0.45 + (level - 1) * 0.08;
+        tuning.mineChainCount = [1, 2, 3, 4, 5][safeLevel - 1] || 5;
+        tuning.mineChainRadius = [90, 104, 118, 132, 150][safeLevel - 1] * areaMul;
+        tuning.mineChainDamageMul = safeLevel >= 5 ? 0.7 : 0.45 + (safeLevel - 1) * 0.08;
       }
       break;
     case 'fish_missile':
       if (stage === 0) {
-        tuning.damageBonus = [0, 5, 10][level - 1] || 10;
+        tuning.damageBonus = [0, 5, 10][safeLevel - 1] || 10;
       } else if (stage === 1) {
-        tuning.damageBonus = [14, 18, 22, 26][level - 1] || 26;
-        tuning.missileCount = [2, 3, 4, 5][level - 1] || 5;
+        tuning.damageBonus = [14, 18, 22, 26][safeLevel - 1] || 26;
+        tuning.missileCount = [2, 3, 4, 5][safeLevel - 1] || 5;
         tuning.homingTurnRate = 4.8;
       } else {
-        tuning.damageBonus = [30, 34, 38, 42, 48][level - 1] || 48;
-        tuning.missileCount = [5, 6, 7, 8, 8][level - 1] || 8;
-        tuning.homingTurnRate = [7.2, 7.2, 7.4, 7.6, 7.8][level - 1] || 7.8;
-        tuning.missileSplit = level >= 5 ? 2 : 0;
+        tuning.damageBonus = [30, 34, 38, 42, 48][safeLevel - 1] || 48;
+        tuning.missileCount = [5, 6, 7, 8, 8][safeLevel - 1] || 8;
+        tuning.homingTurnRate = [7.2, 7.2, 7.4, 7.6, 7.8][safeLevel - 1] || 7.8;
+        tuning.missileSplit = safeLevel >= 5 ? 2 : 0;
       }
       break;
     case 'sonar':
       if (stage === 0) {
-        tuning.damageBonus = [0, 7, 14][level - 1] || 14;
+        tuning.damageBonus = [0, 7, 14][safeLevel - 1] || 14;
       } else if (stage === 1) {
-        tuning.damageBonus = [18, 22, 26, 30][level - 1] || 30;
-        tuning.beamCount = [1, 1, 2, 3][level - 1] || 3;
-        tuning.beamSpread = [0, 0, 0.12, 0.16][level - 1] || 0.16;
-        tuning.beamRadius = [16, 16, 16, 16][level - 1] || 16;
-        tuning.beamLength = [240, 300, 300, 300][level - 1] * scope.lengthMul;
+        tuning.damageBonus = [18, 22, 26, 30][safeLevel - 1] || 30;
+        tuning.beamCount = [1, 1, 2, 3][safeLevel - 1] || 3;
+        tuning.beamSpread = [0, 0, 0.12, 0.16][safeLevel - 1] || 0.16;
+        tuning.beamRadius = [16, 16, 16, 16][safeLevel - 1] || 16;
+        tuning.beamLength = [240, 300, 300, 300][safeLevel - 1] * scope.lengthMul;
       } else {
-        tuning.damageBonus = [34, 38, 42, 46, 52][level - 1] || 52;
-        tuning.beamCount = [3, 4, 5, 6, 6][level - 1] || 6;
-        tuning.beamSpread = [0.14, 0.16, 0.18, 0.20, 0.20][level - 1] || 0.20;
-        tuning.beamRadius = [16, 16, 16, 16, 24][level - 1] || 24;
-        tuning.beamLength = [360, 360, 360, 360, 380][level - 1] * scope.lengthMul;
+        tuning.damageBonus = [34, 38, 42, 46, 52][safeLevel - 1] || 52;
+        tuning.beamCount = [3, 4, 5, 6, 6][safeLevel - 1] || 6;
+        tuning.beamSpread = [0.14, 0.16, 0.18, 0.20, 0.20][safeLevel - 1] || 0.20;
+        tuning.beamRadius = [16, 16, 16, 16, 24][safeLevel - 1] || 24;
+        tuning.beamLength = [360, 360, 360, 360, 380][safeLevel - 1] * scope.lengthMul;
       }
       break;
   }
 
   return tuning;
 }
-
 
 
 function updateWeapons(dt) {
@@ -683,7 +737,7 @@ function buildEvolutionLevelUpChoice(evo) {
     key: `evolution_${evo.weaponId}_${evo.branchId || "stage2"}_${evo.type}`,
     name: `進化: ${evo.evolutionName}`,
     desc: `${weaponDef?.name || evo.weaponId} を${evo.type === "second" ? "第2進化" : "進化"}させる`,
-    meta: `条件達成済み / ${evo.needPassive ? `必要: ${evo.needPassive}` : "宝箱不要"}`,
+    meta: `条件達成済み / ${evo.needPassive ? `必要: ${typeof getPassiveNameFromId === 'function' ? getPassiveNameFromId(evo.needPassive) : evo.needPassive}` : "宝箱"}`,
     apply() {
       return applyEvolutionChoice(evo);
     }
