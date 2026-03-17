@@ -297,11 +297,31 @@ function updateChests(dt) {
 
 function renderChests(ctx) {
   const cam = STATE.camera;
+  const treasureSheet = STATE.assets?.treasure;
+  const treasureImg = treasureSheet?.img || null;
 
   for (const chest of STATE.chests) {
     const x = chest.x - cam.x;
     const y = chest.y - cam.y;
 
+    const size = chest.size || 36;
+
+    if (treasureImg) {
+      ctx.drawImage(
+        treasureImg,
+        0,
+        0,
+        treasureImg.width,
+        treasureImg.height,
+        x - size / 2,
+        y - size / 2,
+        size,
+        size
+      );
+      continue;
+    }
+
+    // フォールバック
     ctx.fillStyle = "#dcb45b";
     ctx.fillRect(x - 14, y - 10, 28, 20);
 
@@ -315,15 +335,23 @@ function renderChests(ctx) {
 }
 
 function openChestReward() {
-  const evolutions = getAvailableEvolutions();
+  const goldReward = 500;
+  const xpReward = 1000;
+  const scoreReward = 5000;
 
-  if (evolutions.length > 0) {
-    openChestEvolutionScreen(evolutions);
-    return;
+  if (typeof addGold === "function") {
+    addGold(goldReward);
+  } else {
+    STATE.player.gold = (STATE.player.gold || 0) + goldReward;
   }
 
-  STATE.player.gold += 25;
-  STATE.score += 50;
+  if (typeof gainXP === "function") {
+    gainXP(xpReward);
+  }
+
+  STATE.score = (STATE.score || 0) + scoreReward;
+
+  setScorePopup?.(`宝箱報酬 +${scoreReward}`);
   updateHUD();
 }
 
