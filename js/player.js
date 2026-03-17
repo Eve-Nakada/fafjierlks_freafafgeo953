@@ -150,11 +150,52 @@ function getPassiveLevel(id) {
   return STATE.player?.passiveLevels?.[id] || 0;
 }
 
+function getPassiveBalance(def) {
+  return def?.balance && typeof def.balance === "object" ? def.balance : null;
+}
+
+function getPassiveMaxLevel(def) {
+  const balance = getPassiveBalance(def);
+  const balanceLen = Array.isArray(balance?.levels) ? balance.levels.length : 0;
+  return def?.maxLevel || balanceLen || (Array.isArray(def?.levelDesc) ? def.levelDesc.length : 3);
+}
+
+function getPassiveLevelValue(def, level) {
+  const balance = getPassiveBalance(def);
+  if (!balance) return null;
+  const levels = Array.isArray(balance.levels) ? balance.levels : [];
+  if (levels.length <= 0) return null;
+  const idx = Math.max(0, Math.min(levels.length - 1, (level || 1) - 1));
+  return levels[idx];
+}
+
+function getPassiveBaseValue(def, statName, defaultValue) {
+  const balance = getPassiveBalance(def);
+  if (balance && balance.stat === statName && typeof balance.base === 'number') {
+    return balance.base;
+  }
+  return defaultValue;
+}
+
+function getPassiveResolvedStat(def, level, defaultValue = null) {
+  const balance = getPassiveBalance(def);
+  if (!balance || !balance.stat) return null;
+  const value = getPassiveLevelValue(def, level);
+  if (typeof value !== 'number') return null;
+  return {
+    stat: balance.stat,
+    value,
+    base: typeof balance.base === 'number' ? balance.base : defaultValue,
+    immediateHeal: typeof balance.immediateHeal === 'number' ? balance.immediateHeal : null,
+    includeShopBonus: !!balance.includeShopBonus
+  };
+}
+
 function canLevelPassive(id) {
   const def = getPassiveDef(id);
   if (!def) return false;
   const lv = getPassiveLevel(id);
-  const maxLv = def.maxLevel || (Array.isArray(def.levelDesc) ? def.levelDesc.length : 3);
+  const maxLv = getPassiveMaxLevel(def);
   return lv < maxLv;
 }
 
@@ -164,7 +205,7 @@ function addPassive(id) {
   if (!p || !def) return false;
 
   const curLv = p.passiveLevels[id] || 0;
-  const maxLv = def.maxLevel || (Array.isArray(def.levelDesc) ? def.levelDesc.length : 3);
+  const maxLv = getPassiveMaxLevel(def);
   if (curLv >= maxLv) return false;
 
   p.passiveLevels[id] = curLv + 1;
@@ -180,7 +221,27 @@ function addPassive(id) {
 
 function applyPassiveImmediateEffect(id, level) {
   const p = STATE.player;
-  if (!p) return;
+  const def = getPassiveDef(id);
+  if (!p || !def) return;
+
+  const resolved = getPassiveResolvedStat(def, level);
+  if (resolved?.stat === 'maxHp') {
+    const prevHp = p.hp;
+    const nextMaxHp = resolved.value + (resolved.includeShopBonus ? (p.shopMaxHpBonus || 0) : 0);
+    p.maxHp = nextMaxHp;
+    if (STATE._suppressImmediateShellHeal) {
+      p.hp = Math.min(p.maxHp, prevHp);
+    } else {
+      const healAmount = resolved.immediateHeal != null ? resolved.immediateHeal : Math.max(0, nextMaxHp - prevHp);
+      p.hp = Math.min(p.maxHp, prevHp + healAmount);
+    }
+    return;
+  }
+
+  if (resolved?.stat && Object.prototype.hasOwnProperty.call(p.stats, resolved.stat)) {
+    p.stats[resolved.stat] = resolved.value;
+    return;
+  }
 
   if (id === "shell") {
     const prevHp = p.hp;
@@ -192,37 +253,14 @@ function applyPassiveImmediateEffect(id, level) {
     }
   }
 
-  if (id === "chart") {
-    p.stats.pickupRange = 90 + level * 12;
-  }
-
-  if (id === "thruster") {
-    p.stats.moveMul = 1 + level * 0.10;
-  }
-
-  if (id === "core") {
-    p.stats.damageMul = 1 + level * 0.10;
-  }
-
-  if (id === "battery") {
-    p.stats.cooldownMul = 1 + level * 0.10;
-  }
-
-  if (id === "sonar_scope") {
-    p.stats.projectileSpeedMul = 1 + level * 0.12;
-  }
-
-  if (id === "pressure_fin") {
-    p.stats.areaMul = 1 + level * 0.10;
-  }
-
-  if (id === "med_kit") {
-    p.stats.regen = level * 0.6;
-  }
-
-  if (id === "armor_plate") {
-    p.stats.armor = level * 1.5;
-  }
+  if (id === "chart") p.stats.pickupRange = 90 + level * 12;
+  if (id === "thruster") p.stats.moveMul = 1 + level * 0.10;
+  if (id === "core") p.stats.damageMul = 1 + level * 0.10;
+  if (id === "battery") p.stats.cooldownMul = 1 + level * 0.10;
+  if (id === "sonar_scope") p.stats.projectileSpeedMul = 1 + level * 0.12;
+  if (id === "pressure_fin") p.stats.areaMul = 1 + level * 0.10;
+  if (id === "med_kit") p.stats.regen = level * 0.6;
+  if (id === "armor_plate") p.stats.armor = level * 1.5;
 }
 
 function updatePlayerPassives() {
@@ -231,16 +269,43 @@ function updatePlayerPassives() {
 
   const levels = p.passiveLevels || {};
 
-  p.stats.damageMul = 1 + (levels.core || 0) * 0.10;
-  p.stats.cooldownMul = 1 + (levels.battery || 0) * 0.10;
-  p.stats.areaMul = 1 + (levels.pressure_fin || 0) * 0.10;
-  p.stats.moveMul = 1 + (levels.thruster || 0) * 0.10;
-  p.stats.projectileSpeedMul = 1 + (levels.sonar_scope || 0) * 0.12;
-  p.stats.pickupRange = 90 + (levels.chart || 0) * 12;
-  p.stats.armor = (levels.armor_plate || 0) * 1.5;
-  p.stats.regen = (levels.med_kit || 0) * 0.6;
+  p.stats.damageMul = 1;
+  p.stats.cooldownMul = 1;
+  p.stats.areaMul = 1;
+  p.stats.moveMul = 1;
+  p.stats.projectileSpeedMul = 1;
+  p.stats.pickupRange = 90;
+  p.stats.armor = 0;
+  p.stats.regen = 0;
 
-  p.maxHp = 100 + (levels.shell || 0) * 20 + (p.shopMaxHpBonus || 0);
+  p.maxHp = 100 + (p.shopMaxHpBonus || 0);
+
+  for (const def of (STATE.gameData?.passives || [])) {
+    const lv = levels[def.id] || 0;
+    if (lv <= 0) continue;
+
+    const resolved = getPassiveResolvedStat(def, lv);
+    if (resolved?.stat === 'maxHp') {
+      p.maxHp = resolved.value + (resolved.includeShopBonus ? (p.shopMaxHpBonus || 0) : 0);
+      continue;
+    }
+
+    if (resolved?.stat && Object.prototype.hasOwnProperty.call(p.stats, resolved.stat)) {
+      p.stats[resolved.stat] = resolved.value;
+      continue;
+    }
+
+    if (def.id === 'core') p.stats.damageMul = 1 + lv * 0.10;
+    if (def.id === 'battery') p.stats.cooldownMul = 1 + lv * 0.10;
+    if (def.id === 'pressure_fin') p.stats.areaMul = 1 + lv * 0.10;
+    if (def.id === 'thruster') p.stats.moveMul = 1 + lv * 0.10;
+    if (def.id === 'sonar_scope') p.stats.projectileSpeedMul = 1 + lv * 0.12;
+    if (def.id === 'chart') p.stats.pickupRange = 90 + lv * 12;
+    if (def.id === 'armor_plate') p.stats.armor = lv * 1.5;
+    if (def.id === 'med_kit') p.stats.regen = lv * 0.6;
+    if (def.id === 'shell') p.maxHp = 100 + lv * 20 + (p.shopMaxHpBonus || 0);
+  }
+
   p.hp = Math.min(p.hp, p.maxHp);
 }
 

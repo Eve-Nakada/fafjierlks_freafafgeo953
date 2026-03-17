@@ -64,6 +64,7 @@ function resetGameState() {
   STATE.currentWave = 1;
   STATE.levelUpQueue = 0;
   STATE.shopOpen = false;
+  STATE.isGameClear = false;
   STATE.lastShopWave = 0;
   STATE.shopSession = { startHp: 0, startMaxHp: 0, allowedHeal: 0, allowedMaxHp: 0 };
 
@@ -177,6 +178,12 @@ function updateGame(dt) {
     STATE.player.hp = 0;
     updateHUD();
     endGame(false);
+    return;
+  }
+
+  if (STATE.isGameClear) {
+    updateHUD();
+    endGame(true);
     return;
   }
 
@@ -616,6 +623,11 @@ function endGame(clear) {
 
   const rankingResult = saveRanking(STATE.score);
   showResultScreen(clear, rankingResult);
+}
+
+function onGameClear() {
+  if (STATE.paused || STATE.clear) return;
+  endGame(true);
 }
 
 // ===============================

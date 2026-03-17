@@ -11,6 +11,7 @@ const STATE = {
   screen: "title",
   paused: true,
   clear: false,
+  isGameClear: false,
 
   time: 0,
   delta: 0,
