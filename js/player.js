@@ -98,6 +98,197 @@ function updatePlayer(dt) {
   renderPlayerUiIcon();
 }
 
+function updateDronesFromPassives() {
+  const p = STATE.player;
+  if (!p) return;
+
+  const attackLv = p.passiveLevels["attack_drone"] || 0;
+  const barrierLv = p.passiveLevels["barrier_drone"] || 0;
+
+  // アタックドローン
+  if (attackLv > 0) {
+    let drone = STATE.drones.find(d => d.type === "attack");
+    if (!drone) {
+      drone = {
+        type: "attack",
+        hp: 10,
+        maxHp: 10,
+        deadTimer: 0,
+        x: p.x,
+        y: p.y,
+        r: 14,
+        fireCooldown: 0,
+        aimAngle: 0
+      };
+      STATE.drones.push(drone);
+    }
+    applyAttackDroneStats(drone, attackLv);
+  } else {
+    STATE.drones = (STATE.drones || []).filter(d => d.type !== "attack");
+  }
+
+  // バリアードローン
+  if (barrierLv > 0) {
+    let drone = STATE.drones.find(d => d.type === "barrier");
+    if (!drone) {
+      drone = {
+        type: "barrier",
+        hp: 50,
+        maxHp: 50,
+        angle: 0,
+        deadTimer: 0,
+        x: p.x,
+        y: p.y,
+        r: 16
+      };
+      STATE.drones.push(drone);
+    }
+    applyBarrierDroneStats(drone, barrierLv);
+  } else {
+    STATE.drones = (STATE.drones || []).filter(d => d.type !== "barrier");
+  }
+}
+
+function applyAttackDroneStats(d, lv) {
+  const table = [
+    { atk: 2, hp: 10 },
+    { atk: 5, hp: 15 },
+    { atk: 8, hp: 20 },
+    { atk: 12, hp: 30 },
+    { atk: 16, hp: 40 }
+  ];
+  const t = table[Math.max(0, lv - 1)];
+  d.atk = t.atk;
+  d.maxHp = t.hp;
+  d.r = 14;
+  if (d.hp == null || d.hp > d.maxHp) d.hp = d.maxHp;
+}
+
+function applyBarrierDroneStats(d, lv) {
+  const table = [50, 60, 70, 90, 150];
+  d.maxHp = table[Math.max(0, lv - 1)];
+  d.r = 16;
+  if (d.hp == null || d.hp > d.maxHp) d.hp = d.maxHp;
+}
+
+function getDirVectorFromPlayer(p) {
+  switch (p.dirIndex) {
+    case 0: return { x: 0, y: 1 };   // 下
+    case 1: return { x: -1, y: 0 };  // 左
+    case 2: return { x: 1, y: 0 };   // 右
+    case 3: return { x: 0, y: -1 };  // 上
+    default: return { x: 1, y: 0 };
+  }
+}
+
+function getNearestEnemyForDrone(fromX, fromY, maxRange = 360) {
+  let best = null;
+  let bestD = Infinity;
+
+  for (const e of STATE.enemies || []) {
+    if (!e || e.dead) continue;
+    const d = dist(fromX, fromY, e.x, e.y);
+    if (d <= maxRange && d < bestD) {
+      best = e;
+      bestD = d;
+    }
+  }
+
+  return best;
+}
+
+function updateDrones(dt) {
+  const p = STATE.player;
+  if (!p) return;
+
+  for (const d of STATE.drones || []) {
+    if (d.deadTimer > 0) {
+      d.deadTimer -= dt;
+      if (d.deadTimer <= 0) {
+        d.deadTimer = 0;
+        d.hp = d.maxHp;
+      }
+      continue;
+    }
+
+    if (d.type === "attack") {
+      const dir = getDirVectorFromPlayer(p);
+
+      // プレイヤーの少し前を、ぬるっと追従
+      const targetX = p.x + dir.x * 30;
+      const targetY = p.y + dir.y * 30;
+
+      d.x = lerp(d.x ?? targetX, targetX, 0.22);
+      d.y = lerp(d.y ?? targetY, targetY, 0.22);
+
+      const target = getNearestEnemyForDrone(d.x, d.y, 340);
+      if (target) {
+        d.aimAngle = angle(d.x, d.y, target.x, target.y);
+      } else {
+        d.aimAngle = Math.atan2(dir.y, dir.x);
+      }
+
+      d.fireCooldown = Math.max(0, (d.fireCooldown || 0) - dt);
+      attackDroneFire(d);
+    }
+
+    if (d.type === "barrier") {
+      d.angle = (d.angle || 0) + dt * 2.0;
+      d.x = p.x + Math.cos(d.angle) * 40;
+      d.y = p.y + Math.sin(d.angle) * 40;
+    }
+  }
+}
+
+function attackDroneFire(d) {
+  if (d.deadTimer > 0) return;
+  if ((d.fireCooldown || 0) > 0) return;
+
+  const target = getNearestEnemyForDrone(d.x, d.y, 340);
+  if (!target) {
+    d.fireCooldown = 0.12;
+    return;
+  }
+
+  const lv = STATE.player?.passiveLevels?.["attack_drone"] || 1;
+  const speed = 320 * (STATE.player?.stats?.projectileSpeedMul || 1);
+  const baseAng = angle(d.x, d.y, target.x, target.y);
+
+  spawnBullet({
+    x: d.x,
+    y: d.y,
+    vx: Math.cos(baseAng) * speed,
+    vy: Math.sin(baseAng) * speed,
+    life: 1.1,
+    radius: 4,
+    damage: d.atk,
+    pierce: 1,
+    weaponId: "attack_drone",
+    type: "projectile",
+    color: "#ffd37a"
+  });
+
+  // Lv5で前後2方向
+  if (lv >= 5) {
+    const backAng = baseAng + Math.PI;
+    spawnBullet({
+      x: d.x,
+      y: d.y,
+      vx: Math.cos(backAng) * speed,
+      vy: Math.sin(backAng) * speed,
+      life: 1.1,
+      radius: 4,
+      damage: d.atk,
+      pierce: 1,
+      weaponId: "attack_drone",
+      type: "projectile",
+      color: "#ffd37a"
+    });
+  }
+
+  d.fireCooldown = 0.6;
+}
+
 function damagePlayer(amount) {
   const p = STATE.player;
   if (!p) return;
@@ -340,6 +531,8 @@ function updatePlayerPassives() {
   }
 
   p.hp = Math.min(p.hp, p.maxHp);
+
+  updateDronesFromPassives();
 }
 
 function getPlayerScreenPos() {
@@ -383,6 +576,57 @@ function renderPlayer(ctx) {
   ctx.restore();
 
   renderPlayerHpBar(ctx, x, y);
+}
+
+function renderDrones(ctx) {
+  const cam = STATE.camera;
+  const img = STATE.assets?.drone?.img;
+
+  for (const d of STATE.drones || []) {
+    const drawX = (d.x || 0) - cam.x;
+    const drawY = (d.y || 0) - cam.y;
+    const size = d.type === "barrier" ? 34 : 30;
+
+    if (img) {
+      const sw = Math.floor(img.width / 2);
+      const sh = Math.floor(img.height / 2);
+
+      const frame =
+        d.type === "attack"
+          ? (d.deadTimer > 0 ? 1 : 0)
+          : (d.deadTimer > 0 ? 3 : 2);
+
+      const sx = (frame % 2) * sw;
+      const sy = Math.floor(frame / 2) * sh;
+
+      ctx.drawImage(
+        img,
+        sx, sy, sw, sh,
+        drawX - size / 2,
+        drawY - size / 2,
+        size,
+        size
+      );
+    } else {
+      ctx.save();
+      ctx.fillStyle = d.type === "barrier" ? "#8ce7ff" : "#ffd37a";
+      ctx.beginPath();
+      ctx.arc(drawX, drawY, d.r || 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // HPバー
+    if (d.deadTimer <= 0) {
+      const ratio = Math.max(0, Math.min(1, (d.hp || 0) / Math.max(1, d.maxHp || 1)));
+      const barW = 24;
+      const barH = 4;
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillRect(drawX - barW * 0.5, drawY - size * 0.7, barW, barH);
+      ctx.fillStyle = d.type === "barrier" ? "#7fe7ff" : "#ffd166";
+      ctx.fillRect(drawX - barW * 0.5, drawY - size * 0.7, barW * ratio, barH);
+    }
+  }
 }
 
 function renderPlayerHpBar(ctx, x, y) {

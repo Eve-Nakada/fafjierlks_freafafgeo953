@@ -68,6 +68,15 @@ async function loadAssets() {
       STATE.assets.treasure.img = await loadImage(STATE.assets.treasure.src);
     }
   }
+
+  if (!STATE.assets.drone) {
+    STATE.assets.drone = {
+      src: 'images/drone.png',
+      cols: 2,
+      rows: 2,
+      img: await loadImage('images/drone.png')
+    };
+  }
 }
 
 function createFallbackXpGemSheet() {

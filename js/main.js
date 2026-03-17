@@ -182,6 +182,7 @@ function updateGame(dt) {
   STATE.elapsed += dt;
 
   updatePlayer(dt);
+  updateDrones(dt);
   updateWeapons(dt);
   updateBullets(dt);
   updateEnemies(dt);
@@ -239,6 +240,7 @@ function renderGame() {
   renderEnemyProjectiles(ctx);
   renderBullets(ctx);
   renderPlayer(ctx);
+  renderDrones(ctx);
   renderDepthOverlay(ctx);
 }
 

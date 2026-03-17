@@ -1306,6 +1306,30 @@
           7.5
         ]
       }
+    },
+    {
+      "id": "attack_drone",
+      "name": "アタックドローン",
+      "maxLevel": 5,
+      "levelDesc": [
+        "攻撃2 / HP10",
+        "攻撃5 / HP15",
+        "攻撃8 / HP20",
+        "攻撃12 / HP30",
+        "攻撃16 / HP40 / 前後射撃"
+      ]
+    },
+    {
+      "id": "barrier_drone",
+      "name": "バリアードローン",
+      "maxLevel": 5,
+      "levelDesc": [
+        "HP50",
+        "HP60",
+        "HP70",
+        "HP90",
+        "HP150 + 電撃フィールド"
+      ]
     }
   ],
   "enemyStats": {

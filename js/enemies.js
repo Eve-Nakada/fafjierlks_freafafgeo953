@@ -48,7 +48,10 @@ function getEnemyAiPreset(typeId, isBoss = false, bossKind = "boss") {
 
 function cloneEnemyAttacks(typeId) {
   const def = getEnemyDef(typeId) || {};
-  return (def.attacks || []).map((a) => ({ ...a, timer: rand(0.1, Math.max(0.25, (a.cooldown || 2) * 0.7)) }));
+  return (def.attacks || []).map((a) => ({
+    ...a,
+    timer: rand(0.1, Math.max(0.25, (a.cooldown || 2) * 0.7))
+  }));
 }
 
 function spawnEnemy(typeId, x, y, isBoss = false, bossKind = "boss") {
@@ -109,6 +112,63 @@ function spawnEnemyAroundPlayer(typeId, minDist = 320, maxDist = 460, isBoss = f
   spawnEnemy(typeId, x, y, isBoss, bossKind);
 }
 
+// ===============================
+// ドローン被弾 / ターゲット補助
+// ===============================
+
+function getLiveDrones() {
+  return (STATE.drones || []).filter((d) => d && d.deadTimer <= 0 && d.hp > 0);
+}
+
+function getDroneRadius(drone) {
+  if (!drone) return 16;
+  return drone.r || 16;
+}
+
+function getActiveBarrierDrone() {
+  return getLiveDrones().find((d) => d.type === "barrier") || null;
+}
+
+function getNonBarrierDrones() {
+  return getLiveDrones().filter((d) => d.type !== "barrier");
+}
+
+function damageDrone(drone, amount) {
+  if (!drone || drone.deadTimer > 0 || drone.hp <= 0) return false;
+
+  drone.hp = Math.max(0, drone.hp - amount);
+  if (drone.hp <= 0) {
+    drone.hp = 0;
+    drone.deadTimer = 5;
+  }
+  return true;
+}
+
+function getEnemyPrimaryTarget(player) {
+  return getActiveBarrierDrone() || player;
+}
+
+function getDroneHitByCircle(x, y, radius, includeBarrierFirst = true) {
+  const live = getLiveDrones();
+  if (live.length <= 0) return null;
+
+  if (includeBarrierFirst) {
+    const barrier = getActiveBarrierDrone();
+    if (barrier && dist(x, y, barrier.x, barrier.y) <= radius + getDroneRadius(barrier)) {
+      return barrier;
+    }
+  }
+
+  for (const d of live) {
+    if (includeBarrierFirst && d.type === "barrier") continue;
+    if (dist(x, y, d.x, d.y) <= radius + getDroneRadius(d)) {
+      return d;
+    }
+  }
+
+  return null;
+}
+
 function updateEnemies(dt) {
   const p = STATE.player;
   if (!p) return;
@@ -116,9 +176,23 @@ function updateEnemies(dt) {
   for (const e of STATE.enemies) {
     if (e.dead) continue;
 
-    updateEnemyAi(e, p, dt);
-    updateEnemyAttacks(e, p, dt);
+    const target = getEnemyPrimaryTarget(p);
+
+    updateEnemyAi(e, target, dt);
+    updateEnemyAttacks(e, target, dt);
     e.hitFlash = Math.max(0, e.hitFlash - dt * 6);
+
+    const barrier = getActiveBarrierDrone();
+    if (barrier && dist(e.x, e.y, barrier.x, barrier.y) <= e.r + getDroneRadius(barrier)) {
+      damageDrone(barrier, e.damage * (e.contactMul || 1) * dt * 6);
+      continue;
+    }
+
+    const otherDrone = getDroneHitByCircle(e.x, e.y, e.r, false);
+    if (otherDrone) {
+      damageDrone(otherDrone, e.damage * (e.contactMul || 1) * dt * 6);
+      continue;
+    }
 
     if (dist(e.x, e.y, p.x, p.y) <= e.r + p.r) {
       damagePlayer(e.damage * (e.contactMul || 1) * dt * 6);
@@ -128,9 +202,9 @@ function updateEnemies(dt) {
   resolveEnemyDeaths();
 }
 
-function updateEnemyAi(e, p, dt) {
-  const dx = p.x - e.x;
-  const dy = p.y - e.y;
+function updateEnemyAi(e, target, dt) {
+  const dx = target.x - e.x;
+  const dy = target.y - e.y;
   const len = Math.hypot(dx, dy) || 1;
   const nx = dx / len;
   const ny = dy / len;
@@ -141,28 +215,28 @@ function updateEnemyAi(e, p, dt) {
 
   switch (e.aiType) {
     case "slow":
-      updateSlowEnemy(e, p, dt, nx, ny, len);
+      updateSlowEnemy(e, target, dt, nx, ny, len);
       break;
     case "tank":
-      updateTankEnemy(e, p, dt, nx, ny, len);
+      updateTankEnemy(e, target, dt, nx, ny, len);
       break;
     case "rush":
-      updateRushEnemy(e, p, dt, nx, ny, len);
+      updateRushEnemy(e, target, dt, nx, ny, len);
       break;
     case "dash":
-      updateDashEnemy(e, p, dt, nx, ny, len);
+      updateDashEnemy(e, target, dt, nx, ny, len);
       break;
     case "orbit":
-      updateOrbitEnemyAi(e, p, dt, nx, ny, len);
+      updateOrbitEnemyAi(e, target, dt, nx, ny, len);
       break;
     case "weave":
-      updateWeaveEnemy(e, p, dt, nx, ny, len);
+      updateWeaveEnemy(e, target, dt, nx, ny, len);
       break;
     case "boss_weave":
-      updateBossWeaveEnemy(e, p, dt, nx, ny, len);
+      updateBossWeaveEnemy(e, target, dt, nx, ny, len);
       break;
     case "boss_dash":
-      updateBossDashEnemy(e, p, dt, nx, ny, len);
+      updateBossDashEnemy(e, target, dt, nx, ny, len);
       break;
     default:
       moveEnemyByVector(e, nx, ny, e.speed * dt);
@@ -185,7 +259,7 @@ function getStrafeVector(nx, ny, dir = 1) {
   };
 }
 
-function updateSlowEnemy(e, p, dt, nx, ny, len) {
+function updateSlowEnemy(e, target, dt, nx, ny, len) {
   const wobble = Math.sin(STATE.time * 2.4 + e.x * 0.01 + e.y * 0.01) * e.wobbleMul;
   const side = getStrafeVector(nx, ny, e.aiDir);
   const vx = nx + side.x * wobble * 0.35;
@@ -194,7 +268,7 @@ function updateSlowEnemy(e, p, dt, nx, ny, len) {
   moveEnemyByVector(e, vx, vy, scale * dt);
 }
 
-function updateTankEnemy(e, p, dt, nx, ny, len) {
+function updateTankEnemy(e, target, dt, nx, ny, len) {
   let mul = 0.62;
   if (len < 110) mul = 0.95;
   if (len < 56) {
@@ -204,7 +278,7 @@ function updateTankEnemy(e, p, dt, nx, ny, len) {
   moveEnemyByVector(e, nx, ny, e.speed * mul * dt);
 }
 
-function updateRushEnemy(e, p, dt, nx, ny, len) {
+function updateRushEnemy(e, target, dt, nx, ny, len) {
   if (e.aiState !== "rush" && e.aiTimer <= 0) {
     e.aiState = e.aiState === "rest" ? "approach" : "rush";
     e.aiTimer = e.aiState === "rush" ? e.rushDuration : e.restDuration;
@@ -229,7 +303,7 @@ function updateRushEnemy(e, p, dt, nx, ny, len) {
   moveEnemyByVector(e, nx, ny, e.speed * 0.92 * dt);
 }
 
-function updateDashEnemy(e, p, dt, nx, ny, len) {
+function updateDashEnemy(e, target, dt, nx, ny, len) {
   if (e.aiState === "dash") {
     e.contactMul = 1.45;
     moveEnemyByVector(e, nx, ny, e.speed * e.burstSpeedMul * dt);
@@ -259,7 +333,7 @@ function updateDashEnemy(e, p, dt, nx, ny, len) {
   moveEnemyByVector(e, nx, ny, e.speed * 0.88 * dt);
 }
 
-function updateOrbitEnemyAi(e, p, dt, nx, ny, len) {
+function updateOrbitEnemyAi(e, target, dt, nx, ny, len) {
   const side = getStrafeVector(nx, ny, e.aiDir);
   const ring = e.preferRange || 110;
 
@@ -277,7 +351,7 @@ function updateOrbitEnemyAi(e, p, dt, nx, ny, len) {
   }
 }
 
-function updateWeaveEnemy(e, p, dt, nx, ny, len) {
+function updateWeaveEnemy(e, target, dt, nx, ny, len) {
   const side = getStrafeVector(nx, ny, e.aiDir);
   const wave = Math.sin(STATE.time * 5 + e.x * 0.02) * 0.6;
   const prefer = e.preferRange || 60;
@@ -293,11 +367,16 @@ function updateWeaveEnemy(e, p, dt, nx, ny, len) {
   }
 }
 
-function updateBossWeaveEnemy(e, p, dt, nx, ny, len) {
+function updateBossWeaveEnemy(e, target, dt, nx, ny, len) {
   const side = getStrafeVector(nx, ny, e.aiDir);
   if (e.aiState === "rush") {
     e.contactMul = 1.35;
-    moveEnemyByVector(e, nx * 0.95 + side.x * 0.2, ny * 0.95 + side.y * 0.2, e.speed * e.burstSpeedMul * dt);
+    moveEnemyByVector(
+      e,
+      nx * 0.95 + side.x * 0.2,
+      ny * 0.95 + side.y * 0.2,
+      e.speed * e.burstSpeedMul * dt
+    );
     if (e.aiTimer <= 0) {
       e.aiState = "weave";
       e.aiTimer = rand(0.8, 1.2);
@@ -311,7 +390,12 @@ function updateBossWeaveEnemy(e, p, dt, nx, ny, len) {
   if (len < prefer - 18) forward = -0.35;
   if (len > prefer + 40) forward = 0.85;
 
-  moveEnemyByVector(e, nx * forward + side.x * e.strafeSpeedMul, ny * forward + side.y * e.strafeSpeedMul, e.speed * dt);
+  moveEnemyByVector(
+    e,
+    nx * forward + side.x * e.strafeSpeedMul,
+    ny * forward + side.y * e.strafeSpeedMul,
+    e.speed * dt
+  );
 
   if (e.aiTimer <= 0) {
     if (len < 210) {
@@ -324,7 +408,7 @@ function updateBossWeaveEnemy(e, p, dt, nx, ny, len) {
   }
 }
 
-function updateBossDashEnemy(e, p, dt, nx, ny, len) {
+function updateBossDashEnemy(e, target, dt, nx, ny, len) {
   if (e.aiState === "dash") {
     e.contactMul = 1.55;
     moveEnemyByVector(e, nx, ny, e.speed * e.burstSpeedMul * dt);
@@ -354,30 +438,30 @@ function updateBossDashEnemy(e, p, dt, nx, ny, len) {
   moveEnemyByVector(e, nx, ny, e.speed * 0.82 * dt);
 }
 
-function updateEnemyAttacks(e, p, dt) {
+function updateEnemyAttacks(e, target, dt) {
   if (!Array.isArray(e.attacks) || e.attacks.length === 0) return;
-  const playerDist = dist(e.x, e.y, p.x, p.y);
+  const targetDist = dist(e.x, e.y, target.x, target.y);
 
   for (const atk of e.attacks) {
     atk.timer -= dt;
     if (atk.timer > 0) continue;
-    if (playerDist > (atk.triggerRange || Infinity)) continue;
+    if (targetDist > (atk.triggerRange || Infinity)) continue;
 
-    executeEnemyAttack(e, p, atk);
+    executeEnemyAttack(e, target, atk);
     atk.timer = Math.max(0.2, atk.cooldown || 2);
   }
 }
 
-function executeEnemyAttack(e, p, atk) {
+function executeEnemyAttack(e, target, atk) {
   switch (atk.type) {
     case "shot":
-      spawnAimedEnemyProjectile(e, p, atk, 1, 0);
+      spawnAimedEnemyProjectile(e, target, atk, 1, 0);
       break;
     case "spread":
-      spawnAimedEnemyProjectile(e, p, atk, atk.count || 3, atk.spread || 0.3);
+      spawnAimedEnemyProjectile(e, target, atk, atk.count || 3, atk.spread || 0.3);
       break;
     case "line_burst":
-      spawnAimedEnemyProjectile(e, p, atk, atk.count || 4, 0.16);
+      spawnAimedEnemyProjectile(e, target, atk, atk.count || 4, 0.16);
       break;
     case "ring":
       spawnRingEnemyProjectiles(e, atk);
@@ -393,8 +477,8 @@ function executeEnemyAttack(e, p, atk) {
   }
 }
 
-function spawnAimedEnemyProjectile(e, p, atk, count = 1, spread = 0) {
-  const baseAng = angle(e.x, e.y, p.x, p.y);
+function spawnAimedEnemyProjectile(e, target, atk, count = 1, spread = 0) {
+  const baseAng = angle(e.x, e.y, target.x, target.y);
   const center = (count - 1) / 2;
   for (let i = 0; i < count; i++) {
     const ang = baseAng + (i - center) * spread;
@@ -486,8 +570,17 @@ function updateEnemyProjectiles(dt) {
       b.delay -= dt;
       if (b.delay <= 0 && !b.triggered) {
         b.triggered = true;
-        if (dist(b.x, b.y, p.x, p.y) <= b.radius + p.r) {
-          damagePlayer(b.damage);
+
+        const barrier = getActiveBarrierDrone();
+        if (barrier && dist(b.x, b.y, barrier.x, barrier.y) <= b.radius + getDroneRadius(barrier)) {
+          damageDrone(barrier, b.damage);
+        } else {
+          const otherDrone = getDroneHitByCircle(b.x, b.y, b.radius, false);
+          if (otherDrone) {
+            damageDrone(otherDrone, b.damage);
+          } else if (dist(b.x, b.y, p.x, p.y) <= b.radius + p.r) {
+            damagePlayer(b.damage);
+          }
         }
       }
       next.push(b);
@@ -496,6 +589,18 @@ function updateEnemyProjectiles(dt) {
 
     b.x += b.vx * dt;
     b.y += b.vy * dt;
+
+    const barrier = getActiveBarrierDrone();
+    if (barrier && dist(b.x, b.y, barrier.x, barrier.y) <= b.radius + getDroneRadius(barrier)) {
+      damageDrone(barrier, b.damage);
+      continue;
+    }
+
+    const otherDrone = getDroneHitByCircle(b.x, b.y, b.radius, false);
+    if (otherDrone) {
+      damageDrone(otherDrone, b.damage);
+      continue;
+    }
 
     if (dist(b.x, b.y, p.x, p.y) <= b.radius + p.r) {
       damagePlayer(b.damage);

@@ -109,6 +109,7 @@ const STATE = {
   // ----------------
 
   player: null,
+  drones: [],
 
   enemies: [],
   enemyBullets: [],
