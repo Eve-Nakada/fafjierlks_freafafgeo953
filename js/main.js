@@ -97,6 +97,7 @@ function resetGameState() {
   STATE.ambientBubbles = [];
   STATE.bossEvent = { active: false, bossId: null, bossName: "", warningTimer: 0, warningText: "", hazardTimer: 0 };
   STATE.scoreState = { noDamageTimer: 0, noDamageTier: 0, killChainTimer: 0, killChainCount: 0, popupTimer: 0, popupText: "" };
+  STATE.drones = [];
 
   STATE.camera.x = 0;
   STATE.camera.y = 0;
@@ -182,10 +183,10 @@ function updateGame(dt) {
   STATE.elapsed += dt;
 
   updatePlayer(dt);
-  updateDrones(dt);
   updateWeapons(dt);
   updateBullets(dt);
   updateEnemies(dt);
+  updateDrones(dt);
   updateEnemyProjectiles(dt);
   updateXPGems(dt);
   updateMapCoins(dt);
@@ -337,24 +338,12 @@ function renderChests(ctx) {
 }
 
 function openChestReward() {
-  const goldReward = 500;
-  const xpReward = 1000;
-  const scoreReward = 5000;
+  gainXP(1000);
+  addGold(500);
+  STATE.score += 5000;
 
-  if (typeof addGold === "function") {
-    addGold(goldReward);
-  } else {
-    STATE.player.gold = (STATE.player.gold || 0) + goldReward;
-  }
-
-  if (typeof gainXP === "function") {
-    gainXP(xpReward);
-  }
-
-  STATE.score = (STATE.score || 0) + scoreReward;
-
-  setScorePopup?.(`宝箱報酬 +${scoreReward}`);
-  updateHUD();
+  addEffect?.(STATE.player?.x || 0, STATE.player?.y || 0, 42, "#ffe08a", 0.22, 0.24);
+  updateHUD?.();
 }
 
 

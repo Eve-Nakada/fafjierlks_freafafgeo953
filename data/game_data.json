@@ -1313,13 +1313,98 @@
       "desc": "前方に追従するドローンが敵を自動攻撃する。",
       "iconIndex": 0,
       "maxLevel": 5,
-      "effects": [
-        "ドローン解放",
-        "攻撃力アップ",
-        "攻撃力アップ",
-        "攻撃力アップ",
-        "前後同時攻撃"
-      ]
+      "growthDesc": "通常Lv1→Lv3、第1進化Lv1→Lv4、第2進化Lv1→Lv5。単発支援から、連射型か貫通型へ派生する。",
+      "feel": "前線に少し先行して射線を作る補助火器。プレイヤーの向きと一緒に圧を掛けやすい。",
+      "synergies": [
+        {
+          "passiveId": "battery",
+          "effect": "連射型分岐の条件。発射回転率が伸びて群れ処理が安定する。"
+        },
+        {
+          "passiveId": "core",
+          "effect": "貫通型分岐の条件。1発ごとの価値が高くなり中型処理が強い。"
+        },
+        {
+          "passiveId": "sonar_scope",
+          "effect": "第2進化で射線維持と命中率を底上げできる。"
+        }
+      ],
+      "evolutions": [
+        {
+          "branchId": "rapid",
+          "name": "連射型ドローン",
+          "pattern": "rapid",
+          "needsPassive": "battery",
+          "secondStage": {
+            "name": "超連射ドローン",
+            "pattern": "rapid_ex",
+            "needsPassive": "sonar_scope"
+          }
+        },
+        {
+          "branchId": "pierce",
+          "name": "貫通型ドローン",
+          "pattern": "pierce",
+          "needsPassive": "core",
+          "secondStage": {
+            "name": "殲滅貫通ドローン",
+            "pattern": "pierce_ex",
+            "needsPassive": "battery"
+          }
+        }
+      ],
+      "balance": {
+        "stages": [
+          {
+            "key": "normal",
+            "name": "通常",
+            "levelLabels": [
+              "ドローン解放",
+              "攻撃力 +3 / HP +5",
+              "攻撃力 +6 / 進化可能"
+            ],
+            "levels": [
+              { "atk": 2,  "hp": 10, "count": 1, "fireCooldown": 0.62, "pierce": 1, "burstCount": 1 },
+              { "atk": 5,  "hp": 15, "count": 1, "fireCooldown": 0.58, "pierce": 1, "burstCount": 1 },
+              { "atk": 8,  "hp": 20, "count": 1, "fireCooldown": 0.54, "pierce": 1, "burstCount": 1 }
+            ]
+          },
+          {
+            "key": "evolution1",
+            "name": "第1進化",
+            "levelLabels": [
+              "攻撃力 +10 / 連射2発",
+              "攻撃力 +12 / 連射3発",
+              "攻撃力 +14 / 連射高速化",
+              "攻撃力 +16 / 連射完成"
+            ],
+            "levels": [
+              { "atk": 10, "hp": 24, "count": 1, "fireCooldown": 0.34, "pierce": 1, "burstCount": 2 },
+              { "atk": 12, "hp": 28, "count": 1, "fireCooldown": 0.30, "pierce": 1, "burstCount": 3 },
+              { "atk": 14, "hp": 34, "count": 1, "fireCooldown": 0.26, "pierce": 1, "burstCount": 3 },
+              { "atk": 16, "hp": 40, "count": 1, "fireCooldown": 0.22, "pierce": 1, "burstCount": 4 }
+            ]
+          },
+          {
+            "key": "evolution2",
+            "name": "第2進化",
+            "levelLabels": [
+              "攻撃力 +18 / 超連射",
+              "攻撃力 +20 / 2連装",
+              "攻撃力 +22 / 2連装高速化",
+              "攻撃力 +24 / 2連装完成",
+              "攻撃力 +28 / 飽和連射"
+            ],
+            "levels": [
+              { "atk": 18, "hp": 48, "count": 1, "fireCooldown": 0.20, "pierce": 1, "burstCount": 4, "doubleBarrel": false },
+              { "atk": 20, "hp": 54, "count": 1, "fireCooldown": 0.18, "pierce": 1, "burstCount": 4, "doubleBarrel": true  },
+              { "atk": 22, "hp": 60, "count": 1, "fireCooldown": 0.16, "pierce": 1, "burstCount": 5, "doubleBarrel": true  },
+              { "atk": 24, "hp": 66, "count": 1, "fireCooldown": 0.14, "pierce": 1, "burstCount": 5, "doubleBarrel": true  },
+              { "atk": 28, "hp": 74, "count": 1, "fireCooldown": 0.12, "pierce": 1, "burstCount": 6, "doubleBarrel": true  }
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "barrier_drone",
@@ -1327,13 +1412,98 @@
       "desc": "周囲を回転し、敵の攻撃を受け止める防御ドローン。",
       "iconIndex": 1,
       "maxLevel": 5,
-      "effects": [
-        "ドローン解放",
-        "HPアップ",
-        "HPアップ",
-        "HPアップ",
-        "電気クラゲフィールド解放"
-      ]
+      "growthDesc": "通常Lv1→Lv3、第1進化Lv1→Lv4、第2進化Lv1→Lv5。単機防御から、2機公転型かシールド展開型へ派生する。",
+      "feel": "接触事故を抑える防御支援。前線維持と危険地帯の横切りを補助する。",
+      "synergies": [
+        {
+          "passiveId": "pressure_fin",
+          "effect": "2機化分岐の条件。公転半径が伸びて受け止め範囲が広がる。"
+        },
+        {
+          "passiveId": "shell",
+          "effect": "シールド展開分岐の条件。耐久戦と相性が良い。"
+        },
+        {
+          "passiveId": "battery",
+          "effect": "第2進化で電撃頻度や展開維持が伸びる。"
+        }
+      ],
+      "evolutions": [
+        {
+          "branchId": "dual",
+          "name": "双壁ドローン",
+          "pattern": "dual",
+          "needsPassive": "pressure_fin",
+          "secondStage": {
+            "name": "双極電壁ドローン",
+            "pattern": "dual_ex",
+            "needsPassive": "battery"
+          }
+        },
+        {
+          "branchId": "shield",
+          "name": "シールド展開ドローン",
+          "pattern": "shield",
+          "needsPassive": "shell",
+          "secondStage": {
+            "name": "深海防壁ドローン",
+            "pattern": "shield_ex",
+            "needsPassive": "core"
+          }
+        }
+      ],
+      "balance": {
+        "stages": [
+          {
+            "key": "normal",
+            "name": "通常",
+            "levelLabels": [
+              "バリア1機",
+              "HP +10",
+              "HP +20 / 進化可能"
+            ],
+            "levels": [
+              { "hp": 50,  "count": 1, "orbitRadius": 40, "orbitSpeed": 2.0, "fieldRadius": 0,  "shieldArc": 0,  "shieldHp": 0 },
+              { "hp": 60,  "count": 1, "orbitRadius": 42, "orbitSpeed": 2.1, "fieldRadius": 0,  "shieldArc": 0,  "shieldHp": 0 },
+              { "hp": 70,  "count": 1, "orbitRadius": 44, "orbitSpeed": 2.2, "fieldRadius": 0,  "shieldArc": 0,  "shieldHp": 0 }
+            ]
+          },
+          {
+            "key": "evolution1",
+            "name": "第1進化",
+            "levelLabels": [
+              "2機化",
+              "2機化 / HP強化",
+              "2機化 / 公転高速化",
+              "2機化 / 完成"
+            ],
+            "levels": [
+              { "hp": 82,  "count": 2, "orbitRadius": 52, "orbitSpeed": 2.5, "fieldRadius": 0,  "shieldArc": 0,  "shieldHp": 0 },
+              { "hp": 96,  "count": 2, "orbitRadius": 54, "orbitSpeed": 2.6, "fieldRadius": 0,  "shieldArc": 0,  "shieldHp": 0 },
+              { "hp": 112, "count": 2, "orbitRadius": 56, "orbitSpeed": 2.8, "fieldRadius": 0,  "shieldArc": 0,  "shieldHp": 0 },
+              { "hp": 130, "count": 2, "orbitRadius": 58, "orbitSpeed": 3.0, "fieldRadius": 0,  "shieldArc": 0,  "shieldHp": 0 }
+            ]
+          },
+          {
+            "key": "evolution2",
+            "name": "第2進化",
+            "levelLabels": [
+              "電撃壁追加",
+              "電撃壁強化",
+              "展開半径拡大",
+              "電撃頻度上昇",
+              "双極防壁完成"
+            ],
+            "levels": [
+              { "hp": 150, "count": 2, "orbitRadius": 62, "orbitSpeed": 3.1, "fieldRadius": 48, "shieldArc": 0,  "shieldHp": 0 },
+              { "hp": 168, "count": 2, "orbitRadius": 64, "orbitSpeed": 3.2, "fieldRadius": 56, "shieldArc": 0,  "shieldHp": 0 },
+              { "hp": 186, "count": 2, "orbitRadius": 68, "orbitSpeed": 3.25,"fieldRadius": 64, "shieldArc": 0,  "shieldHp": 0 },
+              { "hp": 204, "count": 2, "orbitRadius": 70, "orbitSpeed": 3.3, "fieldRadius": 72, "shieldArc": 0,  "shieldHp": 0 },
+              { "hp": 228, "count": 2, "orbitRadius": 74, "orbitSpeed": 3.4, "fieldRadius": 84, "shieldArc": 0,  "shieldHp": 0 }
+            ]
+          }
+        ]
+      }
     }
   ],
   "enemyStats": {

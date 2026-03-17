@@ -278,6 +278,8 @@ function closeWeaponGrowth() {
   hideScreen("weaponGrowthScreen");
   STATE.paused = !!STATE._weaponGrowthPrevPaused;
   STATE._weaponGrowthWeaponId = null;
+  STATE._weaponGrowthPassiveId = null;
+  updateHUD?.();
 }
 
 function getEnemyAiLabel(type) {
@@ -1276,6 +1278,7 @@ function openChestEvolutionScreen(choices) {
   if (!wrap) return false;
 
   wrap.innerHTML = "";
+  STATE._chestEvolutionPrevPaused = !!STATE.paused;
   STATE.paused = true;
   STATE._chestEvolutionChoices = choices || [];
 
@@ -1303,7 +1306,7 @@ function openChestEvolutionScreen(choices) {
 
 function closeChestEvolutionScreen() {
   hideScreen("chestEvolutionScreen");
-  STATE.paused = false;
+  STATE.paused = !!STATE._chestEvolutionPrevPaused;
   STATE._chestEvolutionChoices = [];
   updateHUD();
 }
@@ -1371,12 +1374,26 @@ function renderDetailLists() {
     const passiveHtml = (p.passives || []).map((passiveId) => {
       const def = (STATE.gameData?.passives || []).find(x => x.id === passiveId);
       const lv = p.passiveLevels[passiveId] || 0;
+    
+      const growthBtn = def?.evolutions?.length
+        ? `<button class="miniBtn" type="button" data-open-passive-growth="1" data-passive-id="${passiveId}">成長表</button>`
+        : "";
+    
       return `
-        <div class="detailEntry">
-          <div class="detailName">${def?.name || passiveId}</div>
-          <div class="detailValue">Lv${lv}</div>
+        <div class="detailEntryBlock">
+          <div class="detailEntry">
+            <div class="detailName">${def?.name || passiveId}</div>
+            <div class="detailValue">Lv${lv} ${growthBtn}</div>
+          </div>
+          ${def?.evolutions?.length ? `<div class="detailSub detailSubAccent">${buildPassiveEvolutionHintText(def, lv)}</div>` : ""}
         </div>`;
     }).join("");
+
+    getEl("passiveDetailList")?.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-open-passive-growth]");
+      if (!btn) return;
+      openPassiveGrowth(btn.dataset.passiveId);
+    });
 
     passiveDetailList.innerHTML = `${passiveHtml}
       <div class="detailEntry">
@@ -1384,6 +1401,117 @@ function renderDetailLists() {
         <div class="detailValue">${p.rerollTickets || 0}枚</div>
       </div>`;
   }
+}
+
+function buildPassiveEvolutionHintText(def, lv) {
+  if (!def?.evolutions?.length) return "";
+
+  const stage = getPassiveEvolutionStage(def.id);
+  const branchId = getPassiveBranchId(def.id);
+
+  if (stage <= 0) {
+    const needList = def.evolutions
+      .map((e) => `Lv${Math.max(3, lv)} + ${getPassiveDisplayName(e.needsPassive)}`)
+      .join(" / ");
+    return `進化ヒント: ${needList}`;
+  }
+
+  if (stage === 1) {
+    const branch = def.evolutions.find((e) => e.branchId === branchId);
+    if (branch?.secondStage) {
+      return `第2進化ヒント: Lv${Math.max(4, lv)} + ${getPassiveDisplayName(branch.secondStage.needsPassive)}`;
+    }
+  }
+
+  return "最終進化済み";
+}
+
+function openPassiveGrowth(passiveId) {
+  const screen = getEl("weaponGrowthScreen");
+  const content = getEl("weaponGrowthContent");
+  const def = getPassiveDef(passiveId);
+  if (!screen || !content || !def) return;
+  if (isScreenVisible("weaponGrowthScreen") && STATE._weaponGrowthPassiveId === passiveId) return;
+
+  STATE._weaponGrowthPrevPaused = !!STATE.paused;
+  STATE._weaponGrowthPassiveId = passiveId;
+  STATE._weaponGrowthWeaponId = null;
+  STATE.paused = true;
+  content.innerHTML = buildPassiveGrowthTreeHtml(passiveId);
+  showScreen("weaponGrowthScreen");
+}
+
+function buildPassiveGrowthTreeHtml(passiveId) {
+  const def = getPassiveDef(passiveId);
+  if (!def) return `<div class="growthEmpty">データがありません。</div>`;
+
+  const instStage = getPassiveEvolutionStage(passiveId);
+  const instBranchId = getPassiveBranchId(passiveId);
+  const stages = def.balance?.stages || [];
+  const branches = def.evolutions || [];
+
+  let html = `
+    <div class="growthTreeRoot">
+      <div class="growthRootBlock">
+        ${buildGrowthNodeHtml(
+          "パッシブ",
+          def.name,
+          def.growthDesc || def.desc || "",
+          (stages[0]?.levelLabels || []).map((label, i) => `Lv${i + 1}: ${label}`).join("<br>"),
+          instStage <= 0,
+          "growthStage0"
+        )}
+      </div>
+      <div class="growthBranchRow">`;
+
+  if (branches.length === 0) {
+    html += `<div class="growthEmpty">このパッシブには進化先がまだ設定されていません。</div>`;
+  }
+
+  for (const branch of branches) {
+    const stage1Active = instStage >= 1 && (!instBranchId || instBranchId === branch.branchId);
+    const stage2Active = instStage >= 2 && (!instBranchId || instBranchId === branch.branchId);
+    const stage1Def = stages.find((s) => s.key === "evolution1");
+    const stage2Def = stages.find((s) => s.key === "evolution2");
+
+    html += `
+      <div class="growthBranchColumn">
+        <div class="growthBranchConnector"></div>
+        ${buildGrowthNodeHtml(
+          "第1進化",
+          branch.name || "進化",
+          `条件: ${getPassiveDisplayName(branch.needsPassive)}`,
+          (stage1Def?.levelLabels || []).map((label, i) => `Lv${i + 1}: ${label}`).join("<br>"),
+          stage1Active,
+          "growthStage1"
+        )}`;
+
+    if (branch.secondStage) {
+      html += `
+        <div class="growthChildConnector"></div>
+        ${buildGrowthNodeHtml(
+          "第2進化",
+          branch.secondStage.name || "第2進化",
+          `条件: ${getPassiveDisplayName(branch.secondStage.needsPassive)}`,
+          (stage2Def?.levelLabels || []).map((label, i) => `Lv${i + 1}: ${label}`).join("<br>"),
+          stage2Active,
+          "growthStage2"
+        )}`;
+    }
+
+    html += `</div>`;
+  }
+
+  html += `
+      </div>
+    </div>`;
+
+  return html;
+}
+
+function getPassiveDisplayName(id) {
+  const def = getPassiveDef(id);
+  return def?.name || id || "なし";
 }
 
 function renderWeaponSelect() {
@@ -1420,17 +1548,44 @@ function buildLevelUpChoices() {
   const choices = [];
 
   const weaponCandidates = (STATE.gameData?.weapons || []).filter(w => canAddWeapon(w.id));
-  const passiveCandidates = (STATE.gameData?.passives || []).filter(p => canLevelPassive(p.id));
-  const evolutions = typeof getAvailableEvolutions === "function" ? getAvailableEvolutions() : [];
+  const neededPassives = collectNeededEvolutionPassives();
+
+  const passiveCandidates = (STATE.gameData?.passives || [])
+    .filter(p => canLevelPassive(p.id))
+    .sort((a, b) => (neededPassives.get(b.id) || 0) - (neededPassives.get(a.id) || 0));
+
+  const weaponEvolutions = typeof getAvailableEvolutions === "function" ? getAvailableEvolutions() : [];
+  const passiveEvolutions = typeof getAvailablePassiveEvolutions === "function" ? getAvailablePassiveEvolutions() : [];
+
+  if (weaponEvolutions.length > 0) {
+    choices.push(buildEvolutionLevelUpChoice(weaponEvolutions[0]));
+  } else if (passiveEvolutions.length > 0) {
+    choices.push(buildPassiveEvolutionLevelUpChoice(passiveEvolutions[0]));
+  }
+
+  const priorityPassive = passiveCandidates.find(p => (neededPassives.get(p.id) || 0) > 0);
+  if (priorityPassive) {
+    const lv = getPassiveLevel(priorityPassive.id);
+    choices.push({
+      type: "passive",
+      key: `passive_${priorityPassive.id}`,
+      name: priorityPassive.name,
+      desc: priorityPassive.effectDesc || priorityPassive.desc || "",
+      meta: `Lv${lv} → Lv${lv + 1} / 進化条件に関連`,
+      apply() {
+        return addPassive(priorityPassive.id);
+      }
+    });
+  }
 
   shuffle(weaponCandidates);
-  shuffle(passiveCandidates);
-  shuffle(evolutions);
 
-  // 進化可能なら最低1つは優先的に入れる
-  if (evolutions.length > 0) {
-    choices.push(buildEvolutionLevelUpChoice(evolutions[0]));
-  }
+  const weightedPassives = passiveCandidates.filter(p => !priorityPassive || p.id !== priorityPassive.id);
+  const high = weightedPassives.filter(p => (neededPassives.get(p.id) || 0) > 0);
+  const low = weightedPassives.filter(p => (neededPassives.get(p.id) || 0) <= 0);
+  shuffle(high);
+  shuffle(low);
+  const passivePool = [...high, ...low];
 
   for (const w of weaponCandidates.slice(0, 6)) {
     const inst = getWeaponInstance(w.id);
@@ -1440,15 +1595,15 @@ function buildLevelUpChoices() {
       type: "weapon",
       key: `weapon_${w.id}`,
       name: w.name,
-      desc: inst ? (getWeaponStageLevelLabel(w, inst.evolutionStage || 0, nextLv) || `武器レベルを ${nextLv} に強化`) : w.desc,
-      meta: `${inst ? `${getWeaponStageLabel(inst)} → Lv${nextLv}` : "新規武器"}${buildWeaponChoiceHint(w, inst)}`,
+      desc: inst ? `武器レベルを ${nextLv} に強化` : w.desc,
+      meta: `${inst ? `Lv${inst.level} → Lv${nextLv}` : "新規武器"}${buildWeaponChoiceHint(w, inst)}`,
       apply() {
         return addWeapon(w.id);
       }
     });
   }
 
-  for (const p of passiveCandidates.slice(0, 6)) {
+  for (const p of passivePool.slice(0, 6)) {
     const lv = getPassiveLevel(p.id);
     const levelDesc = Array.isArray(p.levelDesc)
       ? (p.levelDesc[lv] || p.effectDesc || p.desc || "")
@@ -1459,34 +1614,29 @@ function buildLevelUpChoices() {
       key: `passive_${p.id}`,
       name: p.name,
       desc: levelDesc,
-      meta: `Lv${lv} → Lv${lv + 1}`,
+      meta: `Lv${lv} → Lv${lv + 1}${(neededPassives.get(p.id) || 0) > 0 ? " / 進化条件に関連" : ""}`,
       apply() {
         return addPassive(p.id);
       }
     });
   }
 
-  // key重複を除去
   const uniq = [];
   const used = new Set();
-
   for (const c of choices) {
     if (used.has(c.key)) continue;
     used.add(c.key);
     uniq.push(c);
   }
 
-  const evoChoices = uniq.filter(c => c.type === "evolution");
-  const otherChoices = uniq.filter(c => c.type !== "evolution");
-  shuffle(otherChoices);
-
   const result = [];
+  const evoChoices = uniq.filter(c => c.type === "evolution");
+  const others = uniq.filter(c => c.type !== "evolution");
+  shuffle(others);
 
-  if (evoChoices.length > 0) {
-    result.push(evoChoices[0]);
-  }
+  if (evoChoices.length > 0) result.push(evoChoices[0]);
 
-  for (const c of otherChoices) {
+  for (const c of others) {
     if (result.length >= 3) break;
     result.push(c);
   }
@@ -1506,6 +1656,62 @@ function buildLevelUpChoices() {
   }
 
   return result.slice(0, 3);
+}
+
+function collectNeededEvolutionPassives() {
+  const out = new Map();
+
+  // 武器進化条件
+  for (const w of STATE.player?.weapons || []) {
+    const def = getWeaponDef(w.id);
+    if (!def) continue;
+
+    const stage = w.evolutionStage || 0;
+    const branches = getWeaponEvolutionBranches(def);
+
+    if (stage === 0 && w.level >= 2) {
+      for (const evo of branches) {
+        if (evo.needsPassive && getPassiveLevel(evo.needsPassive) <= 0) {
+          out.set(evo.needsPassive, (out.get(evo.needsPassive) || 0) + (w.level >= 3 ? 4 : 2));
+        }
+      }
+    }
+
+    if (stage === 1 && w.level >= 3) {
+      const branch = branches.find(x => x.branchId === w.branchId);
+      const need = branch?.secondStage?.needsPassive;
+      if (need && getPassiveLevel(need) <= 0) {
+        out.set(need, (out.get(need) || 0) + (w.level >= 4 ? 5 : 3));
+      }
+    }
+  }
+
+  // ドローン進化条件
+  for (const passiveId of ["attack_drone", "barrier_drone"]) {
+    const def = getPassiveDef(passiveId);
+    const lv = getPassiveLevel(passiveId);
+    if (!def || lv <= 0 || !Array.isArray(def.evolutions)) continue;
+
+    const stage = getPassiveEvolutionStage(passiveId);
+
+    if (stage === 0 && lv >= 2) {
+      for (const evo of def.evolutions) {
+        if (evo.needsPassive && getPassiveLevel(evo.needsPassive) <= 0) {
+          out.set(evo.needsPassive, (out.get(evo.needsPassive) || 0) + (lv >= 3 ? 4 : 2));
+        }
+      }
+    }
+
+    if (stage === 1 && lv >= 3) {
+      const branch = getPassiveBranchDef(passiveId, getPassiveBranchId(passiveId));
+      const need = branch?.secondStage?.needsPassive;
+      if (need && getPassiveLevel(need) <= 0) {
+        out.set(need, (out.get(need) || 0) + (lv >= 4 ? 5 : 3));
+      }
+    }
+  }
+
+  return out;
 }
 
 function renderLevelUpChoices() {
