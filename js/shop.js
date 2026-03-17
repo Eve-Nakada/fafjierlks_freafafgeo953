@@ -227,10 +227,58 @@ function getDisplayShopItems() {
 
   out.sort((a, b) => {
     if (a.unlockWave !== b.unlockWave) return a.unlockWave - b.unlockWave;
-    return a.price - b.price;
+    if (a.price !== b.price) return a.price - b.price;
+    return String(a.name || '').localeCompare(String(b.name || ''), 'ja');
   });
 
   return out;
+}
+
+function getShopGroupKey(item) {
+  return [
+    item.name || '',
+    item.desc || '',
+    item.effect || '',
+    Number(item.value || 0),
+    Number(item.price || 0),
+    item.persistent ? 1 : 0
+  ].join('||');
+}
+
+function getDisplayShopGroups() {
+  const items = getDisplayShopItems();
+  const groups = [];
+  const map = new Map();
+
+  for (const item of items) {
+    const key = getShopGroupKey(item);
+    let group = map.get(key);
+    if (!group) {
+      group = {
+        key,
+        item,
+        items: [],
+        stock: 0,
+        unlockWave: item.unlockWave || 0
+      };
+      map.set(key, group);
+      groups.push(group);
+    }
+
+    group.items.push(item);
+    group.stock += 1;
+    if ((item.unlockWave || 0) < group.unlockWave) {
+      group.unlockWave = item.unlockWave || 0;
+    }
+  }
+
+  groups.sort((a, b) => {
+    if (a.unlockWave !== b.unlockWave) return a.unlockWave - b.unlockWave;
+    if ((a.item.price || 0) !== (b.item.price || 0)) return (a.item.price || 0) - (b.item.price || 0);
+    return String(a.item.name || '').localeCompare(String(b.item.name || ''), 'ja');
+  });
+
+  return groups;
 }
 
 function openShop() {
@@ -342,16 +390,6 @@ function ensureShopStyles() {
       border-color:rgba(255,209,102,0.24);
       background:rgba(255,209,102,0.10);
     }
-    .shopBadgeCarry {
-      color:#7dff9c;
-      border-color:rgba(125,255,156,0.22);
-      background:rgba(125,255,156,0.10);
-    }
-    .shopBadgeLimited {
-      color:#ffcf78;
-      border-color:rgba(255,207,120,0.22);
-      background:rgba(255,207,120,0.10);
-    }
     .choiceBtn.shopItemCard {
       gap:8px;
     }
@@ -367,13 +405,15 @@ function ensureShopStyles() {
       font-weight:800;
       white-space:nowrap;
     }
-    .shopItemBadges {
+    .shopItemMetaRow {
       display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-top:6px;
       flex-wrap:wrap;
-      gap:6px;
-      margin-top:2px;
     }
-    .shopItemBadge {
+    .shopItemStock {
       display:inline-flex;
       align-items:center;
       min-height:24px;
@@ -382,29 +422,14 @@ function ensureShopStyles() {
       font-size:11px;
       font-weight:700;
       letter-spacing:0.02em;
-      border:1px solid rgba(255,255,255,0.10);
-      background:rgba(255,255,255,0.04);
+      border:1px solid rgba(124,247,255,0.24);
+      background:rgba(124,247,255,0.10);
       color:#dff7ff;
     }
-    .shopItemBadgeCarry {
-      color:#7dff9c;
-      border-color:rgba(125,255,156,0.22);
-      background:rgba(125,255,156,0.10);
-    }
-    .shopItemBadgeLimited {
-      color:#ffcf78;
-      border-color:rgba(255,207,120,0.22);
-      background:rgba(255,207,120,0.10);
-    }
-    .shopItemBadgeNew {
-      color:#7cf7ff;
-      border-color:rgba(124,247,255,0.24);
-      background:rgba(124,247,255,0.10);
-    }
-    .shopItemBadgeDisabled {
+    .shopItemUnavailable {
+      font-size:12px;
       color:#ff9c9c;
-      border-color:rgba(255,156,156,0.22);
-      background:rgba(255,156,156,0.10);
+      font-weight:700;
     }
     @media (max-width: 640px) {
       .shopPanelTitleRow,
@@ -437,7 +462,7 @@ function ensureShopHeaderUi() {
         <div class="shopPanelTitle" id="shopPanelTitle">ショップ</div>
         <div class="shopPanelWave" id="shopWaveLabel">Wave 1</div>
       </div>
-      <div class="shopPanelSub" id="shopPanelSub">このWaveで使える品と、次回へ持ち越される品が表示されます。</div>
+      <div class="shopPanelSub" id="shopPanelSub">購入すると商品は1つずつ減ります。</div>
       <div class="shopPanelMetaRow" id="shopPanelMetaRow"></div>
     </div>
   `;
@@ -458,35 +483,19 @@ function updateShopHeaderUi(items) {
   const gold = Math.max(0, Number(STATE.player?.gold || 0));
 
   waveEl.textContent = `Wave ${wave} ショップ`;
-  subEl.textContent = `購入すると商品は消えます。所持Goldを見ながら好きな順で購入してください。`;
+  subEl.textContent = `所持Goldを見ながら好きな順で購入してください。`;
   metaEl.innerHTML = `<div class="shopBadge shopBadgeGold">所持Gold: ${gold}G</div>`;
-}
-
-function getShopItemBadges(item, canBuy) {
-  const parts = [];
-  if (item.unlockWave === getCurrentShopWave()) {
-    parts.push('<span class="shopItemBadge shopItemBadgeNew">このWaveで追加</span>');
-  }
-  if (item.persistent) {
-    parts.push('<span class="shopItemBadge shopItemBadgeCarry">次回にも残る</span>');
-  } else {
-    parts.push('<span class="shopItemBadge shopItemBadgeLimited">今回限定</span>');
-  }
-  if (!canBuy) {
-    parts.push('<span class="shopItemBadge shopItemBadgeDisabled">購入不可</span>');
-  }
-  return parts.join('');
 }
 
 function renderShop() {
   const listEl = document.getElementById('shopList');
   if (!listEl) return;
 
-  const items = getDisplayShopItems();
-  updateShopHeaderUi(items);
+  const groups = getDisplayShopGroups();
+  updateShopHeaderUi(groups);
   listEl.innerHTML = '';
 
-  if (items.length === 0) {
+  if (groups.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'choiceBtn shopItemCard';
     empty.innerHTML = `
@@ -499,12 +508,15 @@ function renderShop() {
     return;
   }
 
-  for (const item of items) {
+  for (const group of groups) {
+    const item = group.item;
     const btn = document.createElement('button');
     btn.className = 'choiceBtn shopItemCard';
 
     const cost = calcShopPrice(item);
-    const canBuy = (STATE.player?.gold || 0) >= cost && canBuyShopItem(item);
+    const purchasableItem = group.items.find((entry) => canBuyShopItem(entry)) || null;
+    const canBuy = !!purchasableItem && (STATE.player?.gold || 0) >= cost;
+    const unavailableText = canBuy ? '' : '<div class="shopItemUnavailable">購入不可</div>';
 
     btn.innerHTML = `
       <div class="shopItemTopRow">
@@ -514,14 +526,18 @@ function renderShop() {
         </div>
         <div class="shopItemPrice">${cost}G</div>
       </div>
-      <div class="shopItemBadges">${getShopItemBadges(item, canBuy)}</div>
+      <div class="shopItemMetaRow">
+        <div class="shopItemStock">在庫 ${group.stock}</div>
+        ${unavailableText}
+      </div>
     `;
 
     btn.disabled = !canBuy;
     btn.onclick = async () => {
+      if (!purchasableItem) return;
       btn.disabled = true;
       try {
-        await buyShopItem(item);
+        await buyShopItem(purchasableItem);
       } finally {
         renderShop();
       }
