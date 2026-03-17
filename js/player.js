@@ -158,17 +158,35 @@ function applyAttackDroneStats(d, lv) {
     { atk: 16, hp: 40 }
   ];
   const t = table[Math.max(0, lv - 1)];
+  const prevMaxHp = d.maxHp || 0;
+
   d.atk = t.atk;
   d.maxHp = t.hp;
   d.r = 14;
-  if (d.hp == null || d.hp > d.maxHp) d.hp = d.maxHp;
+
+  if (d.hp == null) {
+    d.hp = d.maxHp;
+  } else if (d.maxHp > prevMaxHp) {
+    d.hp = d.maxHp; // レベルアップで全回復
+  } else if (d.hp > d.maxHp) {
+    d.hp = d.maxHp;
+  }
 }
 
 function applyBarrierDroneStats(d, lv) {
   const table = [50, 60, 70, 90, 150];
+  const prevMaxHp = d.maxHp || 0;
+
   d.maxHp = table[Math.max(0, lv - 1)];
   d.r = 16;
-  if (d.hp == null || d.hp > d.maxHp) d.hp = d.maxHp;
+
+  if (d.hp == null) {
+    d.hp = d.maxHp;
+  } else if (d.maxHp > prevMaxHp) {
+    d.hp = d.maxHp; // レベルアップで全回復
+  } else if (d.hp > d.maxHp) {
+    d.hp = d.maxHp;
+  }
 }
 
 function getDirVectorFromPlayer(p) {
@@ -197,6 +215,32 @@ function getNearestEnemyForDrone(fromX, fromY, maxRange = 360) {
   return best;
 }
 
+function getDroneAttackDistance(type) {
+  if (type === "barrier") return 72;
+  return 64;
+}
+
+function emitBarrierDroneField(drone, lv) {
+  if (!drone || drone.deadTimer > 0) return;
+  if (lv < 5) return;
+
+  drone.fieldTick = Math.max(0, (drone.fieldTick || 0) - STATE.delta);
+  if (drone.fieldTick > 0) return;
+  drone.fieldTick = 0.42;
+
+  const radius = 96 * (STATE.player?.stats?.areaMul || 1);
+  const damage = 10 * (STATE.player?.stats?.damageMul || 1);
+
+  addEffect?.(drone.x, drone.y, radius, "#7fe7ff", 0.16, 0.18);
+
+  for (const e of STATE.enemies || []) {
+    if (!e || e.dead) continue;
+    if (dist(drone.x, drone.y, e.x, e.y) <= radius) {
+      damageEnemy?.(e, damage);
+    }
+  }
+}
+
 function updateDrones(dt) {
   const p = STATE.player;
   if (!p) return;
@@ -214,14 +258,15 @@ function updateDrones(dt) {
     if (d.type === "attack") {
       const dir = getDirVectorFromPlayer(p);
 
-      // プレイヤーの少し前を、ぬるっと追従
-      const targetX = p.x + dir.x * 30;
-      const targetY = p.y + dir.y * 30;
+      // 以前の 30 から大きく離す
+      const followDist = 68;
+      const targetX = p.x + dir.x * followDist;
+      const targetY = p.y + dir.y * followDist;
 
-      d.x = lerp(d.x ?? targetX, targetX, 0.22);
-      d.y = lerp(d.y ?? targetY, targetY, 0.22);
+      d.x = lerp(d.x ?? targetX, targetX, 0.18);
+      d.y = lerp(d.y ?? targetY, targetY, 0.18);
 
-      const target = getNearestEnemyForDrone(d.x, d.y, 340);
+      const target = getNearestEnemyForDrone(d.x, d.y, 380);
       if (target) {
         d.aimAngle = angle(d.x, d.y, target.x, target.y);
       } else {
@@ -233,9 +278,16 @@ function updateDrones(dt) {
     }
 
     if (d.type === "barrier") {
-      d.angle = (d.angle || 0) + dt * 2.0;
-      d.x = p.x + Math.cos(d.angle) * 40;
-      d.y = p.y + Math.sin(d.angle) * 40;
+      const lv = STATE.player?.passiveLevels?.["barrier_drone"] || 1;
+
+      d.angle = (d.angle || 0) + dt * 1.8;
+
+      // 以前の 40 から大きく離す
+      const orbitDist = 76;
+      d.x = p.x + Math.cos(d.angle) * orbitDist;
+      d.y = p.y + Math.sin(d.angle) * orbitDist;
+
+      emitBarrierDroneField(d, lv);
     }
   }
 }
@@ -244,7 +296,7 @@ function attackDroneFire(d) {
   if (d.deadTimer > 0) return;
   if ((d.fireCooldown || 0) > 0) return;
 
-  const target = getNearestEnemyForDrone(d.x, d.y, 340);
+  const target = getNearestEnemyForDrone(d.x, d.y, 380);
   if (!target) {
     d.fireCooldown = 0.12;
     return;
@@ -259,7 +311,7 @@ function attackDroneFire(d) {
     y: d.y,
     vx: Math.cos(baseAng) * speed,
     vy: Math.sin(baseAng) * speed,
-    life: 1.1,
+    life: 1.2,
     radius: 4,
     damage: d.atk,
     pierce: 1,
@@ -268,7 +320,6 @@ function attackDroneFire(d) {
     color: "#ffd37a"
   });
 
-  // Lv5で前後2方向
   if (lv >= 5) {
     const backAng = baseAng + Math.PI;
     spawnBullet({
@@ -276,7 +327,7 @@ function attackDroneFire(d) {
       y: d.y,
       vx: Math.cos(backAng) * speed,
       vy: Math.sin(backAng) * speed,
-      life: 1.1,
+      life: 1.2,
       radius: 4,
       damage: d.atk,
       pierce: 1,
