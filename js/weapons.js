@@ -24,8 +24,8 @@ function isWeaponSecondEvolved(weaponId) {
 }
 
 function getWeaponMaxLevel(w) {
-  if (!w) return 6;
-  return (w.evolutionStage || 0) >= 2 ? 3 : 6;
+  if (!w) return getStageMaxLevel(0);
+  return getStageMaxLevel(w.evolutionStage || 0);
 }
 
 function canAddWeapon(id) {
@@ -93,6 +93,157 @@ function getWeaponCurrentPattern(w) {
   return branch?.secondStage?.pattern || branch?.pattern || null;
 }
 
+const WEAPON_STAGE_MAX_LEVELS = [3, 4, 5];
+
+function getStageMaxLevel(stage) {
+  return WEAPON_STAGE_MAX_LEVELS[Math.max(0, Math.min(2, stage || 0))] || 3;
+}
+
+function getWeaponTuning(w, def) {
+  const stage = w?.evolutionStage || 0;
+  const level = Math.max(1, w?.level || 1);
+  const areaMul = STATE.player?.stats?.areaMul || 1;
+  const scope = getSonarScopeStats();
+
+  const tuning = {
+    damageBonus: 0,
+    cooldownMul: 1,
+    projectileCount: 1,
+    spreadStep: 0,
+    projectileLife: def?.life || 1.2,
+    projectileRadius: 6,
+    projectileSpeedMul: 1,
+    pierce: 1,
+    fieldRadius: 68 * areaMul,
+    chainJumps: 0,
+    chainRange: 140,
+    fieldWaves: 0,
+    mineCount: 1,
+    explodeRadius: 70 * areaMul,
+    warningRadius: 78 * areaMul,
+    mineChainCount: 0,
+    mineChainRadius: 90 * areaMul,
+    mineChainDamageMul: 0.4,
+    missileCount: 1,
+    homingTurnRate: 3.2,
+    missileSplit: 0,
+    beamCount: 1,
+    beamSpread: 0,
+    beamRadius: 10,
+    beamLength: 220 * scope.lengthMul,
+    orbitCount: 1,
+    orbitRadius: 62 * areaMul,
+    orbitSpeed: 2.4,
+    orbitDamageMul: 0.45,
+    orbitSelfSpin: false
+  };
+
+  switch (w?.id) {
+    case 'harpoon':
+      if (stage === 0) {
+        tuning.damageBonus = [0, 4, 8][level - 1] || 8;
+      } else if (stage === 1) {
+        tuning.damageBonus = [10, 12, 14, 16][level - 1] || 16;
+        tuning.projectileCount = [3, 4, 5, 6][level - 1] || 6;
+        tuning.spreadStep = 0.20;
+        tuning.projectileLife = 1.55;
+        tuning.projectileRadius = 8;
+        tuning.pierce = 2;
+      } else {
+        tuning.damageBonus = [18, 20, 21, 22, 25][level - 1] || 25;
+        tuning.projectileCount = 12;
+        tuning.projectileLife = 1.9;
+        tuning.projectileRadius = 9;
+        tuning.pierce = [1, 2, 3, 4, 999][level - 1] || 999;
+      }
+      break;
+    case 'water_cutter':
+      if (stage === 0) {
+        tuning.damageBonus = [0, 3, 6][level - 1] || 6;
+      } else if (stage === 1) {
+        tuning.damageBonus = [8, 10, 12, 14][level - 1] || 14;
+        tuning.orbitCount = [2, 3, 4, 5][level - 1] || 5;
+        tuning.orbitRadius = 88 * areaMul;
+        tuning.orbitSpeed = 3.5;
+      } else {
+        tuning.damageBonus = [16, 18, 20, 22, 25][level - 1] || 25;
+        tuning.orbitCount = [5, 6, 7, 8, 8][level - 1] || 8;
+        tuning.orbitRadius = 110 * areaMul;
+        tuning.orbitSpeed = [4.8, 4.8, 4.9, 5.0, 5.2][level - 1] || 5.2;
+        tuning.orbitSelfSpin = level >= 5;
+        tuning.orbitDamageMul = level >= 5 ? 0.52 : 0.48;
+      }
+      break;
+    case 'jelly_field':
+      if (stage === 0) {
+        tuning.damageBonus = [0, 2, 4][level - 1] || 4;
+        tuning.fieldRadius = [68, 84, 84][level - 1] * areaMul;
+      } else if (stage === 1) {
+        tuning.damageBonus = [6, 8, 10, 12][level - 1] || 12;
+        tuning.fieldRadius = 96 * areaMul;
+        tuning.chainJumps = [2, 3, 4, 5][level - 1] || 5;
+      } else {
+        tuning.damageBonus = [14, 16, 18, 20, 24][level - 1] || 24;
+        tuning.fieldRadius = 108 * areaMul;
+        tuning.chainJumps = [6, 7, 8, 9, 9][level - 1] || 9;
+        tuning.fieldWaves = level >= 5 ? 4 : 0;
+      }
+      break;
+    case 'mine':
+      if (stage === 0) {
+        tuning.damageBonus = [0, 6, 12][level - 1] || 12;
+      } else if (stage === 1) {
+        tuning.damageBonus = [16, 20, 24, 28][level - 1] || 28;
+        tuning.mineCount = [1, 1, 2, 3][level - 1] || 3;
+        tuning.explodeRadius = [96, 116, 116, 116][level - 1] * areaMul;
+        tuning.warningRadius = tuning.explodeRadius * 1.15;
+      } else {
+        tuning.damageBonus = [32, 36, 40, 44, 50][level - 1] || 50;
+        tuning.mineCount = 3;
+        tuning.explodeRadius = [126, 136, 150, 164, 184][level - 1] * areaMul;
+        tuning.warningRadius = tuning.explodeRadius * 1.14;
+        tuning.mineChainCount = [1, 2, 3, 4, 5][level - 1] || 5;
+        tuning.mineChainRadius = [90, 104, 118, 132, 150][level - 1] * areaMul;
+        tuning.mineChainDamageMul = level >= 5 ? 0.7 : 0.45 + (level - 1) * 0.08;
+      }
+      break;
+    case 'fish_missile':
+      if (stage === 0) {
+        tuning.damageBonus = [0, 5, 10][level - 1] || 10;
+      } else if (stage === 1) {
+        tuning.damageBonus = [14, 18, 22, 26][level - 1] || 26;
+        tuning.missileCount = [2, 3, 4, 5][level - 1] || 5;
+        tuning.homingTurnRate = 4.8;
+      } else {
+        tuning.damageBonus = [30, 34, 38, 42, 48][level - 1] || 48;
+        tuning.missileCount = [5, 6, 7, 8, 8][level - 1] || 8;
+        tuning.homingTurnRate = [7.2, 7.2, 7.4, 7.6, 7.8][level - 1] || 7.8;
+        tuning.missileSplit = level >= 5 ? 2 : 0;
+      }
+      break;
+    case 'sonar':
+      if (stage === 0) {
+        tuning.damageBonus = [0, 7, 14][level - 1] || 14;
+      } else if (stage === 1) {
+        tuning.damageBonus = [18, 22, 26, 30][level - 1] || 30;
+        tuning.beamCount = [1, 1, 2, 3][level - 1] || 3;
+        tuning.beamSpread = [0, 0, 0.12, 0.16][level - 1] || 0.16;
+        tuning.beamRadius = [16, 16, 16, 16][level - 1] || 16;
+        tuning.beamLength = [240, 300, 300, 300][level - 1] * scope.lengthMul;
+      } else {
+        tuning.damageBonus = [34, 38, 42, 46, 52][level - 1] || 52;
+        tuning.beamCount = [3, 4, 5, 6, 6][level - 1] || 6;
+        tuning.beamSpread = [0.14, 0.16, 0.18, 0.20, 0.20][level - 1] || 0.20;
+        tuning.beamRadius = [16, 16, 16, 16, 24][level - 1] || 24;
+        tuning.beamLength = [360, 360, 360, 360, 380][level - 1] * scope.lengthMul;
+      }
+      break;
+  }
+
+  return tuning;
+}
+
+
 
 function updateWeapons(dt) {
   const p = STATE.player;
@@ -129,21 +280,14 @@ function updateWeapons(dt) {
 function getWeaponCooldown(w, def) {
   const p = STATE.player;
   const base = def.cooldown || 1;
-
-  let levelFactor = 1 - Math.min(0.35, (w.level - 1) * 0.04);
-
-  if (w?.id === "harpoon" && (w.evolutionStage || 0) === 0) {
-    levelFactor = 1;
-    if ((w.level || 1) >= 3) levelFactor *= 0.82;
-    if ((w.level || 1) >= 5) levelFactor *= 0.78;
-  }
-
-  return Math.max(0.08, base * levelFactor / p.stats.cooldownMul);
+  const tuning = getWeaponTuning(w, def);
+  return Math.max(0.08, (base * (tuning.cooldownMul || 1)) / Math.max(0.01, p.stats.cooldownMul));
 }
 
 function getWeaponDamage(w, def) {
   const p = STATE.player;
-  return (def.damage + (w.level - 1) * (def.levelDamage || 3)) * p.stats.damageMul;
+  const tuning = getWeaponTuning(w, def);
+  return (def.damage + (tuning.damageBonus || 0)) * p.stats.damageMul;
 }
 
 function getSonarScopeLevel() {
@@ -239,93 +383,54 @@ function fireWeapon(w, def) {
 
 function fireHarpoon(w, def) {
   const p = STATE.player;
+  if (!p) return;
+  const tuning = getWeaponTuning(w, def);
   const target = getNearestEnemy(p.x, p.y);
-  if (!target) return;
+  if (!target && (w.evolutionStage || 0) < 2) return;
 
-  const dx = target.x - p.x;
-  const dy = target.y - p.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = dx / len;
-  const ny = dy / len;
-  const pattern = getWeaponCurrentPattern(w);
-  const level = Math.max(1, w.level || 1);
+  const baseAngle = target ? angle(p.x, p.y, target.x, target.y) : 0;
+  const isAllAround = (w.evolutionStage || 0) >= 2;
+  addEffect(p.x, p.y, 12 + tuning.projectileCount * 2, '#8ef3ff', 0.12, 0.18);
 
-  let count = 1;
-  let spreadStep = 0;
-  let life = 1.2;
-  let radius = 6;
-  let damageMul = 1;
-  let pierce = 1;
-
-  if (pattern === "trident") {
-    count = level >= 5 ? 5 : level >= 3 ? 4 : 3;
-    spreadStep = count >= 5 ? 0.17 : count >= 4 ? 0.20 : 0.22;
-    life = 1.55;
-    radius = 8;
-    damageMul = 1.15;
-    pierce = level >= 5 ? 6 : level >= 3 ? 5 : 4;
-  } else if (pattern === "trident_king") {
-    count = 7;
-    spreadStep = 0.14;
-    life = 1.9;
-    radius = 9;
-    damageMul = 1.35;
-    pierce = 10;
-  } else if (pattern === "pierce") {
-    count = 2;
-    spreadStep = 0.08;
-    life = 1.6;
-    radius = 7;
-    damageMul = 1.2;
-    pierce = 5;
-  } else if (pattern === "pierce_ex") {
-    count = 3;
-    spreadStep = 0.08;
-    life = 1.9;
-    radius = 8;
-    damageMul = 1.35;
-    pierce = 8;
-  }
-
-  addEffect(p.x, p.y, 12 + count * 2, pattern && pattern.startsWith("pierce") ? "#d7f7ff" : "#8ef3ff", 0.12, 0.18);
-
-  for (let i = 0; i < count; i++) {
-    const center = (count - 1) / 2;
-    const spread = count === 1 ? 0 : (i - center) * spreadStep;
-    const cos = Math.cos(spread);
-    const sin = Math.sin(spread);
-    const vx = nx * cos - ny * sin;
-    const vy = nx * sin + ny * cos;
+  for (let i = 0; i < tuning.projectileCount; i++) {
+    let shotAngle = baseAngle;
+    if (isAllAround) {
+      shotAngle = (Math.PI * 2 * i) / tuning.projectileCount;
+    } else if (tuning.projectileCount > 1) {
+      const center = (tuning.projectileCount - 1) / 2;
+      shotAngle = baseAngle + (i - center) * tuning.spreadStep;
+    }
 
     spawnBullet({
       x: p.x,
       y: p.y,
-      vx: vx * (def.speed || 360) * p.stats.projectileSpeedMul,
-      vy: vy * (def.speed || 360) * p.stats.projectileSpeedMul,
-      life,
-      radius,
-      damage: getWeaponDamage(w, def) * damageMul,
-      pierce,
+      vx: Math.cos(shotAngle) * (def.speed || 360) * p.stats.projectileSpeedMul * tuning.projectileSpeedMul,
+      vy: Math.sin(shotAngle) * (def.speed || 360) * p.stats.projectileSpeedMul * tuning.projectileSpeedMul,
+      life: tuning.projectileLife,
+      radius: tuning.projectileRadius,
+      damage: getWeaponDamage(w, def),
+      pierce: tuning.pierce,
       weaponId: w.id,
-      weaponPattern: pattern,
+      weaponPattern: getWeaponCurrentPattern(w),
       weaponStage: w.evolutionStage || 0,
-      type: "projectile",
-      color: pattern && pattern.startsWith("pierce") ? "#b8f0ff" : "#8ef3ff"
+      weaponLevel: w.level || 1,
+      type: 'projectile',
+      color: '#8ef3ff'
     });
   }
 }
 
 function fireMine(w, def) {
   const p = STATE.player;
-  const pattern = getWeaponCurrentPattern(w);
+  if (!p) return;
+  const tuning = getWeaponTuning(w, def);
   const targets = [];
   const near = [...STATE.enemies]
     .sort((a, b) => dist(p.x, p.y, a.x, a.y) - dist(p.x, p.y, b.x, b.y))
-    .slice(0, pattern === "cluster_ex" ? 3 : pattern === "cluster" ? 2 : 1);
+    .slice(0, tuning.mineCount);
 
-  if (near.length) {
-    for (const target of near) targets.push({ x: target.x, y: target.y });
-  } else {
+  for (const target of near) targets.push({ x: target.x, y: target.y });
+  while (targets.length < tuning.mineCount) {
     targets.push({ x: p.x + rand(-120, 120), y: p.y + rand(-120, 120) });
   }
 
@@ -336,167 +441,141 @@ function fireMine(w, def) {
       vx: 0,
       vy: 0,
       life: 3.0,
-      radius: pattern && pattern.startsWith("cluster") ? 14 : 16,
-      damage: getWeaponDamage(w, def) * (pattern === "burst_ex" ? 1.2 : 1),
+      radius: 16,
+      damage: getWeaponDamage(w, def),
       pierce: 999,
       weaponId: w.id,
-      weaponPattern: pattern,
+      weaponPattern: getWeaponCurrentPattern(w),
       weaponStage: w.evolutionStage || 0,
-      type: "mine",
-      color: pattern && pattern.startsWith("cluster") ? "#ffe08a" : "#ffd166",
-      explodeRadius: (pattern === "burst_ex" ? 120 : pattern === "burst" ? 95 : pattern === "cluster_ex" ? 86 : pattern === "cluster" ? 72 : 70) * STATE.player.stats.areaMul,
-      warningRadius: (pattern === "burst_ex" ? 138 : pattern === "burst" ? 110 : pattern === "cluster_ex" ? 98 : pattern === "cluster" ? 82 : 78) * STATE.player.stats.areaMul,
-      armDelay: 0.35
+      weaponLevel: w.level || 1,
+      type: 'mine',
+      color: '#ffd166',
+      explodeRadius: tuning.explodeRadius,
+      warningRadius: tuning.warningRadius,
+      armDelay: 0.35,
+      chainCount: tuning.mineChainCount,
+      chainRadius: tuning.mineChainRadius,
+      chainDamageMul: tuning.mineChainDamageMul
     });
   }
 }
 
 function fireJellyField(w, def) {
   const p = STATE.player;
-  const pattern = getWeaponCurrentPattern(w);
-  addEffect(p.x, p.y, 24 * p.stats.areaMul, pattern && pattern.startsWith("storm") ? "#d8a5ff" : "#6de4ff", 0.16, 0.16);
+  if (!p) return;
+  const tuning = getWeaponTuning(w, def);
+  addEffect(p.x, p.y, 24 * p.stats.areaMul, '#6de4ff', 0.16, 0.16);
   spawnBullet({
     x: p.x,
     y: p.y,
     vx: 0,
     vy: 0,
-    life: pattern === "storm_ex" ? 0.8 : pattern === "storm" ? 0.68 : 0.55,
-    radius: (pattern === "chain_ex" ? 108 : pattern === "chain" ? 94 : pattern === "storm_ex" ? 118 : pattern === "storm" ? 102 : 68) * p.stats.areaMul,
-    damage: getWeaponDamage(w, def) * (pattern === "storm_ex" ? 0.5 : pattern === "storm" ? 0.42 : 0.35),
+    life: (w.evolutionStage || 0) >= 2 ? 0.76 : (w.evolutionStage || 0) >= 1 ? 0.68 : 0.55,
+    radius: tuning.fieldRadius,
+    damage: getWeaponDamage(w, def) * ((w.evolutionStage || 0) >= 2 ? 0.42 : (w.evolutionStage || 0) >= 1 ? 0.36 : 0.32),
     pierce: 999,
     weaponId: w.id,
-    weaponPattern: pattern,
+    weaponPattern: getWeaponCurrentPattern(w),
     weaponStage: w.evolutionStage || 0,
-    type: "field",
+    weaponLevel: w.level || 1,
+    type: 'field',
     tickTimer: 0,
-    color: pattern && pattern.startsWith("storm") ? "#d8a5ff" : pattern ? "#a98cff" : "#6de4ff"
+    color: (w.evolutionStage || 0) >= 2 ? '#a98cff' : '#6de4ff',
+    chainJumps: tuning.chainJumps,
+    chainRange: tuning.chainRange,
+    fieldWaves: tuning.fieldWaves,
+    waveCooldown: tuning.fieldWaves > 0 ? 0.22 : 0
   });
 }
 
 function fireFishMissile(w, def) {
   const p = STATE.player;
-  const pattern = getWeaponCurrentPattern(w);
-  addEffect(p.x, p.y, pattern && pattern.startsWith("drone") ? 18 : 14, pattern && pattern.startsWith("swarm") ? "#ffb0a0" : "#ff8aa0", 0.12, 0.16);
-
-  if (pattern === "drone_bay" || pattern === "drone_bay_ex") {
-    const drones = pattern === "drone_bay_ex" ? 3 : 2;
-    for (let i = 0; i < drones; i++) {
-      spawnBullet({
-        x: p.x,
-        y: p.y,
-        vx: 0,
-        vy: 0,
-        life: pattern === "drone_bay_ex" ? 8.5 : 6.5,
-        radius: 10,
-        damage: getWeaponDamage(w, def) * (pattern === "drone_bay_ex" ? 0.52 : 0.42),
-        pierce: 2,
-        weaponId: w.id,
-        weaponPattern: pattern,
-        weaponStage: w.evolutionStage || 0,
-        type: "drone",
-        droneIndex: i,
-        droneCount: drones,
-        orbitAngle: rand(0, Math.PI * 2),
-        orbitRadius: pattern === "drone_bay_ex" ? 96 : 82,
-        shotTimer: rand(0.05, 0.35),
-        shotInterval: pattern === "drone_bay_ex" ? 0.42 : 0.58,
-        color: pattern === "drone_bay_ex" ? "#ffd6b0" : "#ffc18a"
-      });
-    }
-    return;
-  }
-
-  const count = pattern === "multi_homing_ex" ? 5 : pattern === "multi_homing" ? 3 : pattern === "swarm_ex" ? 6 : pattern === "swarm" ? 4 : 1;
+  if (!p) return;
+  const tuning = getWeaponTuning(w, def);
+  addEffect(p.x, p.y, 14 + tuning.missileCount, '#ff8aa0', 0.12, 0.16);
 
   const targets = [...STATE.enemies].sort((a, b) => dist(p.x, p.y, a.x, a.y) - dist(p.x, p.y, b.x, b.y));
   if (targets.length === 0) return;
 
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < tuning.missileCount; i++) {
     const target = targets[i % targets.length];
-    const ang = angle(p.x, p.y, target.x, target.y) + rand(-0.12, 0.12);
-
+    const ang = angle(p.x, p.y, target.x, target.y) + rand(-0.10, 0.10);
     spawnBullet({
       x: p.x,
       y: p.y,
       vx: Math.cos(ang) * (def.speed || 240) * STATE.player.stats.projectileSpeedMul,
       vy: Math.sin(ang) * (def.speed || 240) * STATE.player.stats.projectileSpeedMul,
-      life: pattern && pattern.startsWith("swarm") ? 1.9 : 2.4,
-      radius: pattern ? 8 : 7,
-      damage: getWeaponDamage(w, def) * (pattern === "swarm_ex" ? 0.82 : pattern === "swarm" ? 0.74 : 1),
+      life: 2.4,
+      radius: 8,
+      damage: getWeaponDamage(w, def),
       pierce: 1,
       weaponId: w.id,
-      weaponPattern: pattern,
+      weaponPattern: getWeaponCurrentPattern(w),
       weaponStage: w.evolutionStage || 0,
-      type: "homing",
+      weaponLevel: w.level || 1,
+      type: 'homing',
       targetId: target.id,
-      turnRate: pattern === "multi_homing_ex" ? 6.0 : pattern === "multi_homing" ? 4.8 : pattern === "swarm_ex" ? 5.2 : pattern === "swarm" ? 4.4 : 3.2,
-      color: pattern && pattern.startsWith("swarm") ? "#ffb0a0" : "#ff8aa0"
+      turnRate: tuning.homingTurnRate,
+      splitCount: tuning.missileSplit,
+      color: '#ff8aa0'
     });
   }
 }
 
 function fireSonar(w, def) {
   const p = STATE.player;
-  const pattern = getWeaponCurrentPattern(w);
+  if (!p) return;
+  const tuning = getWeaponTuning(w, def);
   const scope = getSonarScopeStats();
 
   let target = STATE.enemies.find(e => e.id === w.chargeTargetId);
   if (!target) target = getScopedNearestEnemy(p.x, p.y, 520);
-
   if (!target) return;
 
   const baseAng = angle(p.x, p.y, target.x, target.y);
-  addEffect(p.x, p.y, pattern && pattern.startsWith("beam") ? 24 : 18, pattern && pattern.startsWith("wave") ? "#8be0ff" : "#79f7ff", 0.18, 0.22);
+  addEffect(p.x, p.y, 18 + tuning.beamCount, '#79f7ff', 0.18, 0.22);
 
-  const count = pattern === "wave_ex" ? 3 : pattern === "wave" ? 2 : 1;
-  const spreadStep = pattern && pattern.startsWith("wave") ? 0.16 : 0;
-
-  for (let i = 0; i < count; i++) {
-    const center = (count - 1) / 2;
-    const ang = baseAng + (i - center) * spreadStep;
-
+  for (let i = 0; i < tuning.beamCount; i++) {
+    const center = (tuning.beamCount - 1) / 2;
+    const ang = baseAng + (i - center) * (tuning.beamSpread || 0);
     spawnBullet({
       x: p.x,
       y: p.y,
       vx: Math.cos(ang),
       vy: Math.sin(ang),
-      life: pattern === "beam_ex" ? 0.28 : pattern === "beam" ? 0.22 : 0.16,
-      radius: pattern === "beam_ex" ? 22 : pattern === "beam" ? 18 : pattern === "wave_ex" ? 15 : pattern === "wave" ? 13 : 10,
-      damage: getWeaponDamage(w, def) * (pattern === "beam_ex" ? 1.7 : pattern === "beam" ? 1.45 : pattern === "wave_ex" ? 1.15 : 1.0),
-      pierce: pattern && pattern.startsWith("beam") ? 999 : pattern && pattern.startsWith("wave") ? 8 : 5,
+      life: (w.evolutionStage || 0) >= 2 ? 0.24 : (w.evolutionStage || 0) >= 1 ? 0.20 : 0.16,
+      radius: tuning.beamRadius,
+      damage: getWeaponDamage(w, def),
+      pierce: 999,
       weaponId: w.id,
-      weaponPattern: pattern,
+      weaponPattern: getWeaponCurrentPattern(w),
       weaponStage: w.evolutionStage || 0,
-      type: "beam",
-      color: pattern && pattern.startsWith("wave") ? "#8be0ff" : pattern ? "#79f7ff" : "#50d7ff",
-      length: (pattern === "beam_ex" ? 380 : pattern === "beam" ? 320 : pattern === "wave_ex" ? 280 : pattern === "wave" ? 250 : 220) * scope.lengthMul,
+      weaponLevel: w.level || 1,
+      type: 'beam',
+      color: '#79f7ff',
+      length: tuning.beamLength,
       targetId: target.id,
       seekStrength: scope.seekStrength
     });
   }
-
   w.chargeTargetId = null;
 }
 
 function updateOrbitWeapon(w, def, dt) {
   const p = STATE.player;
-  const pattern = getWeaponCurrentPattern(w);
+  if (!p) return;
+  const tuning = getWeaponTuning(w, def);
   const cooldownMul = p.stats?.cooldownMul || 1;
-
-  const count = pattern === "orbit_ex" ? 4 : pattern === "orbit" ? 3 : pattern === "tidal_ring_ex" ? 5 : pattern === "tidal_ring" ? 4 : 1;
-  const orbitRadius = (pattern === "orbit_ex" ? 98 : pattern === "orbit" ? 86 : pattern === "tidal_ring_ex" ? 118 : pattern === "tidal_ring" ? 102 : 62) * p.stats.areaMul;
-
-  const baseDamage = getWeaponDamage(w, def) * (pattern === "tidal_ring_ex" ? 0.4 : 0.45);
-  const orbitSpeed = (pattern === "orbit_ex" ? 4.2 : pattern === "orbit" ? 3.5 : pattern === "tidal_ring_ex" ? 2.5 : pattern === "tidal_ring" ? 2.0 : 2.4) * (0.9 + cooldownMul * 0.22);
+  const count = tuning.orbitCount;
+  const orbitRadius = tuning.orbitRadius;
+  const baseDamage = getWeaponDamage(w, def) * tuning.orbitDamageMul;
+  const orbitSpeed = tuning.orbitSpeed * (0.9 + cooldownMul * 0.18);
   const hitInterval = Math.max(0.05, 0.16 / cooldownMul);
 
   w.orbitAngle += dt * orbitSpeed;
   w.orbitTickTimer = (w.orbitTickTimer || 0) - dt;
-
   const canHit = w.orbitTickTimer <= 0;
-  if (canHit) {
-    w.orbitTickTimer = hitInterval;
-  }
+  if (canHit) w.orbitTickTimer = hitInterval;
 
   for (let i = 0; i < count; i++) {
     const ang = w.orbitAngle + (Math.PI * 2 / count) * i;
@@ -505,18 +584,22 @@ function updateOrbitWeapon(w, def, dt) {
 
     if (canHit) {
       for (const e of STATE.enemies) {
-        if (dist(x, y, e.x, e.y) <= 18 + e.r) {
-          damageEnemy(e, baseDamage);
+        if (dist(x, y, e.x, e.y) <= 18 + e.r) damageEnemy(e, baseDamage);
+      }
+      if (tuning.orbitSelfSpin) {
+        for (let j = 0; j < 3; j++) {
+          const subAng = ang + STATE.time * 6 + (Math.PI * 2 * j) / 3;
+          const sx = x + Math.cos(subAng) * 18;
+          const sy = y + Math.sin(subAng) * 18;
+          for (const e of STATE.enemies) {
+            if (dist(sx, sy, e.x, e.y) <= 10 + e.r) damageEnemy(e, baseDamage * 0.35);
+          }
+          STATE.effects.push({ x: sx, y: sy, r: 5, color: '#92eaff', life: 0.06 });
         }
       }
     }
 
-    STATE.effects.push({
-      x, y,
-      r: pattern && pattern.startsWith("tidal") ? 11 : 9,
-      color: pattern && pattern.startsWith("tidal") ? "#92eaff" : "#7cf7ff",
-      life: 0.06
-    });
+    STATE.effects.push({ x, y, r: 9, color: '#7cf7ff', life: 0.06 });
   }
 }
 
@@ -530,7 +613,7 @@ function getAvailableEvolutions() {
     if (!def) continue;
 
     const stage = w.evolutionStage || 0;
-    if (w.level < 6) continue;
+    if (w.level < getWeaponMaxLevel(w)) continue;
 
     if (stage === 0) {
       for (const evo of getWeaponEvolutionBranches(def)) {
@@ -627,6 +710,14 @@ function spawnBullet(b) {
     turnRate: b.turnRate || 0,
     length: b.length || 0,
     armDelay: b.armDelay || 0,
+    splitCount: b.splitCount || 0,
+    chainCount: b.chainCount || 0,
+    chainRadius: b.chainRadius || 0,
+    chainDamageMul: b.chainDamageMul || 0,
+    chainJumps: b.chainJumps || 0,
+    chainRange: b.chainRange || 140,
+    fieldWaves: b.fieldWaves || 0,
+    waveCooldown: b.waveCooldown || 0,
     droneIndex: b.droneIndex || 0,
     droneCount: b.droneCount || 0,
     orbitAngle: b.orbitAngle || 0,
@@ -635,6 +726,7 @@ function spawnBullet(b) {
     shotInterval: b.shotInterval || 0.6,
     weaponPattern: b.weaponPattern || null,
     weaponStage: b.weaponStage || 0,
+    weaponLevel: b.weaponLevel || 1,
     fillAlpha: b.fillAlpha || 0,
     alreadyHit: new Set()
   });
@@ -709,8 +801,8 @@ function handleProjectileHits(b) {
     damageEnemy(e, b.damage);
     b.alreadyHit.add(e.id);
 
-    if (b.weaponId === "jelly_field" && (b.weaponPattern === "chain" || b.weaponPattern === "chain_ex")) {
-      chainLightning(e, b.damage * (b.weaponPattern === "chain_ex" ? 0.7 : 0.5), b.weaponPattern === "chain_ex" ? 3 : 2);
+    if (b.weaponId === 'fish_missile' && (b.splitCount || 0) > 0) {
+      spawnMissileSplitShots(b, e);
     }
 
     b.pierce -= 1;
@@ -718,6 +810,31 @@ function handleProjectileHits(b) {
       b.life = 0;
       return;
     }
+  }
+}
+
+function spawnMissileSplitShots(b, enemy) {
+  if (!b || !enemy || (b.splitCount || 0) <= 0) return;
+  const base = angle(b.x, b.y, enemy.x, enemy.y);
+  for (let i = 0; i < b.splitCount; i++) {
+    const ang = base + (i === 0 ? -0.22 : 0.22);
+    spawnBullet({
+      x: enemy.x,
+      y: enemy.y,
+      vx: Math.cos(ang) * 320 * (STATE.player?.stats?.projectileSpeedMul || 1),
+      vy: Math.sin(ang) * 320 * (STATE.player?.stats?.projectileSpeedMul || 1),
+      life: 0.8,
+      radius: 4,
+      damage: b.damage * 0.45,
+      pierce: 1,
+      weaponId: b.weaponId,
+      weaponPattern: b.weaponPattern,
+      weaponStage: b.weaponStage || 0,
+    weaponLevel: b.weaponLevel || 1,
+      weaponLevel: b.weaponLevel || 1,
+      type: 'projectile',
+      color: '#ffd7d7'
+    });
   }
 }
 
@@ -734,11 +851,8 @@ function handleMineTrigger(b) {
 
 function explodeMine(b) {
   const radius = b.explodeRadius || 72;
-
   for (const e of STATE.enemies) {
-    if (dist(b.x, b.y, e.x, e.y) <= radius + e.r) {
-      damageEnemy(e, b.damage);
-    }
+    if (dist(b.x, b.y, e.x, e.y) <= radius + e.r) damageEnemy(e, b.damage);
   }
 
   const p = STATE.player;
@@ -746,27 +860,68 @@ function explodeMine(b) {
     damagePlayer(Math.max(8, b.damage * 0.75));
   }
 
-  STATE.effects.push({ x: b.x, y: b.y, r: radius, color: "#ffb347", life: 0.28, fillAlpha: 0.2 });
+  STATE.effects.push({ x: b.x, y: b.y, r: radius, color: '#ffb347', life: 0.28, fillAlpha: 0.2 });
 
-  if ((b.weaponStage || 0) >= 1) {
-    STATE.effects.push({ x: b.x, y: b.y, r: radius * 1.35, color: "#ff8c66", life: 0.34, fillAlpha: 0.12 });
-    for (const e of STATE.enemies) {
-      if (dist(b.x, b.y, e.x, e.y) <= radius * 1.35 + e.r) {
-        damageEnemy(e, b.damage * 0.3);
-      }
+  if ((b.chainCount || 0) > 0) {
+    triggerMineChain(b, b.chainCount, b.chainRadius || radius, b.damage * (b.chainDamageMul || 0.45));
+  }
+}
+
+function triggerMineChain(origin, count, radius, damage) {
+  const candidates = [...STATE.enemies]
+    .filter((e) => dist(origin.x, origin.y, e.x, e.y) <= radius + e.r)
+    .sort((a, b) => dist(origin.x, origin.y, a.x, a.y) - dist(origin.x, origin.y, b.x, b.y))
+    .slice(0, count);
+
+  for (let i = 0; i < candidates.length; i++) {
+    const e = candidates[i];
+    const cx = e.x;
+    const cy = e.y;
+    const r = Math.max(42, radius * (0.42 + i * 0.06));
+    STATE.effects.push({ x: cx, y: cy, r, color: '#ff8c66', life: 0.22, fillAlpha: 0.14 });
+    for (const other of STATE.enemies) {
+      if (dist(cx, cy, other.x, other.y) <= r + other.r) damageEnemy(other, damage);
     }
   }
 }
 
 function updateFieldBullet(b, dt) {
   b.tickTimer -= dt;
-  if (b.tickTimer > 0) return;
-  b.tickTimer = 0.12;
-  for (const e of STATE.enemies) {
-    if (dist(b.x, b.y, e.x, e.y) <= b.radius + e.r) {
-      damageEnemy(e, b.damage);
-      if (b.weaponPattern === "chain" || b.weaponPattern === "chain_ex") {
-        chainLightning(e, b.damage * (b.weaponPattern === "chain_ex" ? 0.7 : 0.5), b.weaponPattern === "chain_ex" ? 3 : 2);
+  if (b.tickTimer <= 0) {
+    b.tickTimer = 0.12;
+    for (const e of STATE.enemies) {
+      if (dist(b.x, b.y, e.x, e.y) <= b.radius + e.r) {
+        damageEnemy(e, b.damage);
+        if ((b.chainJumps || 0) > 0) {
+          chainLightning(e, b.damage * 0.5, b.chainJumps, b.chainRange || 140);
+        }
+      }
+    }
+  }
+
+  if ((b.fieldWaves || 0) > 0) {
+    b.waveCooldown -= dt;
+    if (b.waveCooldown <= 0) {
+      b.waveCooldown = 0.26;
+      for (let i = 0; i < b.fieldWaves; i++) {
+        const ang = (Math.PI * 2 * i) / b.fieldWaves;
+        spawnBullet({
+          x: b.x,
+          y: b.y,
+          vx: Math.cos(ang) * 260 * (STATE.player?.stats?.projectileSpeedMul || 1),
+          vy: Math.sin(ang) * 260 * (STATE.player?.stats?.projectileSpeedMul || 1),
+          life: 0.9,
+          radius: 5,
+          damage: b.damage * 0.9,
+          pierce: 2,
+          weaponId: b.weaponId,
+          weaponPattern: b.weaponPattern,
+          weaponStage: b.weaponStage || 0,
+    weaponLevel: b.weaponLevel || 1,
+          weaponLevel: b.weaponLevel || 1,
+          type: 'projectile',
+          color: '#b692ff'
+        });
       }
     }
   }
@@ -850,7 +1005,7 @@ function updateDroneBullet(b, dt) {
   b.shotTimer = b.shotInterval || 0.6;
 }
 
-function chainLightning(startEnemy, damage, jumps) {
+function chainLightning(startEnemy, damage, jumps, maxRange = 140) {
   let current = startEnemy;
   const hitIds = new Set([startEnemy.id]);
 
@@ -860,14 +1015,14 @@ function chainLightning(startEnemy, damage, jumps) {
     for (const e of STATE.enemies) {
       if (hitIds.has(e.id)) continue;
       const d = dist(current.x, current.y, e.x, e.y);
-      if (d < best && d <= 140) {
+      if (d < best && d <= maxRange) {
         best = d;
         next = e;
       }
     }
     if (!next) break;
     damageEnemy(next, damage);
-    STATE.effects.push({ x: (current.x + next.x) * 0.5, y: (current.y + next.y) * 0.5, r: 14, color: "#b692ff", life: 0.12 });
+    STATE.effects.push({ x: (current.x + next.x) * 0.5, y: (current.y + next.y) * 0.5, r: 14, color: '#b692ff', life: 0.12 });
     hitIds.add(next.id);
     current = next;
   }
