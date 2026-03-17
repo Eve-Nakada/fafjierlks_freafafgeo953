@@ -29,6 +29,41 @@ function getCurrentWaveDef() {
   return current;
 }
 
+
+function isTestEnemySpawnerActive() {
+  const spawner = STATE.testMode?.enemySpawner;
+  return !!(STATE.testMode?.enabled && spawner?.enabled && Array.isArray(spawner.selectedEnemyIds) && spawner.selectedEnemyIds.length > 0);
+}
+
+function isTestModeControllingWaves() {
+  return !!(isTestEnemySpawnerActive() && STATE.testMode?.enemySpawner?.pauseNormalWaves);
+}
+
+function updateTestEnemySpawner(dt) {
+  if (!isTestEnemySpawnerActive()) return;
+  const spawner = STATE.testMode.enemySpawner;
+  const selected = spawner.selectedEnemyIds.filter((id) => !!getEnemyDef(id));
+  if (selected.length <= 0) return;
+
+  spawner.interval = Math.max(0.05, Number(spawner.interval || 1));
+  spawner.count = Math.max(1, Number(spawner.count || 1));
+  spawner.timer = Number.isFinite(spawner.timer) ? spawner.timer - dt : spawner.interval;
+
+  while (spawner.timer <= 0) {
+    spawner.timer += spawner.interval;
+    for (let i = 0; i < spawner.count; i++) {
+      const typeId = selected[Math.floor(Math.random() * selected.length)];
+      spawnEnemyAroundPlayer(
+        typeId,
+        Math.max(48, Number(spawner.minDist || 320)),
+        Math.max(Number(spawner.minDist || 320) + 16, Number(spawner.maxDist || 460)),
+        false,
+        'normal'
+      );
+    }
+  }
+}
+
 function updateWaves(dt) {
   const waves = getWaveDefs();
   if (waves.length === 0 || !STATE.player) return;
@@ -46,6 +81,13 @@ function updateWaves(dt) {
 
   if (!wave._mapCoinsSpawned) {
     addWaveCoins(newWaveIndex);
+  }
+
+  if (isTestEnemySpawnerActive()) {
+    updateTestEnemySpawner(dt);
+    if (isTestModeControllingWaves()) {
+      return;
+    }
   }
 
   if (wave._spawnTimer == null) {

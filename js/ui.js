@@ -448,6 +448,7 @@ function setupUI() {
   const startBtn = getEl("startBtn");
   if (startBtn) {
     startBtn.onclick = () => {
+      if (STATE.testMode) STATE.testMode.pendingStart = false;
       if (hasSeenFirstTutorial()) {
         showScreen("weaponSelectScreen");
         renderWeaponSelect();
@@ -477,6 +478,9 @@ function setupUI() {
   const firstTutorialStartBtn = getEl("firstTutorialStartBtn");
   if (firstTutorialStartBtn) {
     firstTutorialStartBtn.onclick = () => {
+      if (!STATE.testMode?.pendingStart) {
+        STATE.testMode.pendingStart = false;
+      }
       markFirstTutorialSeen();
       showScreen("weaponSelectScreen");
       renderWeaponSelect();
@@ -536,7 +540,9 @@ function setupUI() {
   }
 
   setupShopPanelUi();
+  setupTestModeUi();
 }
+
 
 // ===============================
 // ショップUI補助
@@ -557,7 +563,644 @@ function refreshShopPanelUi() {
 }
 
 
+
+
+function isDesktopTestModeAvailable() {
+  const mq = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(pointer:fine)').matches
+    : false;
+  return !!(mq || (typeof window !== 'undefined' && window.innerWidth >= 960));
+}
+
+function getTestModeEnemySpawner() {
+  if (!STATE.testMode) STATE.testMode = {};
+  if (!STATE.testMode.enemySpawner) {
+    STATE.testMode.enemySpawner = {
+      enabled: false,
+      pauseNormalWaves: true,
+      interval: 1,
+      count: 3,
+      timer: 0,
+      minDist: 320,
+      maxDist: 460,
+      selectedEnemyIds: []
+    };
+  }
+  return STATE.testMode.enemySpawner;
+}
+
+function ensureTestModeStyles() {
+  if (document.getElementById('testModeStyle')) return;
+  const style = document.createElement('style');
+  style.id = 'testModeStyle';
+  style.textContent = `
+    #testModeOpenBtn{ display:none; }
+    .desktopOnlyBtn{ display:none; }
+    @media (min-width: 960px) and (pointer:fine) {
+      .desktopOnlyBtn{ display:block; }
+    }
+    #testModePanelWrap{
+      position:absolute;
+      top:calc(var(--safe-top) + 12px);
+      left:50%;
+      transform:translateX(-50%);
+      z-index:40;
+      width:min(96vw, 1120px);
+      max-height:min(88vh, 900px);
+      display:none;
+      pointer-events:auto;
+    }
+    #testModePanelWrap.active{ display:block; }
+    .testModePanel{
+      border:1px solid rgba(120,220,255,0.24);
+      border-radius:18px;
+      background:rgba(0,18,30,0.96);
+      box-shadow:0 14px 42px rgba(0,0,0,0.42);
+      padding:14px;
+      display:grid;
+      gap:12px;
+      overflow:auto;
+      max-height:min(88vh, 900px);
+    }
+    .testModeTopRow{ display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; }
+    .testModeTitle{ font-size:24px; font-weight:800; }
+    .testModeSub{ color:var(--sub); font-size:13px; }
+    .testModeGrid{ display:grid; grid-template-columns:1.2fr 1fr; gap:12px; }
+    .testModeSection{ border:1px solid rgba(120,220,255,0.16); border-radius:14px; padding:12px; background:rgba(255,255,255,0.03); display:grid; gap:10px; }
+    .testModeSection h3{ margin:0; font-size:16px; }
+    .testModeMiniGrid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .testModeField{ display:grid; gap:4px; text-align:left; }
+    .testModeField label{ font-size:12px; color:var(--sub); }
+    .testModeField input,.testModeField select,.testModeField textarea{
+      width:100%; min-height:38px; border-radius:10px; border:1px solid rgba(120,220,255,0.18); background:rgba(0,0,0,0.28); color:var(--text); padding:8px 10px;
+    }
+    .testModeActions{ display:flex; gap:8px; flex-wrap:wrap; }
+    .testModeActions button{ min-height:40px; }
+    .testModeWeaponList, .testModeEnemyList{ display:grid; gap:8px; max-height:320px; overflow:auto; padding-right:4px; }
+    .testModeWeaponRow, .testModeEnemyRow{ border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:10px; display:grid; gap:8px; background:rgba(0,0,0,0.18); }
+    .testModeWeaponHead, .testModeEnemyHead{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .testModeInline{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .testModeInline label{ font-size:12px; color:var(--sub); }
+    .testModeCheckList{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px 10px; }
+    .testModeCheck{ display:flex; gap:6px; align-items:center; font-size:12px; color:var(--text); }
+    .testModeCheck input{ width:auto; min-height:auto; }
+    .testModeHint{ font-size:12px; color:var(--sub); line-height:1.5; }
+    .testModeFooter{ display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; }
+    @media (max-width: 1100px){ .testModeGrid{ grid-template-columns:1fr; } .testModeCheckList{ grid-template-columns:1fr; } }
+  `;
+  document.head.appendChild(style);
+}
+
+function ensureTestModePanelDom() {
+  ensureTestModeStyles();
+  let wrap = getEl('testModePanelWrap');
+  if (wrap) return wrap;
+
+  wrap = document.createElement('div');
+  wrap.id = 'testModePanelWrap';
+  wrap.innerHTML = `
+    <div class="testModePanel">
+      <div class="testModeTopRow">
+        <div>
+          <div class="testModeTitle">PCテストモード</div>
+          <div class="testModeSub">F2 で開閉。武器・敵・ショップ・Gold を即時調整できます。</div>
+        </div>
+        <div class="testModeActions">
+          <button id="testModeCloseBtn" type="button">閉じる</button>
+          <button id="testModeDisableBtn" type="button">通常モードに戻す</button>
+        </div>
+      </div>
+      <div class="testModeGrid">
+        <div class="testModeSection">
+          <h3>武器</h3>
+          <div class="testModeHint">ON/OFF、進化段階、分岐、Lv を変更できます。</div>
+          <div id="testModeWeaponList" class="testModeWeaponList"></div>
+        </div>
+        <div class="testModeSection">
+          <h3>敵スポーン</h3>
+          <div class="testModeMiniGrid">
+            <div class="testModeField"><label>間隔(秒)</label><input id="testEnemyInterval" type="number" step="0.1" min="0.05"></div>
+            <div class="testModeField"><label>1回の出現数</label><input id="testEnemyCount" type="number" step="1" min="1"></div>
+            <div class="testModeField"><label>最小距離</label><input id="testEnemyMinDist" type="number" step="10" min="32"></div>
+            <div class="testModeField"><label>最大距離</label><input id="testEnemyMaxDist" type="number" step="10" min="64"></div>
+          </div>
+          <label class="testModeCheck"><input id="testEnemyEnabled" type="checkbox">カスタム敵スポーンを有効</label>
+          <label class="testModeCheck"><input id="testEnemyPauseWaves" type="checkbox">通常Waveの敵出現を停止</label>
+          <div class="testModeHint">選んだ敵からランダムで出します。</div>
+          <div id="testEnemyList" class="testModeEnemyList"></div>
+          <div class="testModeActions">
+            <button id="testEnemyApplyBtn" type="button">敵設定を反映</button>
+            <button id="testClearEnemiesBtn" type="button">敵を全消去</button>
+          </div>
+        </div>
+        <div class="testModeSection">
+          <h3>ショップ</h3>
+          <div class="testModeField">
+            <label>既存ショップ項目を追加</label>
+            <select id="testShopPresetSelect"></select>
+          </div>
+          <div class="testModeInline">
+            <label>数量</label>
+            <input id="testShopPresetQty" type="number" min="1" step="1" value="1" style="width:96px;">
+            <button id="testAddShopPresetBtn" type="button">追加</button>
+          </div>
+          <div class="testModeMiniGrid">
+            <div class="testModeField"><label>表示名</label><input id="testShopCustomName" type="text" value="テスト商品"></div>
+            <div class="testModeField"><label>説明</label><input id="testShopCustomDesc" type="text" value="テスト用に追加した商品"></div>
+            <div class="testModeField"><label>効果</label><select id="testShopCustomEffect"></select></div>
+            <div class="testModeField"><label>値</label><input id="testShopCustomValue" type="number" step="1" value="100"></div>
+            <div class="testModeField"><label>価格</label><input id="testShopCustomPrice" type="number" step="1" value="0"></div>
+            <div class="testModeField"><label>持ち越し</label><select id="testShopCustomPersistent"><option value="true">残る</option><option value="false">残らない</option></select></div>
+          </div>
+          <div class="testModeActions">
+            <button id="testAddCustomShopBtn" type="button">カスタム商品を追加</button>
+            <button id="testOpenShopNowBtn" type="button">今すぐショップを開く</button>
+            <button id="testClearShopBtn" type="button">ショップ在庫をクリア</button>
+          </div>
+        </div>
+        <div class="testModeSection">
+          <h3>装備 / XP / 進行</h3>
+
+          <div class="testModeField">
+            <label>パッシブLv調整</label>
+            <div id="testPassiveList" class="testModeWeaponList"></div>
+          </div>
+
+          <div class="testModeMiniGrid">
+            <div class="testModeField"><label>XPを直接付与</label><input id="testXpDelta" type="number" step="10" value="100"></div>
+            <div class="testModeField"><label>Goldを加算/減算</label><input id="testGoldDelta" type="number" step="10" value="100"></div>
+            <div class="testModeField"><label>Goldを直接設定</label><input id="testGoldSet" type="number" step="10" value="0"></div>
+          </div>
+
+          <div class="testModeActions">
+            <button id="testXpAddBtn" type="button">+XP</button>
+            <button id="testGoldAddBtn" type="button">+Gold</button>
+            <button id="testGoldSubBtn" type="button">-Gold</button>
+            <button id="testGoldSetBtn" type="button">Gold設定</button>
+            <button id="testFullHealBtn" type="button">全回復</button>
+          </div>
+
+          <div class="testModeField">
+            <label>レベルアップ取得モーダル</label>
+            <div class="testModeActions">
+              <button id="testAutoLevelUpToggleBtn" type="button">自動取得: OFF</button>
+              <button id="testSkipLevelUpOnceBtn" type="button">今すぐ1回スキップ</button>
+            </div>
+          </div>
+
+          <div class="testModeFooter">
+            <div class="testModeHint">テストモード中はタイトルの「テスト開始」または F2 で管理できます。</div>
+            <div id="testModeStatus" class="testModeHint"></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  return wrap;
+}
+
+function getFlatShopPresetList() {
+  const source = STATE.shopItemsData?.shopWaves || {};
+  const out = [];
+  for (const [wave, items] of Object.entries(source)) {
+    for (const item of items || []) {
+      out.push({
+        ...item,
+        presetWave: Number(wave || 1)
+      });
+    }
+  }
+  return out;
+}
+
+function setupTestModeUi() {
+  ensureTestModeStyles();
+  STATE.testMode.available = isDesktopTestModeAvailable();
+  if (!STATE.testMode.available) return;
+
+  const titleButtons = document.querySelector('.titleButtons');
+  if (titleButtons && !getEl('testModeStartBtn')) {
+    const btn = document.createElement('button');
+    btn.id = 'testModeStartBtn';
+    btn.className = 'desktopOnlyBtn';
+    btn.textContent = 'PCテスト開始';
+    btn.onclick = () => {
+      STATE.testMode.pendingStart = true;
+      if (hasSeenFirstTutorial()) {
+        showScreen('weaponSelectScreen');
+        renderWeaponSelect();
+      } else {
+        markFirstTutorialSeen();
+        showScreen('weaponSelectScreen');
+        renderWeaponSelect();
+      }
+    };
+    titleButtons.appendChild(btn);
+  }
+
+  const hudRight = getEl('hudRight');
+  if (hudRight && !getEl('testModeOpenBtn')) {
+    const btn = document.createElement('button');
+    btn.id = 'testModeOpenBtn';
+    btn.type = 'button';
+    btn.textContent = 'テスト';
+    btn.onclick = () => toggleTestModePanel();
+    hudRight.appendChild(btn);
+  }
+
+  const wrap = ensureTestModePanelDom();
+  const effectSelect = getEl('testShopCustomEffect');
+  if (effectSelect && effectSelect.options.length === 0) {
+    ['heal','maxHp','absorbXp','reroll','weaponGain','passiveGain','weaponUpgrade','passiveUpgrade'].forEach((effect) => {
+      const opt = document.createElement('option');
+      opt.value = effect;
+      opt.textContent = effect;
+      effectSelect.appendChild(opt);
+    });
+  }
+
+  const closeBtn = getEl('testModeCloseBtn');
+  if (closeBtn) closeBtn.onclick = () => closeTestModePanel();
+  const disableBtn = getEl('testModeDisableBtn');
+  if (disableBtn) {
+    disableBtn.onclick = () => {
+      STATE.testMode.pendingStart = false;
+      STATE.testMode.enabled = false;
+      closeTestModePanel();
+      updateTestModeStatus();
+    };
+  }
+  const addBtn = getEl('testAddShopPresetBtn');
+  if (addBtn) addBtn.onclick = () => addSelectedShopPreset();
+  const addCustomBtn = getEl('testAddCustomShopBtn');
+  if (addCustomBtn) addCustomBtn.onclick = () => addCustomShopItemFromPanel();
+  const openShopBtn = getEl('testOpenShopNowBtn');
+  if (openShopBtn) openShopBtn.onclick = () => { if (typeof openShop === 'function') openShop(); };
+  const clearShopBtn = getEl('testClearShopBtn');
+  if (clearShopBtn) clearShopBtn.onclick = () => clearTestShopStock();
+  const enemyApplyBtn = getEl('testEnemyApplyBtn');
+  if (enemyApplyBtn) enemyApplyBtn.onclick = () => applyTestEnemySettings();
+  const clearEnemiesBtn = getEl('testClearEnemiesBtn');
+  if (clearEnemiesBtn) clearEnemiesBtn.onclick = () => { STATE.enemies = []; updateTestModeStatus('敵を全消去しました'); };
+  const goldAddBtn = getEl('testGoldAddBtn');
+  if (goldAddBtn) goldAddBtn.onclick = () => changeGoldByPanel(1);
+  const goldSubBtn = getEl('testGoldSubBtn');
+  if (goldSubBtn) goldSubBtn.onclick = () => changeGoldByPanel(-1);
+  const goldSetBtn = getEl('testGoldSetBtn');
+  if (goldSetBtn) goldSetBtn.onclick = () => setGoldByPanel();
+  const fullHealBtn = getEl('testFullHealBtn');
+  if (fullHealBtn) fullHealBtn.onclick = () => { if (STATE.player) { STATE.player.hp = STATE.player.maxHp; updateHUD(); updateTestModeStatus('HPを全回復しました'); } };
+
+  const xpAddBtn = getEl('testXpAddBtn');
+  if (xpAddBtn) {
+    xpAddBtn.onclick = () => {
+      const value = Math.max(0, Number(getEl('testXpDelta')?.value || 0));
+      if (typeof addXpByTest === 'function' && addXpByTest(value)) {
+        updateHUD();
+        updateTestModeStatus(`XPを ${value} 付与しました`);
+      }
+    };
+  }
+
+  const autoLevelUpToggleBtn = getEl('testAutoLevelUpToggleBtn');
+  if (autoLevelUpToggleBtn) {
+    autoLevelUpToggleBtn.onclick = () => {
+      STATE.testMode.autoSkipLevelUp = !STATE.testMode.autoSkipLevelUp;
+      autoLevelUpToggleBtn.textContent = `自動取得: ${STATE.testMode.autoSkipLevelUp ? 'ON' : 'OFF'}`;
+      updateTestModeStatus(`レベルアップ自動取得 ${STATE.testMode.autoSkipLevelUp ? 'ON' : 'OFF'}`);
+    };
+  }
+
+  const skipLevelUpOnceBtn = getEl('testSkipLevelUpOnceBtn');
+  if (skipLevelUpOnceBtn) {
+    skipLevelUpOnceBtn.onclick = () => {
+      STATE.testMode.skipNextLevelUp = true;
+      updateTestModeStatus('次のレベルアップを1回だけ自動取得します');
+      if (isScreenVisible('levelUpScreen')) {
+        tryAutoResolveLevelUpForTest();
+      }
+    };
+  }
+
+  window.addEventListener('resize', refreshTestModeAvailability);
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && STATE.testMode?.panelOpen) {
+      e.preventDefault();
+      closeTestModePanel();
+    }
+  });
+
+  refreshTestModeAvailability();
+  populateShopPresetOptions();
+}
+
+function refreshTestModeAvailability() {
+  const available = isDesktopTestModeAvailable();
+  STATE.testMode.available = available;
+  const titleBtn = getEl('testModeStartBtn');
+  const hudBtn = getEl('testModeOpenBtn');
+  if (titleBtn) titleBtn.style.display = available ? 'block' : 'none';
+  if (hudBtn) hudBtn.style.display = available && STATE.player ? 'block' : 'none';
+  const wrap = getEl('testModePanelWrap');
+  if (wrap && !available) wrap.classList.remove('active');
+}
+
+function updateTestModeStatus(message = '') {
+  const el = getEl('testModeStatus');
+  if (!el) return;
+  const selected = getTestModeEnemySpawner().selectedEnemyIds || [];
+  const parts = [
+    STATE.testMode?.enabled ? 'テストモードON' : '通常モード',
+    `敵設定:${selected.length}種`,
+    `Gold:${Math.floor(STATE.player?.gold || 0)}`
+  ];
+  if (message) parts.push(message);
+  el.textContent = parts.join(' / ');
+}
+
+function openTestModePanel() {
+  if (!STATE.testMode?.available || !STATE.player) return;
+  STATE.testMode.enabled = true;
+  ensureTestModePanelDom();
+  refreshTestModePanel();
+  const wrap = getEl('testModePanelWrap');
+  if (!wrap) return;
+  STATE.testMode.panelPrevPaused = !!STATE.paused;
+  STATE.testMode.panelOpen = true;
+  STATE.paused = true;
+  wrap.classList.add('active');
+  updateTestModeStatus();
+}
+
+function closeTestModePanel() {
+  const wrap = getEl('testModePanelWrap');
+  if (wrap) wrap.classList.remove('active');
+  if (!STATE.testMode) return;
+  STATE.testMode.panelOpen = false;
+  if (!STATE.shopOpen && !isScreenVisible('levelUpScreen') && !isScreenVisible('chestEvolutionScreen')) {
+    STATE.paused = !!STATE.testMode.panelPrevPaused;
+  }
+  updateHUD();
+}
+
+function toggleTestModePanel() {
+  if (!STATE.testMode?.available || !STATE.player) return;
+  if (STATE.testMode.panelOpen) closeTestModePanel();
+  else openTestModePanel();
+}
+
+function refreshTestModePanel() {
+  populateWeaponTestRows();
+  populatePassiveTestRows();
+  populateEnemyTestRows();
+  populateShopPresetOptions();
+  const spawner = getTestModeEnemySpawner();
+  const setValue = (id, value) => { const el = getEl(id); if (el) el.value = value; };
+  setValue('testEnemyInterval', spawner.interval || 1);
+  setValue('testEnemyCount', spawner.count || 1);
+  setValue('testEnemyMinDist', spawner.minDist || 320);
+  setValue('testEnemyMaxDist', spawner.maxDist || 460);
+  const enabledEl = getEl('testEnemyEnabled');
+  if (enabledEl) enabledEl.checked = !!spawner.enabled;
+  const pauseEl = getEl('testEnemyPauseWaves');
+  if (pauseEl) pauseEl.checked = spawner.pauseNormalWaves !== false;
+  const goldSet = getEl('testGoldSet');
+  if (goldSet) goldSet.value = Math.floor(STATE.player?.gold || 0);
+  updateTestModeStatus();
+}
+
+function populateWeaponTestRows() {
+  const wrap = getEl('testModeWeaponList');
+  if (!wrap) return;
+  const weapons = STATE.gameData?.weapons || [];
+  wrap.innerHTML = '';
+
+  for (const def of weapons) {
+    const inst = getWeaponInstance(def.id);
+    const row = document.createElement('div');
+    row.className = 'testModeWeaponRow';
+    const branches = getWeaponGrowthBranches(def);
+    const stage = inst?.evolutionStage || 0;
+    row.innerHTML = `
+      <div class="testModeWeaponHead">
+        <strong>${def.name}</strong>
+        <label class="testModeCheck"><input type="checkbox" data-test-weapon-enabled="${def.id}" ${inst ? 'checked' : ''}>ON</label>
+      </div>
+      <div class="testModeMiniGrid">
+        <div class="testModeField"><label>段階</label><select data-test-weapon-stage="${def.id}">
+          <option value="0" ${stage === 0 ? 'selected' : ''}>通常</option>
+          <option value="1" ${stage === 1 ? 'selected' : ''}>第1進化</option>
+          <option value="2" ${stage === 2 ? 'selected' : ''}>第2進化</option>
+        </select></div>
+        <div class="testModeField"><label>Lv</label><select data-test-weapon-level="${def.id}"></select></div>
+        <div class="testModeField"><label>分岐</label><select data-test-weapon-branch="${def.id}"></select></div>
+      </div>`;
+    wrap.appendChild(row);
+
+    const branchSelect = row.querySelector(`[data-test-weapon-branch="${def.id}"]`);
+    if (branchSelect) {
+      const list = branches.length > 0 ? branches : [{ branchId: '', name: 'なし' }];
+      branchSelect.innerHTML = list.map((branch) => `<option value="${branch.branchId || ''}" ${(inst?.branchId || list[0].branchId || '') === (branch.branchId || '') ? 'selected' : ''}>${branch.name || 'なし'}</option>`).join('');
+      branchSelect.disabled = branches.length === 0;
+    }
+
+    const stageSelect = row.querySelector(`[data-test-weapon-stage="${def.id}"]`);
+    const levelSelect = row.querySelector(`[data-test-weapon-level="${def.id}"]`);
+
+    const refreshLevelOptions = () => {
+      const stageValue = Number(stageSelect?.value || 0);
+      const max = typeof getStageMaxLevel === 'function' ? getStageMaxLevel(stageValue, def) : [3,4,5][stageValue] || 3;
+      const current = Math.max(1, Math.min(max, Number(levelSelect?.value || inst?.level || 1)));
+      if (levelSelect) {
+        levelSelect.innerHTML = Array.from({ length: max }, (_, i) => `<option value="${i + 1}" ${i + 1 === current ? 'selected' : ''}>Lv${i + 1}</option>`).join('');
+      }
+      if (branchSelect) branchSelect.disabled = stageValue === 0 || branches.length === 0;
+    };
+
+    refreshLevelOptions();
+    stageSelect?.addEventListener('change', refreshLevelOptions);
+
+    row.querySelectorAll('input,select').forEach((el) => {
+      el.addEventListener('change', () => applyWeaponTestRow(def.id));
+    });
+  }
+}
+
+function populatePassiveTestRows() {
+  const wrap = getEl('testPassiveList');
+  if (!wrap) return;
+
+  const passives = STATE.gameData?.passives || [];
+  const currentLevels = STATE.player?.passiveLevels || {};
+  wrap.innerHTML = '';
+
+  for (const def of passives) {
+    const maxLv = typeof getPassiveMaxLevel === 'function'
+      ? getPassiveMaxLevel(def)
+      : (def.maxLevel || 5);
+
+    const currentLv = Math.max(0, Math.min(maxLv, Number(currentLevels[def.id] || 0)));
+
+    const row = document.createElement('div');
+    row.className = 'testModeWeaponRow';
+    row.innerHTML = `
+      <div class="testModeWeaponHead">
+        <strong>${def.name}</strong>
+        <span class="testModeHint">Lv 0-${maxLv}</span>
+      </div>
+      <div class="testModeMiniGrid">
+        <div class="testModeField">
+          <label>Lv</label>
+          <select data-test-passive-level="${def.id}">
+            ${Array.from({ length: maxLv + 1 }, (_, i) => `
+              <option value="${i}" ${i === currentLv ? 'selected' : ''}>Lv${i}</option>
+            `).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="testModeHint">${def.levelDesc?.[Math.max(0, currentLv - 1)] || def.desc || ''}</div>
+    `;
+    wrap.appendChild(row);
+
+    const select = row.querySelector(`[data-test-passive-level="${def.id}"]`);
+    select?.addEventListener('change', () => {
+      if (typeof setPassiveTestLevel === 'function') {
+        setPassiveTestLevel(def.id, Number(select.value || 0));
+        updateHUD();
+        updateTestModeStatus(`${def.name} を Lv${Number(select.value || 0)} に変更`);
+      }
+    });
+  }
+}
+
+function applyWeaponTestRow(weaponId) {
+  const enabledEl = document.querySelector(`[data-test-weapon-enabled="${weaponId}"]`);
+  const stageEl = document.querySelector(`[data-test-weapon-stage="${weaponId}"]`);
+  const levelEl = document.querySelector(`[data-test-weapon-level="${weaponId}"]`);
+  const branchEl = document.querySelector(`[data-test-weapon-branch="${weaponId}"]`);
+  if (typeof setWeaponTestConfig !== 'function') return;
+  setWeaponTestConfig(weaponId, {
+    enabled: !!enabledEl?.checked,
+    stage: Number(stageEl?.value || 0),
+    level: Number(levelEl?.value || 1),
+    branchId: branchEl?.value || null
+  });
+  updateHUD();
+  updateTestModeStatus(`${getWeaponDef(weaponId)?.name || weaponId} を更新`);
+}
+
+function populateEnemyTestRows() {
+  const wrap = getEl('testEnemyList');
+  if (!wrap) return;
+  const selected = new Set(getTestModeEnemySpawner().selectedEnemyIds || []);
+  wrap.innerHTML = '';
+  for (const [enemyId, def] of Object.entries(STATE.gameData?.enemyStats || {})) {
+    const row = document.createElement('div');
+    row.className = 'testModeEnemyRow';
+    row.innerHTML = `
+      <div class="testModeEnemyHead">
+        <strong>${def.name || enemyId}</strong>
+        <label class="testModeCheck"><input type="checkbox" data-test-enemy="${enemyId}" ${selected.has(enemyId) ? 'checked' : ''}>出現</label>
+      </div>
+      <div class="testModeHint">HP ${def.hp} / 速度 ${def.speed} / 接触 ${def.damage}</div>`;
+    wrap.appendChild(row);
+  }
+}
+
+function applyTestEnemySettings() {
+  const spawner = getTestModeEnemySpawner();
+  const selected = [...document.querySelectorAll('[data-test-enemy]:checked')].map((el) => el.dataset.testEnemy).filter(Boolean);
+  spawner.selectedEnemyIds = selected;
+  spawner.enabled = !!getEl('testEnemyEnabled')?.checked;
+  spawner.pauseNormalWaves = !!getEl('testEnemyPauseWaves')?.checked;
+  spawner.interval = Math.max(0.05, Number(getEl('testEnemyInterval')?.value || 1));
+  spawner.count = Math.max(1, Number(getEl('testEnemyCount')?.value || 1));
+  spawner.minDist = Math.max(48, Number(getEl('testEnemyMinDist')?.value || 320));
+  spawner.maxDist = Math.max(spawner.minDist + 16, Number(getEl('testEnemyMaxDist')?.value || 460));
+  spawner.timer = spawner.interval;
+  updateTestModeStatus('敵スポーン設定を反映しました');
+}
+
+function populateShopPresetOptions() {
+  const select = getEl('testShopPresetSelect');
+  if (!select) return;
+  const presets = getFlatShopPresetList();
+  select.innerHTML = presets.map((item, index) => `<option value="${index}">Wave${item.presetWave} / ${item.name} / ${item.price}G</option>`).join('');
+  select.dataset.testPresets = JSON.stringify(presets);
+}
+
+function ensureShopStateForTest() {
+  if (typeof ensureShopRunState === 'function') ensureShopRunState();
+  if (!STATE.shopStock) STATE.shopStock = {};
+  if (!STATE.shopPurchased) STATE.shopPurchased = {};
+}
+
+function addShopItemToTestStock(item, qty = 1) {
+  ensureShopStateForTest();
+  const count = Math.max(1, Number(qty || 1));
+  const wave = Math.max(1, Number(STATE.currentWave || 1));
+  for (let i = 0; i < count; i++) {
+    const uniqueId = `${item.id || 'test_item'}__tm_${wave}_${STATE.testMode.customShopCounter++}`;
+    STATE.shopStock[uniqueId] = {
+      ...item,
+      id: uniqueId,
+      unlockWave: wave,
+      persistent: item.persistent !== false
+    };
+  }
+  refreshShopPanelUi();
+  updateTestModeStatus(`${item.name || '商品'} を追加しました`);
+}
+
+function addSelectedShopPreset() {
+  const select = getEl('testShopPresetSelect');
+  if (!select) return;
+  const presets = JSON.parse(select.dataset.testPresets || '[]');
+  const preset = presets[Number(select.value || 0)];
+  if (!preset) return;
+  const qty = Math.max(1, Number(getEl('testShopPresetQty')?.value || 1));
+  addShopItemToTestStock(preset, qty);
+}
+
+function addCustomShopItemFromPanel() {
+  const item = {
+    id: 'custom_test_shop',
+    name: getEl('testShopCustomName')?.value || 'テスト商品',
+    desc: getEl('testShopCustomDesc')?.value || '',
+    effect: getEl('testShopCustomEffect')?.value || 'heal',
+    value: Number(getEl('testShopCustomValue')?.value || 0),
+    price: Math.max(0, Number(getEl('testShopCustomPrice')?.value || 0)),
+    persistent: (getEl('testShopCustomPersistent')?.value || 'true') === 'true'
+  };
+  addShopItemToTestStock(item, 1);
+}
+
+function clearTestShopStock() {
+  ensureShopStateForTest();
+  STATE.shopStock = {};
+  STATE.shopPurchased = {};
+  STATE.shopUnlockedWaves = {};
+  refreshShopPanelUi();
+  updateTestModeStatus('ショップ在庫をクリアしました');
+}
+
+function changeGoldByPanel(sign) {
+  if (!STATE.player) return;
+  const delta = Math.max(0, Number(getEl('testGoldDelta')?.value || 0));
+  STATE.player.gold = Math.max(0, STATE.player.gold + delta * sign);
+  updateHUD();
+  updateTestModeStatus(`Goldを${sign > 0 ? '加算' : '減算'}しました`);
+}
+
+function setGoldByPanel() {
+  if (!STATE.player) return;
+  STATE.player.gold = Math.max(0, Number(getEl('testGoldSet')?.value || 0));
+  updateHUD();
+  updateTestModeStatus('Goldを設定しました');
+}
+
 function updateHUD() {
+  if (typeof refreshTestModeAvailability === 'function') refreshTestModeAvailability();
   const p = STATE.player;
   if (!p) return;
 
@@ -899,6 +1542,34 @@ function renderLevelUpChoices() {
   }
 
   updateLevelUpRerollButton();
+
+  if (STATE.testMode?.enabled) {
+    tryAutoResolveLevelUpForTest();
+  }
+}
+
+function tryAutoResolveLevelUpForTest() {
+  if (!STATE.testMode?.enabled) return false;
+  if (!STATE.testMode.autoSkipLevelUp && !STATE.testMode.skipNextLevelUp) return false;
+
+  const choices = STATE._levelUpChoices || [];
+  const choice = choices[0];
+  if (!choice || typeof choice.apply !== 'function') return false;
+
+  const ok = choice.apply();
+  if (!ok) return false;
+
+  STATE.levelUpQueue = Math.max(0, STATE.levelUpQueue - 1);
+  STATE.testMode.skipNextLevelUp = false;
+
+  if (STATE.levelUpQueue > 0) {
+    renderLevelUpChoices();
+  } else {
+    closeLevelUp();
+  }
+
+  updateHUD();
+  return true;
 }
 
 function updateLevelUpRerollButton() {
@@ -926,6 +1597,10 @@ function openLevelUp() {
   STATE.paused = true;
   showScreen("levelUpScreen");
   renderLevelUpChoices();
+
+  if (STATE.testMode?.enabled) {
+    tryAutoResolveLevelUpForTest();
+  }
 }
 
 function closeLevelUp() {

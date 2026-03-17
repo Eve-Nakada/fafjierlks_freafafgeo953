@@ -68,6 +68,25 @@ function resetGameState() {
   STATE.lastShopWave = 0;
   STATE.shopSession = { startHp: 0, startMaxHp: 0, allowedHeal: 0, allowedMaxHp: 0 };
 
+  if (!STATE.testMode) STATE.testMode = {};
+  const prevTest = STATE.testMode || {};
+  STATE.testMode = {
+    ...prevTest,
+    panelOpen: false,
+    panelPrevPaused: false,
+    customShopCounter: Number(prevTest.customShopCounter || 0),
+    enemySpawner: {
+      enabled: !!prevTest.enemySpawner?.enabled,
+      pauseNormalWaves: prevTest.enemySpawner?.pauseNormalWaves !== false,
+      interval: Number(prevTest.enemySpawner?.interval || 1),
+      count: Math.max(1, Number(prevTest.enemySpawner?.count || 1)),
+      timer: 0,
+      minDist: Number(prevTest.enemySpawner?.minDist || 320),
+      maxDist: Number(prevTest.enemySpawner?.maxDist || 460),
+      selectedEnemyIds: Array.isArray(prevTest.enemySpawner?.selectedEnemyIds) ? [...prevTest.enemySpawner.selectedEnemyIds] : []
+    }
+  };
+
   STATE.enemies = [];
   STATE.enemyBullets = [];
   STATE.bullets = [];
@@ -102,6 +121,8 @@ function startGame(initialWeaponId) {
 
   STATE.player = createPlayer();
 
+  STATE.testMode.enabled = !!STATE.testMode.pendingStart;
+
   if (initialWeaponId) {
     addWeapon(initialWeaponId);
   } else {
@@ -115,7 +136,12 @@ function startGame(initialWeaponId) {
   updateHUD();
   renderPlayerUiIcon();
   resetWaveCoins(1);
+
+  if (STATE.testMode.enabled && typeof openTestModePanel === 'function') {
+    openTestModePanel();
+  }
 }
+
 
 function resetRunShopState() {
   STATE.shopStock = {};
@@ -124,7 +150,9 @@ function resetRunShopState() {
   STATE.shopSelectionOpen = false;
   STATE.shopWave = 0;
   STATE._shopDisplayItems = null;
+  if (STATE.testMode?.customShopCounter == null) STATE.testMode.customShopCounter = 0;
 }
+
 
 // ===============================
 // メインループ

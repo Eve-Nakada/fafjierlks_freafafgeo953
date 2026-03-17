@@ -120,6 +120,10 @@ function setupGameShortcuts() {
     if (k === "escape" && STATE.shopOpen) {
       closeShop();
     }
+    if (k === "f2" && typeof toggleTestModePanel === 'function') {
+      e.preventDefault();
+      toggleTestModePanel();
+    }
   });
 }
 

@@ -45,6 +45,34 @@ const STATE = {
   progress: null,
 
   // ----------------
+  // テストモード
+  // ----------------
+
+
+  testMode: {
+    available: false,
+    enabled: false,
+    pendingStart: false,
+    panelOpen: false,
+    panelPrevPaused: false,
+    customShopCounter: 0,
+    enemySpawner: {
+      enabled: false,
+      pauseNormalWaves: true,
+      interval: 1.0,
+      count: 3,
+      timer: 0,
+      minDist: 320,
+      maxDist: 460,
+      selectedEnemyIds: []
+    },
+    autoSkipLevelUp: false,
+    skipNextLevelUp: false,
+    customShopCounter: 0
+  },
+
+
+  // ----------------
   // 入力
   // ----------------
 

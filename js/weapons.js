@@ -64,6 +64,54 @@ function addWeapon(id) {
   return true;
 }
 
+
+function removeWeapon(id) {
+  const p = STATE.player;
+  if (!p || !Array.isArray(p.weapons)) return false;
+  const before = p.weapons.length;
+  p.weapons = p.weapons.filter((w) => !(w && w.id === id));
+  return p.weapons.length !== before;
+}
+
+function setWeaponTestConfig(id, config = {}) {
+  const p = STATE.player;
+  const def = getWeaponDef(id);
+  if (!p || !def) return false;
+
+  const enabled = config.enabled !== false;
+  if (!enabled) {
+    return removeWeapon(id);
+  }
+
+  let inst = getWeaponInstance(id);
+  if (!inst) {
+    addWeapon(id);
+    inst = getWeaponInstance(id);
+  }
+  if (!inst) return false;
+
+  const stage = Math.max(0, Math.min(2, Number(config.stage || 0)));
+  const branches = getWeaponEvolutionBranches(def);
+  let branchId = config.branchId || inst.branchId || null;
+  if (stage > 0) {
+    if (!branchId || !branches.find((b) => b.branchId === branchId)) {
+      branchId = branches[0]?.branchId || null;
+    }
+  } else {
+    branchId = null;
+  }
+
+  inst.evolutionStage = stage;
+  inst.branchId = branchId;
+  inst.level = Math.max(1, Math.min(getStageMaxLevel(stage, def), Number(config.level || 1)));
+  inst.cooldown = 0;
+  inst.orbitAngle = 0;
+  inst.orbitTickTimer = 0;
+  markWeaponSeen(id);
+  unlockWeapon(id);
+  return true;
+}
+
 function getWeaponEvolutionBranches(def) {
   if (!def) return [];
   if (Array.isArray(def.evolutions) && def.evolutions.length > 0) return def.evolutions;

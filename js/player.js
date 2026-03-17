@@ -142,6 +142,39 @@ function addGold(amount) {
   p.gold += amount;
 }
 
+function setPassiveTestLevel(id, level) {
+  const p = STATE.player;
+  if (!p) return false;
+
+  const def = getPassiveDef(id);
+  if (!def) return false;
+
+  const maxLv = getPassiveMaxLevel(def);
+  const nextLv = Math.max(0, Math.min(maxLv, Number(level || 0)));
+
+  if (nextLv <= 0) {
+    p.passiveLevels[id] = 0;
+    p.passives = (p.passives || []).filter(passiveId => passiveId !== id);
+    updatePlayerPassives();
+    return true;
+  }
+
+  p.passiveLevels[id] = nextLv;
+  if (!p.passives.includes(id)) {
+    p.passives.push(id);
+  }
+
+  updatePlayerPassives();
+  return true;
+}
+
+function addXpByTest(amount) {
+  const p = STATE.player;
+  if (!p) return false;
+  gainXP(Math.max(0, Number(amount || 0)));
+  return true;
+}
+
 function getPassiveDef(id) {
   return (STATE.gameData?.passives || []).find(p => p.id === id) || null;
 }
