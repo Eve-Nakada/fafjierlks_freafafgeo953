@@ -424,21 +424,42 @@ function updateDrones(dt) {
   if (!p) return;
 
   const drones = ensureDroneArray();
-  const dir = getDirVectorFromPlayer(p);
-  const forwardX = dir.x;
-  const forwardY = dir.y;
-  const sideX = -forwardY;
-  const sideY = forwardX;
-
   const attackDrones = drones.filter(d => d.type === "attack");
   const barrierDrones = drones.filter(d => d.type === "barrier");
+
+  const inputX =
+    (STATE.input.moveX || 0) +
+    ((STATE.input.keys["d"] || STATE.input.keys["arrowright"]) ? 1 : 0) -
+    ((STATE.input.keys["a"] || STATE.input.keys["arrowleft"]) ? 1 : 0);
+
+  const inputY =
+    (STATE.input.moveY || 0) +
+    ((STATE.input.keys["s"] || STATE.input.keys["arrowdown"]) ? 1 : 0) -
+    ((STATE.input.keys["w"] || STATE.input.keys["arrowup"]) ? 1 : 0);
+
+  const moveLen = Math.hypot(inputX, inputY);
+  const isMoving = moveLen > 0.12;
+
+  let moveDirX = 0;
+  let moveDirY = 0;
+
+  if (isMoving) {
+    moveDirX = inputX / moveLen;
+    moveDirY = inputY / moveLen;
+  } else {
+    const dir = getDirVectorFromPlayer(p);
+    moveDirX = dir.x;
+    moveDirY = dir.y;
+  }
+
+  const sideX = -moveDirY;
+  const sideY = moveDirX;
 
   for (const d of drones) {
     // 死亡中
     if (d.deadTimer > 0) {
       d.deadTimer -= dt;
 
-      // 復活
       if (d.deadTimer <= 0) {
         d.deadTimer = 0;
         d.hp = d.maxHp || 1;
@@ -448,60 +469,69 @@ function updateDrones(dt) {
         }
 
         d.fireCooldown = Math.min(d.fireCooldown || 0, 0.15);
-
-        // 復活直後に変な位置へ出ないよう、現在の目標近くへ寄せる
-        d.vx = 0;
-        d.vy = 0;
       }
       continue;
     }
 
-    // HP0のまま deadTimer が切れてしまった個体の保険
+    // HP0保険
     if ((d.hp || 0) <= 0) {
       d.deadTimer = Math.max(d.deadTimer || 0, 5);
       continue;
     }
 
     if (d.type === "attack") {
-      // ----------------------------
-      // アタックドローン:
-      // ・プレイヤーからさらに遠く
-      // ・位置更新を補間して滑らかにする
-      // ----------------------------
       const idx = d.index || 0;
       const count = Math.max(1, attackDrones.length);
 
-      // 2台時は左右へ、3台以上でも広めに展開
-      const spreadBase = count <= 1 ? [0] : [-1, 1, -2, 2, 0, -3, 3];
-      const spreadSlot = spreadBase[idx] != null ? spreadBase[idx] : (idx - (count - 1) * 0.5);
+      let targetX = p.x;
+      let targetY = p.y;
 
-      // 以前よりさらに離す
-      const forwardDist = 156;
-      const sideDist = 58;
+      if (isMoving) {
+        // ----------------------------
+        // 移動中: 前方展開
+        // ----------------------------
+        const spreadBase = count <= 1 ? [0] : [-1, 1, -2, 2, 0, -3, 3];
+        const spreadSlot = spreadBase[idx] != null
+          ? spreadBase[idx]
+          : (idx - (count - 1) * 0.5);
 
-      // 微妙な浮遊感
-      const hoverSide = Math.sin(STATE.time * 1.9 + idx * 1.13) * 10;
-      const hoverForward = Math.cos(STATE.time * 2.3 + idx * 0.87) * 7;
+        const forwardDist = 168;
+        const sideDist = 62;
 
-      const targetX =
-        p.x +
-        forwardX * (forwardDist + hoverForward) +
-        sideX * (spreadSlot * sideDist + hoverSide);
+        const hoverSide = Math.sin(STATE.time * 1.9 + idx * 1.17) * 10;
+        const hoverForward = Math.cos(STATE.time * 2.2 + idx * 0.93) * 7;
 
-      const targetY =
-        p.y +
-        forwardY * (forwardDist + hoverForward) +
-        sideY * (spreadSlot * sideDist + hoverSide);
+        targetX =
+          p.x +
+          moveDirX * (forwardDist + hoverForward) +
+          sideX * (spreadSlot * sideDist + hoverSide);
 
-      // 初回はそのまま配置
+        targetY =
+          p.y +
+          moveDirY * (forwardDist + hoverForward) +
+          sideY * (spreadSlot * sideDist + hoverSide);
+      } else {
+        // ----------------------------
+        // 停止中: プレイヤー周囲で円陣
+        // ----------------------------
+        const angleBase = (Math.PI * 2 / count) * idx;
+        const angleNow = angleBase + STATE.time * 1.55;
+        const radius = 112;
+
+        targetX = p.x + Math.cos(angleNow) * radius;
+        targetY = p.y + Math.sin(angleNow) * radius;
+      }
+
       if (!Number.isFinite(d.x) || !Number.isFinite(d.y)) {
         d.x = targetX;
         d.y = targetY;
       }
 
       // 滑らか追従
-      // 小さいほどヌルッと、大きいほどキビキビ
-      const follow = 1 - Math.pow(0.0008, dt);
+      const follow = isMoving
+        ? (1 - Math.pow(0.0012, dt))
+        : (1 - Math.pow(0.0020, dt));
+
       d.x = lerp(d.x, targetX, follow);
       d.y = lerp(d.y, targetY, follow);
 
