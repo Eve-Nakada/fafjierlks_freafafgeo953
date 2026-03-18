@@ -724,12 +724,18 @@ function captureAutoPlayRunResult(clear) {
   const weaponId = s.currentWeaponId || p?.weapons?.[0]?.id || null;
   const weaponDef = typeof getWeaponDef === "function" ? getWeaponDef(weaponId) : null;
 
+  const deathCause = clear
+    ? { id: "", label: "" }
+    : (STATE.lastDamageCause || { id: "unknown", label: "不明" });
+
   s.batchResults.push({
     index: Number(s.batchRunIndex || 0),
     clear: !!clear,
     elapsed: Number(STATE.elapsed || 0),
     wave: Number(STATE.currentWave || 0),
     deathWave: clear ? null : Number(STATE.currentWave || 0),
+    deathCauseId: clear ? "" : String(deathCause.id || "unknown"),
+    deathCauseLabel: clear ? "" : String(deathCause.label || "不明"),
     score: Number(STATE.score || 0),
     level: Number(p?.level || 0),
     gold: Number(p?.gold || 0),
@@ -783,6 +789,16 @@ function onAutoPlayRunStarted(initialWeaponId) {
   if (initialWeaponId) s.currentWeaponId = initialWeaponId;
   else if (!s.currentWeaponId) s.currentWeaponId = STATE.player?.weapons?.[0]?.id || null;
 
+  if (typeof resetLastDamageCause === "function") {
+    resetLastDamageCause();
+  }
+
+  // バッチ中は「テストモーダルだけ閉じる」。
+  // ここで paused を true に戻してはいけない。
+  if (typeof suppressTestModePanelForAutoBatch === "function" && s.batchRunning) {
+    suppressTestModePanelForAutoBatch();
+  }
+
   if (typeof refreshTestModePanel === "function") refreshTestModePanel();
 }
 
@@ -792,6 +808,10 @@ function handleAutoBatchEnd(clear) {
 
   captureAutoPlayRunResult(clear);
   s.lastRunClear = !!clear;
+
+  if (typeof suppressTestModePanelForAutoBatch === "function") {
+    suppressTestModePanelForAutoBatch();
+  }
 
   if (s.batchRunIndex >= s.batchTargetRuns) {
     s.batchRunning = false;
@@ -805,6 +825,7 @@ function handleAutoBatchEnd(clear) {
 
   s.pendingRestart = true;
   s.restartDelay = 0.45;
+
   if (typeof refreshTestModePanel === "function") refreshTestModePanel();
   if (typeof updateTestModeStatus === "function") {
     updateTestModeStatus(`Run ${s.batchRunIndex} 完了 → 次を開始`);
@@ -821,6 +842,10 @@ function updateAutoBatchRestart(dt) {
 
   s.pendingRestart = false;
   s.batchRunIndex += 1;
+
+  if (typeof suppressTestModePanelForAutoBatch === "function") {
+    suppressTestModePanelForAutoBatch();
+  }
 
   if (typeof hideAllScreens === "function") hideAllScreens();
   if (typeof startGame === "function") {
@@ -869,6 +894,28 @@ async function updateAutoPlayWhilePaused(dt) {
   return false;
 }
 
+function suppressTestModePanelForAutoBatch() {
+  const wrap = typeof getEl === "function"
+    ? getEl("testModePanelWrap")
+    : document.getElementById("testModePanelWrap");
+
+  if (wrap) wrap.classList.remove("active");
+
+  if (!STATE.testMode) return;
+
+  STATE.testMode.panelOpen = false;
+
+  // 重要:
+  // 以前はここで STATE.paused = true にしていたため、
+  // 2回目以降の自動プレイ開始直後に再停止していた。
+  // バッチ中はモーダルだけ閉じ、ゲーム進行は止めない。
+  if (STATE.shopOpen || isScreenVisible?.("levelUpScreen") || isScreenVisible?.("weaponGrowthScreen")) {
+    STATE.testMode.panelPrevPaused = true;
+  } else {
+    STATE.testMode.panelPrevPaused = false;
+  }
+}
+
 function getAutoBatchWeaponStats() {
   return getAutoBatchSummary().weaponStats || [];
 }
@@ -910,6 +957,8 @@ function buildAutoBatchCsv() {
     "elapsed",
     "wave",
     "deathWave",
+    "deathCauseId",
+    "deathCauseLabel",
     "score",
     "level",
     "gold",
@@ -926,6 +975,8 @@ function buildAutoBatchCsv() {
       row.elapsed,
       row.wave,
       row.deathWave == null ? "" : row.deathWave,
+      row.deathCauseId || "",
+      row.deathCauseLabel || "",
       row.score,
       row.level,
       row.gold,

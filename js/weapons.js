@@ -1003,13 +1003,83 @@ function explodeMine(b) {
 
   const p = STATE.player;
   if (p && dist(b.x, b.y, p.x, p.y) <= radius + p.r) {
-    damagePlayer(Math.max(8, b.damage * 0.75));
+    damagePlayer(Math.max(8, b.damage * 0.75), {
+      id: "self_mine",
+      label: "自機機雷爆風"
+    });
   }
 
   STATE.effects.push({ x: b.x, y: b.y, r: radius, color: '#ffb347', life: 0.28, fillAlpha: 0.2 });
 
   if ((b.chainCount || 0) > 0) {
     triggerMineChain(b, b.chainCount, b.chainRadius || radius, b.damage * (b.chainDamageMul || 0.45));
+  }
+}
+
+function triggerMineChain(sourceMine, chainCount, chainRadius, chainDamage) {
+  if (!sourceMine || chainCount <= 0) return;
+
+  const radius = Math.max(24, Number(chainRadius || sourceMine.explodeRadius || 72));
+  const damage = Math.max(1, Number(chainDamage || 1));
+  const boss = typeof getActiveBoss === "function" ? getActiveBoss() : null;
+
+  const hitEnemyIds = new Set();
+  const usedPoints = [{ x: sourceMine.x, y: sourceMine.y }];
+
+  for (let step = 0; step < chainCount; step++) {
+    let bestEnemy = null;
+    let bestFrom = null;
+    let bestDist = Infinity;
+
+    for (const from of usedPoints) {
+      for (const e of STATE.enemies || []) {
+        if (!e || e.dead) continue;
+        if (hitEnemyIds.has(e.id)) continue;
+
+        const d = dist(from.x, from.y, e.x, e.y);
+        if (d <= radius && d < bestDist) {
+          bestDist = d;
+          bestEnemy = e;
+          bestFrom = from;
+        }
+      }
+    }
+
+    if (!bestEnemy) break;
+
+    // 連鎖ライン演出
+    STATE.effects.push({
+      x: (bestFrom.x + bestEnemy.x) * 0.5,
+      y: (bestFrom.y + bestEnemy.y) * 0.5,
+      r: Math.max(10, bestDist * 0.22),
+      color: "#ffd166",
+      life: 0.12,
+      fillAlpha: 0.08
+    });
+
+    // 着弾地点の小爆発
+    STATE.effects.push({
+      x: bestEnemy.x,
+      y: bestEnemy.y,
+      r: Math.max(24, radius * 0.42),
+      color: "#ffb347",
+      life: 0.20,
+      fillAlpha: 0.16
+    });
+
+    // ボススイッチにも反応
+    for (const sw of STATE.bossSwitches || []) {
+      if (!sw || sw.dead) continue;
+      if (dist(bestEnemy.x, bestEnemy.y, sw.x, sw.y) <= Math.max(24, radius * 0.42) + sw.r) {
+        if (typeof destroyBossSwitch === "function") {
+          destroyBossSwitch(sw, boss);
+        }
+      }
+    }
+
+    damageEnemy(bestEnemy, damage);
+    hitEnemyIds.add(bestEnemy.id);
+    usedPoints.push({ x: bestEnemy.x, y: bestEnemy.y });
   }
 }
 

@@ -192,6 +192,11 @@ function updateEnemies(dt) {
     updateEnemyAttacks(e, target, dt);
     e.hitFlash = Math.max(0, e.hitFlash - dt * 6);
 
+    const contactCause = {
+      id: e.isBoss ? "boss_contact" : "enemy_contact",
+      label: e.isBoss ? "ボス接触" : "敵接触"
+    };
+
     const barrier = getActiveBarrierDrone();
     if (barrier && dist(e.x, e.y, barrier.x, barrier.y) <= e.r + getDroneRadius(barrier)) {
       damageDrone(barrier, e.damage * (e.contactMul || 1) * dt * 6);
@@ -205,7 +210,7 @@ function updateEnemies(dt) {
     }
 
     if (dist(e.x, e.y, p.x, p.y) <= e.r + p.r) {
-      damagePlayer(e.damage * (e.contactMul || 1) * dt * 6);
+      damagePlayer(e.damage * (e.contactMul || 1) * dt * 6, contactCause);
     }
   }
 
@@ -576,6 +581,11 @@ function updateEnemyProjectiles(dt) {
     b.life -= dt;
     if (b.life <= 0) continue;
 
+    const projectileCause = {
+      id: b.type === "pulse" ? "enemy_pulse" : "enemy_projectile",
+      label: b.type === "pulse" ? "敵パルス弾" : "敵弾"
+    };
+
     if (b.type === "pulse") {
       b.delay -= dt;
       if (b.delay <= 0 && !b.triggered) {
@@ -589,7 +599,7 @@ function updateEnemyProjectiles(dt) {
           if (otherDrone) {
             damageDrone(otherDrone, b.damage);
           } else if (dist(b.x, b.y, p.x, p.y) <= b.radius + p.r) {
-            damagePlayer(b.damage);
+            damagePlayer(b.damage, projectileCause);
           }
         }
       }
@@ -613,7 +623,7 @@ function updateEnemyProjectiles(dt) {
     }
 
     if (dist(b.x, b.y, p.x, p.y) <= b.radius + p.r) {
-      damagePlayer(b.damage);
+      damagePlayer(b.damage, projectileCause);
       continue;
     }
 

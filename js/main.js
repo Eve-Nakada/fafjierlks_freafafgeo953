@@ -131,6 +131,7 @@ function startGame(initialWeaponId) {
   else STATE.world.height = 2400;
 
   STATE.player = createPlayer();
+  resetLastDamageCause();
 
   STATE.testMode.enabled = !!STATE.testMode.pendingStart;
 
@@ -152,7 +153,14 @@ function startGame(initialWeaponId) {
     onAutoPlayRunStarted(initialWeaponId || STATE.player?.weapons?.[0]?.id || null);
   }
 
-  if (STATE.testMode.enabled && typeof openTestModePanel === 'function') {
+  const auto = typeof getAutoPlayState === "function" ? getAutoPlayState() : null;
+  const shouldOpenTestPanel = !!(
+    STATE.testMode.enabled &&
+    typeof openTestModePanel === 'function' &&
+    !(auto && auto.batchRunning)
+  );
+
+  if (shouldOpenTestPanel) {
     openTestModePanel();
   }
 }
@@ -740,33 +748,21 @@ function pointInBossHazard(hz, x, y, pad = 0) {
 function updateBossHazards(dt) {
   const p = STATE.player;
   const next = [];
-
   for (const hz of STATE.hazards || []) {
     hz.life -= dt;
     hz.telegraph -= dt;
-
     if (hz.life <= 0) continue;
-
     if (hz.telegraph <= 0 && !hz.triggered) {
       hz.triggered = true;
       if (p && pointInBossHazard(hz, p.x, p.y, p.r)) {
-        damagePlayer(hz.damage);
+        damagePlayer(hz.damage, {
+          id: "boss_hazard",
+          label: "ボス危険地帯"
+        });
       }
     }
-
-    if (hz.triggered && hz.kind === 'mega_bomb') {
-      hz.tickTimer = (hz.tickTimer || 0) - dt;
-      if (hz.tickTimer <= 0) {
-        hz.tickTimer = 0.5;
-        if (p && pointInBossHazard(hz, p.x, p.y, p.r)) {
-          damagePlayer(hz.damage * 0.35);
-        }
-      }
-    }
-
     next.push(hz);
   }
-
   STATE.hazards = next;
 }
 
@@ -1027,6 +1023,9 @@ function endGame(clear) {
     : false;
 
   if (intercepted) {
+    if (typeof suppressTestModePanelForAutoBatch === "function") {
+      suppressTestModePanelForAutoBatch();
+    }
     hideAllScreens();
     return;
   }

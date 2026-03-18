@@ -634,13 +634,42 @@ function updateBarrierDrone(dt, d) {
   }
 }
 
-function damagePlayer(amount) {
+function resetLastDamageCause() {
+  STATE.lastDamageCause = {
+    id: "",
+    label: ""
+  };
+}
+
+function normalizeDamageCause(cause) {
+  if (!cause) {
+    return { id: "unknown", label: "不明" };
+  }
+
+  if (typeof cause === "string") {
+    return { id: cause, label: cause };
+  }
+
+  return {
+    id: String(cause.id || "unknown"),
+    label: String(cause.label || cause.id || "不明")
+  };
+}
+
+function setLastDamageCause(cause) {
+  STATE.lastDamageCause = normalizeDamageCause(cause);
+}
+
+function damagePlayer(amount, cause = null) {
   const p = STATE.player;
   if (!p) return;
   if (p.invincibleTimer > 0) return;
 
   let remain = absorbByBarrierShield(amount);
   if (remain <= 0) return;
+
+  const normalizedCause = normalizeDamageCause(cause);
+  setLastDamageCause(normalizedCause);
 
   const reduced = Math.max(1, remain - p.stats.armor);
   p.hp = Math.max(0, p.hp - reduced);

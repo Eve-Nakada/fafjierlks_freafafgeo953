@@ -134,7 +134,10 @@ function applyMapDamage(dt) {
       p.y >= trap.y &&
       p.y <= trap.y + trap.h
     ) {
-      damagePlayer((trap.damage || 10) * dt);
+      damagePlayer((trap.damage || 10) * dt, {
+        id: "map_trap",
+        label: "マップ罠"
+      });
     }
   }
 }
