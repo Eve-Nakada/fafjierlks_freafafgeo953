@@ -123,10 +123,12 @@ function syncAttackDrones() {
     return;
   }
 
-  const count = balance.count || 1;
+  // 追加仕様: Lv1から2台
+  const count = Math.max(2, balance.count || 1);
 
   while (existing.length < count) {
     const idx = existing.length;
+    const maxHp = balance.hp || 10;
     const d = {
       type: "attack",
       index: idx,
@@ -137,8 +139,10 @@ function syncAttackDrones() {
       fireCooldown: 0.12,
       aimAngle: 0,
       deadTimer: 0,
-      hp: balance.hp || 10,
-      maxHp: balance.hp || 10
+      hp: maxHp,
+      maxHp: maxHp,
+      shieldHp: 0,
+      shieldMaxHp: 0
     };
     drones.push(d);
     existing.push(d);
@@ -165,7 +169,8 @@ function syncAttackDrones() {
     if (d.hp == null) {
       d.hp = d.maxHp;
     } else if (d.maxHp > prevMax) {
-      d.hp = Math.min(d.maxHp, d.hp + (d.maxHp - prevMax));
+      // レベルアップで全回復
+      d.hp = d.maxHp;
     } else {
       d.hp = Math.min(d.hp, d.maxHp);
     }
@@ -419,31 +424,101 @@ function updateDrones(dt) {
   if (!p) return;
 
   const drones = ensureDroneArray();
+  const dir = getDirVectorFromPlayer(p);
+  const forwardX = dir.x;
+  const forwardY = dir.y;
+  const sideX = -forwardY;
+  const sideY = forwardX;
+
+  const attackDrones = drones.filter(d => d.type === "attack");
+  const barrierDrones = drones.filter(d => d.type === "barrier");
 
   for (const d of drones) {
     // 死亡中
     if (d.deadTimer > 0) {
       d.deadTimer -= dt;
+
+      // 復活
+      if (d.deadTimer <= 0) {
+        d.deadTimer = 0;
+        d.hp = d.maxHp || 1;
+
+        if (d.type === "barrier") {
+          d.shieldHp = d.shieldMaxHp || 0;
+        }
+
+        d.fireCooldown = Math.min(d.fireCooldown || 0, 0.15);
+
+        // 復活直後に変な位置へ出ないよう、現在の目標近くへ寄せる
+        d.vx = 0;
+        d.vy = 0;
+      }
       continue;
     }
 
-    // プレイヤー追従（基本位置）
-    const baseAngle = (Math.PI * 2 / drones.length) * (d.index || 0);
-    const radius = d.type === "barrier"
-      ? (d.orbitRadius || 60)
-      : 40;
-
-    d.x = p.x + Math.cos(baseAngle + STATE.time * 0.8) * radius;
-    d.y = p.y + Math.sin(baseAngle + STATE.time * 0.8) * radius;
-
-    // 攻撃ドローン
-    if (d.type === "attack") {
-      d.fireCooldown = Math.max(0, (d.fireCooldown || 0) - dt);
-      attackDroneFire(d);
+    // HP0のまま deadTimer が切れてしまった個体の保険
+    if ((d.hp || 0) <= 0) {
+      d.deadTimer = Math.max(d.deadTimer || 0, 5);
+      continue;
     }
 
-    // バリアドローン
+    if (d.type === "attack") {
+      // ----------------------------
+      // アタックドローン:
+      // ・プレイヤーからさらに遠く
+      // ・位置更新を補間して滑らかにする
+      // ----------------------------
+      const idx = d.index || 0;
+      const count = Math.max(1, attackDrones.length);
+
+      // 2台時は左右へ、3台以上でも広めに展開
+      const spreadBase = count <= 1 ? [0] : [-1, 1, -2, 2, 0, -3, 3];
+      const spreadSlot = spreadBase[idx] != null ? spreadBase[idx] : (idx - (count - 1) * 0.5);
+
+      // 以前よりさらに離す
+      const forwardDist = 156;
+      const sideDist = 58;
+
+      // 微妙な浮遊感
+      const hoverSide = Math.sin(STATE.time * 1.9 + idx * 1.13) * 10;
+      const hoverForward = Math.cos(STATE.time * 2.3 + idx * 0.87) * 7;
+
+      const targetX =
+        p.x +
+        forwardX * (forwardDist + hoverForward) +
+        sideX * (spreadSlot * sideDist + hoverSide);
+
+      const targetY =
+        p.y +
+        forwardY * (forwardDist + hoverForward) +
+        sideY * (spreadSlot * sideDist + hoverSide);
+
+      // 初回はそのまま配置
+      if (!Number.isFinite(d.x) || !Number.isFinite(d.y)) {
+        d.x = targetX;
+        d.y = targetY;
+      }
+
+      // 滑らか追従
+      // 小さいほどヌルッと、大きいほどキビキビ
+      const follow = 1 - Math.pow(0.0008, dt);
+      d.x = lerp(d.x, targetX, follow);
+      d.y = lerp(d.y, targetY, follow);
+
+      d.fireCooldown = Math.max(0, (d.fireCooldown || 0) - dt);
+      attackDroneFire(d);
+      continue;
+    }
+
     if (d.type === "barrier") {
+      const count = Math.max(1, barrierDrones.length);
+      const baseAngle = (Math.PI * 2 / count) * (d.index || 0);
+      const radius = d.orbitRadius || 60;
+      const angleNow = baseAngle + STATE.time * (d.orbitSpeed || 2.0);
+
+      d.x = p.x + Math.cos(angleNow) * radius;
+      d.y = p.y + Math.sin(angleNow) * radius;
+
       emitBarrierDroneField(d, getPassiveLevel("barrier_drone"));
     }
   }

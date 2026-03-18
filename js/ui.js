@@ -399,7 +399,7 @@ function renderEnemyCodex() {
     return `
       <div class="codexCard ${defeated ? "" : "lockedCard"}">
         <div class="codexHeader">
-          <canvas class="codexIcon ${defeated ? "" : "locked"}" data-enemy-icon="${def.spriteIndex || 0}" width="56" height="56"></canvas>
+          <canvas class="codexIcon ${defeated ? "" : "locked"}" data-enemy-id="${id}" data-enemy-icon="${def.spriteIndex || 0}" width="56" height="56"></canvas>
           <div class="codexHeadText">
             <div class="choiceTitle">${getEnemyDisplayName(id, def)}</div>
             <div class="choiceMeta">${defeated ? `HP ${def.hp} / 速度 ${def.speed} / 接触 ${def.damage}` : "未確認"}</div>
@@ -416,15 +416,28 @@ function renderEnemyCodex() {
       </div>`;
   }).join("");
 
-  wrap.querySelectorAll("canvas[data-enemy-icon]").forEach((canvas) => {
+  wrap.querySelectorAll("canvas[data-enemy-id]").forEach((canvas) => {
     if (canvas.classList.contains("locked")) {
       drawLockedIconToCanvas(canvas);
       return;
     }
+
+    const enemyId = canvas.dataset.enemyId || "";
     const index = Number(canvas.dataset.enemyIcon || 0);
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const ok = drawSpriteFrame(ctx, "enemies", index, 0, 0, canvas.width, canvas.height);
+
+    let ok = false;
+
+    // ボスエイは boss シート、リヴァイアサンは leviathan シートを優先
+    if (enemyId === "boss_manta") {
+      ok = drawSpriteFrame(ctx, "boss", index, 0, 0, canvas.width, canvas.height);
+    } else if (enemyId === "leviathan") {
+      ok = drawSpriteFrame(ctx, "leviathan", index, 0, 0, canvas.width, canvas.height);
+    } else {
+      ok = drawSpriteFrame(ctx, "enemies", index, 0, 0, canvas.width, canvas.height);
+    }
+
     if (!ok) {
       ctx.fillStyle = "#ffcc88";
       ctx.beginPath();
