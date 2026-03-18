@@ -61,7 +61,7 @@
       {
         "id": "w2_weapon_gain_1",
         "name": "武器獲得",
-        "desc": "持っていない武器をランダムで1個取得する。",
+        "desc": "持っていない武器から1つ選んで取得する。",
         "effect": "weaponGain",
         "value": 1,
         "price": 100,
@@ -108,7 +108,7 @@
       {
         "id": "w3_weapon_gain_1",
         "name": "武器獲得",
-        "desc": "持っていない武器をランダムで1個取得する。",
+        "desc": "持っていない武器から1つ選んで取得する。",
         "effect": "weaponGain",
         "value": 1,
         "price": 100,
@@ -117,7 +117,7 @@
       {
         "id": "w3_passive_gain_1",
         "name": "装備獲得",
-        "desc": "持っていない装備をランダムで1個取得する。",
+        "desc": "持っていない装備から1つ選んで取得する。",
         "effect": "passiveGain",
         "value": 1,
         "price": 100,
@@ -164,7 +164,7 @@
       {
         "id": "w4_weapon_gain_1",
         "name": "武器獲得",
-        "desc": "持っていない武器をランダムで1個取得する。",
+        "desc": "持っていない武器から1つ選んで取得する。",
         "effect": "weaponGain",
         "value": 1,
         "price": 100,
@@ -173,7 +173,7 @@
       {
         "id": "w4_passive_gain_1",
         "name": "装備獲得",
-        "desc": "持っていない装備をランダムで1個取得する。",
+        "desc": "持っていない装備から1つ選んで取得する。",
         "effect": "passiveGain",
         "value": 1,
         "price": 100,
@@ -229,7 +229,7 @@
       {
         "id": "w5_passive_gain_1",
         "name": "装備獲得",
-        "desc": "持っていない装備をランダムで1個取得する。",
+        "desc": "持っていない装備から1つ選んで取得する。",
         "effect": "passiveGain",
         "value": 1,
         "price": 100,

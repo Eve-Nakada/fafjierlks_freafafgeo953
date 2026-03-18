@@ -15,23 +15,23 @@ function buildDefaultShopWaveDefs() {
     2: [
       { id: 'w2_heal_20_1', name: 'HP回復 +20', desc: 'HPを20回復する。', effect: 'heal', value: 20, price: 25, persistent: true },
       { id: 'w2_max_hp_10_1', name: '最大HP +10', desc: '最大HPを10増やし、同時に回復する。', effect: 'maxHp', value: 10, price: 25, persistent: true },
-      { id: 'w2_weapon_gain_1', name: '武器獲得', desc: '持っていない武器をランダムで1個取得する。', effect: 'weaponGain', value: 1, price: 100, persistent: true },
+      { id: 'w2_weapon_gain_1', name: '武器獲得', desc: '持っていない武器から1つ選んで取得する。', effect: 'weaponGain', value: 1, price: 100, persistent: true },
       { id: 'w2_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
       { id: 'w2_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
     ],
     3: [
       { id: 'w3_heal_20_1', name: 'HP回復 +20', desc: 'HPを20回復する。', effect: 'heal', value: 20, price: 25, persistent: true },
       { id: 'w3_max_hp_10_1', name: '最大HP +10', desc: '最大HPを10増やし、同時に回復する。', effect: 'maxHp', value: 10, price: 25, persistent: true },
-      { id: 'w3_weapon_gain_1', name: '武器獲得', desc: '持っていない武器をランダムで1個取得する。', effect: 'weaponGain', value: 1, price: 100, persistent: true },
-      { id: 'w3_passive_gain_1', name: '装備獲得', desc: '持っていない装備をランダムで1個取得する。', effect: 'passiveGain', value: 1, price: 100, persistent: true },
+      { id: 'w3_weapon_gain_1', name: '武器獲得', desc: '持っていない武器から1つ選んで取得する。', effect: 'weaponGain', value: 1, price: 100, persistent: true },
+      { id: 'w3_passive_gain_1', name: '装備獲得', desc: '持っていない装備から1つ選んで取得する。', effect: 'passiveGain', value: 1, price: 100, persistent: true },
       { id: 'w3_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
       { id: 'w3_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
     ],
     4: [
       { id: 'w4_heal_50_1', name: 'HP回復 +50', desc: 'HPを50回復する。', effect: 'heal', value: 50, price: 60, persistent: true },
       { id: 'w4_max_hp_20_1', name: '最大HP +20', desc: '最大HPを20増やし、同時に回復する。', effect: 'maxHp', value: 20, price: 60, persistent: true },
-      { id: 'w4_weapon_gain_1', name: '武器獲得', desc: '持っていない武器をランダムで1個取得する。', effect: 'weaponGain', value: 1, price: 100, persistent: true },
-      { id: 'w4_passive_gain_1', name: '装備獲得', desc: '持っていない装備をランダムで1個取得する。', effect: 'passiveGain', value: 1, price: 100, persistent: true },
+      { id: 'w4_weapon_gain_1', name: '武器獲得', desc: '持っていない武器から1つ選んで取得する。', effect: 'weaponGain', value: 1, price: 100, persistent: true },
+      { id: 'w4_passive_gain_1', name: '装備獲得', desc: '持っていない装備から1つ選んで取得する。', effect: 'passiveGain', value: 1, price: 100, persistent: true },
       { id: 'w4_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
       { id: 'w4_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
     ],
@@ -39,7 +39,7 @@ function buildDefaultShopWaveDefs() {
       { id: 'w5_heal_50_1', name: 'HP回復 +50', desc: 'HPを50回復する。', effect: 'heal', value: 50, price: 60, persistent: true },
       { id: 'w5_max_hp_20_1', name: '最大HP +20', desc: '最大HPを20増やし、同時に回復する。', effect: 'maxHp', value: 20, price: 60, persistent: true },
       { id: 'w5_weapon_upgrade_1', name: '武器強化', desc: '進化前の武器を1つ選び、1段階強化する。', effect: 'weaponUpgrade', value: 1, price: 150, persistent: true },
-      { id: 'w5_passive_gain_1', name: '装備獲得', desc: '持っていない装備をランダムで1個取得する。', effect: 'passiveGain', value: 1, price: 100, persistent: true },
+      { id: 'w5_passive_gain_1', name: '装備獲得', desc: '持っていない装備から1つ選んで取得する。', effect: 'passiveGain', value: 1, price: 100, persistent: true },
       { id: 'w5_passive_upgrade_1', name: '装備強化', desc: '装備を1つ選び、1段階強化する。', effect: 'passiveUpgrade', value: 1, price: 150, persistent: true },
       { id: 'w5_absorb_xp_1', name: 'XP全回収', desc: '画面上のXPをすべて吸収する。', effect: 'absorbXp', value: 1, price: 40, persistent: false },
       { id: 'w5_reroll_1', name: 'リロール券', desc: 'レベルアップ選択肢を引き直す。', effect: 'reroll', value: 1, price: 25, persistent: true }
@@ -202,13 +202,19 @@ function syncShopInventoryForWave(waveIndex) {
   const wave = Math.max(1, Number(waveIndex || 1));
   const defsByWave = getConfiguredShopWaveDefs();
 
+  if (STATE._shopOrderSeed == null) STATE._shopOrderSeed = 1;
+
   for (let i = 1; i <= wave; i++) {
     if (STATE.shopUnlockedWaves[i]) continue;
     STATE.shopUnlockedWaves[i] = true;
 
     const defs = defsByWave[i] || [];
     for (const def of defs) {
-      STATE.shopStock[def.id] = { ...def, unlockWave: i };
+      STATE.shopStock[def.id] = {
+        ...def,
+        unlockWave: i,
+        _shopOrder: STATE._shopOrderSeed++
+      };
     }
   }
 }
@@ -220,15 +226,15 @@ function getDisplayShopItems() {
 
   for (const item of Object.values(STATE.shopStock)) {
     if (!item) continue;
-    if (STATE.shopPurchased[item.id]) continue;
+
+    // 非persistent商品は、そのWave中だけ表示
     if (!item.persistent && item.unlockWave !== wave) continue;
+
     out.push(item);
   }
 
   out.sort((a, b) => {
-    if (a.unlockWave !== b.unlockWave) return a.unlockWave - b.unlockWave;
-    if (a.price !== b.price) return a.price - b.price;
-    return String(a.name || '').localeCompare(String(b.name || ''), 'ja');
+    return (a._shopOrder || 0) - (b._shopOrder || 0);
   });
 
   return out;
@@ -253,31 +259,37 @@ function getDisplayShopGroups() {
   for (const item of items) {
     const key = getShopGroupKey(item);
     let group = map.get(key);
+
     if (!group) {
       group = {
         key,
         item,
         items: [],
         stock: 0,
-        unlockWave: item.unlockWave || 0
+        total: 0,
+        unlockWave: item.unlockWave || 0,
+        order: item._shopOrder || 0
       };
       map.set(key, group);
       groups.push(group);
     }
 
     group.items.push(item);
-    group.stock += 1;
+    group.total += 1;
+
+    if (!STATE.shopPurchased?.[item.id]) {
+      group.stock += 1;
+    }
+
     if ((item.unlockWave || 0) < group.unlockWave) {
       group.unlockWave = item.unlockWave || 0;
     }
+    if ((item._shopOrder || 0) < group.order) {
+      group.order = item._shopOrder || 0;
+    }
   }
 
-  groups.sort((a, b) => {
-    if (a.unlockWave !== b.unlockWave) return a.unlockWave - b.unlockWave;
-    if ((a.item.price || 0) !== (b.item.price || 0)) return (a.item.price || 0) - (b.item.price || 0);
-    return String(a.item.name || '').localeCompare(String(b.item.name || ''), 'ja');
-  });
-
+  groups.sort((a, b) => a.order - b.order);
   return groups;
 }
 
@@ -328,9 +340,9 @@ function rerollShopChoices() {
 }
 
 function ensureShopStyles() {
-  if (document.getElementById('shopDynamicStyle')) return;
-  const style = document.createElement('style');
-  style.id = 'shopDynamicStyle';
+  if (document.getElementById("shopDynamicStyle")) return;
+  const style = document.createElement("style");
+  style.id = "shopDynamicStyle";
   style.textContent = `
     .shopPanelHead {
       width:min(92vw, 900px);
@@ -370,6 +382,7 @@ function ensureShopStyles() {
       color:#9ed7e8;
       font-size:13px;
       line-height:1.55;
+      min-height:1.6em;
     }
     .shopPanelMetaRow {
       display:flex;
@@ -392,6 +405,7 @@ function ensureShopStyles() {
     }
     .choiceBtn.shopItemCard {
       gap:8px;
+      align-items:stretch;
     }
     .shopItemTopRow {
       display:flex;
@@ -399,15 +413,20 @@ function ensureShopStyles() {
       justify-content:space-between;
       gap:10px;
     }
+    .shopItemTextBlock {
+      min-width:0;
+      flex:1 1 auto;
+    }
     .shopItemPrice {
       color:#ffd166;
       font-size:15px;
       font-weight:800;
       white-space:nowrap;
+      flex:0 0 auto;
     }
     .shopItemMetaRow {
       display:flex;
-      align-items:center;
+      align-items:flex-start;
       justify-content:space-between;
       gap:10px;
       margin-top:6px;
@@ -425,20 +444,45 @@ function ensureShopStyles() {
       border:1px solid rgba(124,247,255,0.24);
       background:rgba(124,247,255,0.10);
       color:#dff7ff;
+      flex:0 0 auto;
+      max-width:100%;
     }
     .shopItemUnavailable {
       font-size:12px;
       color:#ff9c9c;
       font-weight:700;
+      line-height:1.5;
+      text-align:right;
+      flex:1 1 180px;
+      min-width:0;
+      word-break:break-word;
     }
+    .choiceBtn.shopItemCard.isSoldOut {
+      opacity:0.46;
+      filter:grayscale(0.9);
+      border-color:rgba(255,255,255,0.08);
+      background:rgba(120,120,120,0.16);
+    }
+    .choiceBtn.shopItemCard.isUnavailable:not(.isSoldOut) {
+      opacity:0.78;
+    }
+
     @media (max-width: 640px) {
       .shopPanelTitleRow,
       .shopItemTopRow {
-        grid-template-columns:1fr;
         display:grid;
+        grid-template-columns:1fr;
       }
       .shopItemPrice {
         justify-self:start;
+      }
+      .shopItemMetaRow {
+        display:grid;
+        grid-template-columns:1fr;
+        align-items:start;
+      }
+      .shopItemUnavailable {
+        text-align:left;
       }
     }
   `;
@@ -487,57 +531,167 @@ function updateShopHeaderUi(items) {
   metaEl.innerHTML = `<div class="shopBadge shopBadgeGold">所持Gold: ${gold}G</div>`;
 }
 
+function getMissingWeaponDefs() {
+  return (STATE.gameData?.weapons || []).filter((w) => !isWeaponOwned(w.id));
+}
+
+function getMissingPassiveDefs() {
+  const p = STATE.player;
+  if (!p) return [];
+  return (STATE.gameData?.passives || []).filter((passive) => !p.passives.includes(passive.id));
+}
+
+function getShopItemDisplayDesc(item) {
+  if (!item) return "";
+  if (item.effect === "weaponGain") return "持っていない武器から1つ選んで取得する。";
+  if (item.effect === "passiveGain") return "持っていない装備から1つ選んで取得する。";
+  return item.desc || "";
+}
+
+function getShopGroupNextWave(group) {
+  const defsByWave = getConfiguredShopWaveDefs();
+  const currentWave = getCurrentShopWave();
+  const key = group?.key || "";
+  if (!key) return null;
+
+  for (let wave = currentWave + 1; wave <= 99; wave++) {
+    const defs = defsByWave[wave] || [];
+    for (const def of defs) {
+      if (getShopGroupKey(def) === key) return wave;
+    }
+  }
+  return null;
+}
+
+function setShopInfoMessage(text) {
+  const subEl = document.getElementById("shopPanelSub");
+  if (!subEl) return;
+  subEl.textContent = text || "所持Goldを見ながら好きな順で購入してください。";
+}
+
+function getWeaponEvolutionStateText(weaponId) {
+  const inst = typeof getWeaponInstance === "function" ? getWeaponInstance(weaponId) : null;
+  if (!inst) return "未所持";
+  const stage = inst.evolutionStage || 0;
+  if (stage <= 0) return `通常 Lv${inst.level}`;
+  if (stage === 1) return `第1進化 Lv${inst.level}`;
+  return `第2進化 Lv${inst.level}`;
+}
+
+function buildShopWeaponOption(def, mode = "gain") {
+  const inst = typeof getWeaponInstance === "function" ? getWeaponInstance(def.id) : null;
+  const evolutionHint =
+    typeof buildEvolutionHintText === "function"
+      ? buildEvolutionHintText(def, inst)
+      : "";
+
+  let desc = def.desc || "";
+  if (mode === "upgrade") {
+    const nowLv = typeof getWeaponDisplayLevel === "function" ? getWeaponDisplayLevel(def.id) : 0;
+    desc = `${getWeaponEvolutionStateText(def.id)} / Lv${nowLv} → Lv${nowLv + 1}${evolutionHint ? ` / ${evolutionHint}` : ""}`;
+  } else {
+    desc = `${def.desc || ""}${evolutionHint ? ` / ${evolutionHint}` : ""}`;
+  }
+
+  return {
+    id: def.id,
+    title: def.name,
+    desc,
+    iconType: "weapon",
+    iconIndex: def.iconIndex || 0,
+    meta: mode === "upgrade" ? "強化対象" : "新規取得"
+  };
+}
+
+function buildShopPassiveOption(def, mode = "gain") {
+  const lv = typeof getPassiveLevel === "function" ? getPassiveLevel(def.id) : 0;
+  return {
+    id: def.id,
+    title: def.name,
+    desc: mode === "upgrade"
+      ? `Lv${lv} → Lv${lv + 1} / ${def.effectDesc || def.desc || ""}`
+      : (def.effectDesc || def.desc || ""),
+    iconType: "passive",
+    iconIndex: def.iconIndex || 0,
+    meta: mode === "upgrade" ? "強化対象" : "新規取得"
+  };
+}
+
 function renderShop() {
-  const listEl = document.getElementById('shopList');
+  const listEl = document.getElementById("shopList");
   if (!listEl) return;
 
   const groups = getDisplayShopGroups();
   updateShopHeaderUi(groups);
-  listEl.innerHTML = '';
+  listEl.innerHTML = "";
 
   if (groups.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'choiceBtn shopItemCard';
+    const empty = document.createElement("div");
+    empty.className = "choiceBtn shopItemCard";
     empty.innerHTML = `
       <div class="choiceTitle">売り切れ</div>
       <div class="choiceDesc">このWaveで購入できる品はありません。</div>
       <div class="choiceMeta">次のWaveで新しい商品が追加されます。</div>
     `;
-    empty.disabled = true;
     listEl.appendChild(empty);
     return;
   }
 
   for (const group of groups) {
     const item = group.item;
-    const btn = document.createElement('button');
-    btn.className = 'choiceBtn shopItemCard';
-
     const cost = calcShopPrice(item);
-    const purchasableItem = group.items.find((entry) => canBuyShopItem(entry)) || null;
-    const canBuy = !!purchasableItem && (STATE.player?.gold || 0) >= cost;
-    const unavailableText = canBuy ? '' : '<div class="shopItemUnavailable">購入不可</div>';
+    const availableItem = group.items.find((entry) => !STATE.shopPurchased?.[entry.id]) || null;
+    const soldOut = group.stock <= 0;
+    const enoughGold = (STATE.player?.gold || 0) >= cost;
+    const canUse = availableItem ? canBuyShopItem(availableItem) : false;
+    const nextWave = getShopGroupNextWave(group);
+
+    const btn = document.createElement("button");
+    btn.className = `choiceBtn shopItemCard ${soldOut ? "isSoldOut" : ""} ${!soldOut && (!enoughGold || !canUse) ? "isUnavailable" : ""}`;
+
+    let statusText = "";
+    if (soldOut) {
+      statusText = nextWave ? `在庫切れ / 次回入荷 Wave ${nextWave}` : "在庫切れ / 今後入荷なし";
+    } else if (!enoughGold) {
+      statusText = "Gold不足";
+    } else if (!canUse) {
+      statusText = "現在は購入条件を満たしていません";
+    }
 
     btn.innerHTML = `
       <div class="shopItemTopRow">
-        <div>
+        <div class="shopItemTextBlock">
           <div class="choiceTitle">${item.name}</div>
-          <div class="choiceDesc">${item.desc || ''}</div>
+          <div class="choiceDesc">${getShopItemDisplayDesc(item)}</div>
         </div>
         <div class="shopItemPrice">${cost}G</div>
       </div>
       <div class="shopItemMetaRow">
         <div class="shopItemStock">在庫 ${group.stock}</div>
-        ${unavailableText}
+        ${statusText ? `<div class="shopItemUnavailable">${statusText}</div>` : ""}
       </div>
     `;
 
-    btn.disabled = !canBuy;
     btn.onclick = async () => {
-      if (!purchasableItem) return;
+      if (soldOut) {
+        setShopInfoMessage(nextWave ? `${item.name} の次回入荷は Wave ${nextWave} です。` : `${item.name} は今後入荷予定がありません。`);
+        renderShop();
+        return;
+      }
+
+      if (!enoughGold) {
+        setShopInfoMessage(`${item.name} を買うには ${cost}G 必要です。`);
+        return;
+      }
+
+      if (!availableItem || !canBuyShopItem(availableItem)) {
+        setShopInfoMessage(`${item.name} は現在購入条件を満たしていません。`);
+        return;
+      }
+
       btn.disabled = true;
       try {
-        await buyShopItem(purchasableItem);
+        await buyShopItem(availableItem);
       } finally {
         renderShop();
       }
@@ -552,19 +706,24 @@ function canBuyShopItem(item) {
   if (STATE.shopPurchased?.[item.id]) return false;
 
   switch (item.effect) {
-    case 'absorbXp':
-    case 'reroll':
-    case 'heal':
-    case 'maxHp':
+    case "absorbXp":
+    case "reroll":
+    case "heal":
+    case "maxHp":
       return true;
-    case 'weaponGain':
-      return getRandomMissingWeaponDef() != null;
-    case 'passiveGain':
-      return getRandomMissingPassiveDef() != null;
-    case 'weaponUpgrade':
+
+    case "weaponGain":
+      return getMissingWeaponDefs().length > 0;
+
+    case "passiveGain":
+      return getMissingPassiveDefs().length > 0;
+
+    case "weaponUpgrade":
       return getShopUpgradeableWeapons().length > 0;
-    case 'passiveUpgrade':
+
+    case "passiveUpgrade":
       return getShopUpgradeablePassives().length > 0;
+
     default:
       return true;
   }
@@ -583,14 +742,14 @@ async function buyShopItem(item) {
   let consumed = true;
 
   switch (item.effect) {
-    case 'heal':
+    case "heal":
       healPlayer(item.value || 0);
       if (STATE.shopSession) {
         STATE.shopSession.allowedHeal = (STATE.shopSession.allowedHeal || 0) + (item.value || 0);
       }
       break;
 
-    case 'maxHp': {
+    case "maxHp": {
       const add = Math.max(0, item.value || 0);
       STATE.player.shopMaxHpBonus = (STATE.player.shopMaxHpBonus || 0) + add;
       STATE.player.maxHp += add;
@@ -601,35 +760,19 @@ async function buyShopItem(item) {
       break;
     }
 
-    case 'absorbXp':
+    case "absorbXp":
       absorbAllXP();
       break;
 
-    case 'reroll':
+    case "reroll":
       STATE.player.rerollTickets = (STATE.player.rerollTickets || 0) + (item.value || 1);
       break;
 
-    case 'weaponGain': {
-      const pickedWeapon = getRandomMissingWeaponDef();
-      success = !!pickedWeapon && addWeapon(pickedWeapon.id);
-      break;
-    }
-
-    case 'passiveGain': {
-      const pickedPassive = getRandomMissingPassiveDef();
-      success = !!pickedPassive && addPassive(pickedPassive.id);
-      break;
-    }
-
-    case 'weaponUpgrade': {
+    case "weaponGain": {
       const pickedWeaponId = await openShopSelectionOverlay({
-        title: '武器強化',
-        subtitle: '強化する武器を選択してください。キャンセルすると購入されません。',
-        options: getShopUpgradeableWeapons().map((def) => ({
-          id: def.id,
-          title: def.name,
-          desc: `Lv${getWeaponDisplayLevel(def.id)} → Lv${getWeaponDisplayLevel(def.id) + 1}`
-        }))
+        title: "武器獲得",
+        subtitle: "取得する武器を選択してください。キャンセルすると購入されません。",
+        options: getMissingWeaponDefs().map((def) => buildShopWeaponOption(def, "gain"))
       });
 
       if (!pickedWeaponId) {
@@ -642,15 +785,47 @@ async function buyShopItem(item) {
       break;
     }
 
-    case 'passiveUpgrade': {
+    case "passiveGain": {
       const pickedPassiveId = await openShopSelectionOverlay({
-        title: '装備強化',
-        subtitle: '強化する装備を選択してください。キャンセルすると購入されません。',
-        options: getShopUpgradeablePassives().map((def) => ({
-          id: def.id,
-          title: def.name,
-          desc: `Lv${getPassiveLevel(def.id)} → Lv${getPassiveLevel(def.id) + 1}`
-        }))
+        title: "装備獲得",
+        subtitle: "取得する装備を選択してください。キャンセルすると購入されません。",
+        options: getMissingPassiveDefs().map((def) => buildShopPassiveOption(def, "gain"))
+      });
+
+      if (!pickedPassiveId) {
+        success = false;
+        consumed = false;
+        break;
+      }
+
+      STATE._suppressImmediateShellHeal = true;
+      success = addPassive(pickedPassiveId);
+      STATE._suppressImmediateShellHeal = false;
+      break;
+    }
+
+    case "weaponUpgrade": {
+      const pickedWeaponId = await openShopSelectionOverlay({
+        title: "武器強化",
+        subtitle: "強化する武器を選択してください。進化状態とアイコンも確認できます。キャンセルすると購入されません。",
+        options: getShopUpgradeableWeapons().map((def) => buildShopWeaponOption(def, "upgrade"))
+      });
+
+      if (!pickedWeaponId) {
+        success = false;
+        consumed = false;
+        break;
+      }
+
+      success = addWeapon(pickedWeaponId);
+      break;
+    }
+
+    case "passiveUpgrade": {
+      const pickedPassiveId = await openShopSelectionOverlay({
+        title: "装備強化",
+        subtitle: "強化する装備を選択してください。キャンセルすると購入されません。",
+        options: getShopUpgradeablePassives().map((def) => buildShopPassiveOption(def, "upgrade"))
       });
 
       if (!pickedPassiveId) {
@@ -741,9 +916,9 @@ function getWeaponDisplayLevel(id) {
 }
 
 function ensureShopSelectionStyles() {
-  if (document.getElementById('shopSelectionStyle')) return;
-  const style = document.createElement('style');
-  style.id = 'shopSelectionStyle';
+  if (document.getElementById("shopSelectionStyle")) return;
+  const style = document.createElement("style");
+  style.id = "shopSelectionStyle";
   style.textContent = `
     #shopSelectionOverlay {
       position: absolute;
@@ -771,8 +946,36 @@ function ensureShopSelectionStyles() {
     .shopSelectionSub { color: #9ed7e8; font-size: 13px; line-height: 1.5; }
     .shopSelectionChoices { display: grid; gap: 10px; }
     .shopSelectionCard { text-align: left; }
-    .shopSelectionCard .choiceDesc { opacity: 0.95; }
+    .shopSelectionCardInner {
+      display:grid;
+      grid-template-columns:64px minmax(0, 1fr);
+      gap:12px;
+      align-items:center;
+    }
+    .shopSelectionIcon {
+      width:56px;
+      height:56px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(255,255,255,0.04);
+    }
+    .shopSelectionText {
+      min-width:0;
+      display:grid;
+      gap:4px;
+    }
+    .shopSelectionMeta {
+      font-size:12px;
+      color:#8fe6ff;
+      font-weight:700;
+    }
     .shopSelectionCancel { margin-top: 4px; }
+
+    @media (max-width: 640px) {
+      .shopSelectionCardInner {
+        grid-template-columns:1fr;
+      }
+    }
   `;
   document.head.appendChild(style);
 }
@@ -782,25 +985,25 @@ function openShopSelectionOverlay({ title, subtitle, options }) {
   STATE.shopSelectionOpen = true;
 
   return new Promise((resolve) => {
-    const old = document.getElementById('shopSelectionOverlay');
+    const old = document.getElementById("shopSelectionOverlay");
     if (old) old.remove();
 
-    const overlay = document.createElement('div');
-    overlay.id = 'shopSelectionOverlay';
+    const overlay = document.createElement("div");
+    overlay.id = "shopSelectionOverlay";
 
-    const panel = document.createElement('div');
-    panel.className = 'shopSelectionPanel';
+    const panel = document.createElement("div");
+    panel.className = "shopSelectionPanel";
 
-    const titleEl = document.createElement('div');
-    titleEl.className = 'shopSelectionTitle';
-    titleEl.textContent = title || '選択';
+    const titleEl = document.createElement("div");
+    titleEl.className = "shopSelectionTitle";
+    titleEl.textContent = title || "選択";
 
-    const subEl = document.createElement('div');
-    subEl.className = 'shopSelectionSub';
-    subEl.textContent = subtitle || '';
+    const subEl = document.createElement("div");
+    subEl.className = "shopSelectionSub";
+    subEl.textContent = subtitle || "";
 
-    const choices = document.createElement('div');
-    choices.className = 'shopSelectionChoices';
+    const choices = document.createElement("div");
+    choices.className = "shopSelectionChoices";
 
     const finish = (value) => {
       STATE.shopSelectionOpen = false;
@@ -809,19 +1012,31 @@ function openShopSelectionOverlay({ title, subtitle, options }) {
     };
 
     for (const option of options || []) {
-      const btn = document.createElement('button');
-      btn.className = 'choiceBtn shopSelectionCard';
+      const btn = document.createElement("button");
+      btn.className = "choiceBtn shopSelectionCard";
+
+      const iconHtml = option.iconType === "weapon"
+        ? `<canvas class="shopSelectionIcon" data-shop-weapon-icon="${option.iconIndex || 0}" width="56" height="56"></canvas>`
+        : `<div class="shopSelectionIcon" style="display:flex;align-items:center;justify-content:center;font-weight:800;color:#d9f7ff;">装備</div>`;
+
       btn.innerHTML = `
-        <div class="choiceTitle">${option.title}</div>
-        <div class="choiceDesc">${option.desc || ''}</div>
+        <div class="shopSelectionCardInner">
+          ${iconHtml}
+          <div class="shopSelectionText">
+            <div class="choiceTitle">${option.title}</div>
+            <div class="choiceDesc">${option.desc || ""}</div>
+            ${option.meta ? `<div class="shopSelectionMeta">${option.meta}</div>` : ""}
+          </div>
+        </div>
       `;
+
       btn.onclick = () => finish(option.id);
       choices.appendChild(btn);
     }
 
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = 'choiceBtn shopSelectionCancel';
-    cancelBtn.textContent = 'キャンセル';
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "choiceBtn shopSelectionCancel";
+    cancelBtn.textContent = "キャンセル";
     cancelBtn.onclick = () => finish(null);
 
     panel.appendChild(titleEl);
@@ -830,5 +1045,11 @@ function openShopSelectionOverlay({ title, subtitle, options }) {
     panel.appendChild(cancelBtn);
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
+
+    overlay.querySelectorAll("canvas[data-shop-weapon-icon]").forEach((canvas) => {
+      if (typeof drawWeaponIconToCanvas === "function") {
+        drawWeaponIconToCanvas(canvas, Number(canvas.dataset.shopWeaponIcon || 0));
+      }
+    });
   });
 }

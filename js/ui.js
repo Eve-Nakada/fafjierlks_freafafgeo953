@@ -1727,9 +1727,85 @@ function collectNeededEvolutionPassives() {
   return out;
 }
 
+function ensureLevelUpChoiceStyles() {
+  if (document.getElementById("levelUpChoiceStyle")) return;
+
+  const style = document.createElement("style");
+  style.id = "levelUpChoiceStyle";
+  style.textContent = `
+    .levelUpChoiceCard {
+      text-align:left;
+    }
+
+    .levelUpChoiceInner {
+      display:grid;
+      grid-template-columns:64px minmax(0, 1fr);
+      gap:12px;
+      align-items:center;
+    }
+
+    .levelUpChoiceIcon {
+      width:56px;
+      height:56px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(255,255,255,0.04);
+      image-rendering:pixelated;
+      image-rendering:crisp-edges;
+    }
+
+    .levelUpChoiceIconPlaceholder {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:11px;
+      font-weight:800;
+      color:#d9f7ff;
+      letter-spacing:0.04em;
+    }
+
+    .levelUpChoiceText {
+      min-width:0;
+      display:grid;
+      gap:4px;
+    }
+
+    @media (max-width: 640px) {
+      .levelUpChoiceInner {
+        grid-template-columns:1fr;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function getLevelUpChoiceWeaponDef(choice) {
+  if (!choice) return null;
+
+  if (choice.type === "weapon" && choice.key?.startsWith("weapon_")) {
+    const weaponId = choice.key.slice("weapon_".length);
+    return getWeaponDef(weaponId);
+  }
+
+  if (choice.type === "evolution") {
+    if (choice.weaponId) {
+      return getWeaponDef(choice.weaponId);
+    }
+
+    if (choice.key?.startsWith("evolution_")) {
+      const weaponId = choice.key.slice("evolution_".length).split("_")[0];
+      return getWeaponDef(weaponId);
+    }
+  }
+
+  return null;
+}
+
 function renderLevelUpChoices() {
   const wrap = getEl("levelUpChoices");
   if (!wrap) return;
+
+  ensureLevelUpChoiceStyles();
 
   wrap.innerHTML = "";
   const choices = buildLevelUpChoices();
@@ -1737,12 +1813,26 @@ function renderLevelUpChoices() {
 
   for (const c of choices) {
     const btn = document.createElement("button");
-    btn.className = "choiceBtn";
+    btn.className = "choiceBtn levelUpChoiceCard";
+
+    const weaponDef = getLevelUpChoiceWeaponDef(c);
+    const hasWeaponIcon = !!weaponDef;
+
+    const iconHtml = hasWeaponIcon
+      ? `<canvas class="levelUpChoiceIcon" data-levelup-weapon-icon="${weaponDef.iconIndex || 0}" width="56" height="56"></canvas>`
+      : `<div class="levelUpChoiceIcon levelUpChoiceIconPlaceholder">${c.type === "passive" ? "装備" : c.type === "gold" ? "GOLD" : "選択"}</div>`;
+
     btn.innerHTML = `
-      <div class="choiceTitle">${c.name}</div>
-      <div class="choiceDesc">${c.desc || ""}</div>
-      <div class="choiceMeta">${c.meta || ""}</div>
+      <div class="levelUpChoiceInner">
+        ${iconHtml}
+        <div class="levelUpChoiceText">
+          <div class="choiceTitle">${c.name}</div>
+          <div class="choiceDesc">${c.desc || ""}</div>
+          <div class="choiceMeta">${c.meta || ""}</div>
+        </div>
+      </div>
     `;
+
     btn.onclick = () => {
       const ok = c.apply();
       if (!ok) return;
@@ -1757,8 +1847,13 @@ function renderLevelUpChoices() {
 
       updateHUD();
     };
+
     wrap.appendChild(btn);
   }
+
+  wrap.querySelectorAll("canvas[data-levelup-weapon-icon]").forEach((canvas) => {
+    drawWeaponIconToCanvas(canvas, Number(canvas.dataset.levelupWeaponIcon || 0));
+  });
 
   updateLevelUpRerollButton();
 
