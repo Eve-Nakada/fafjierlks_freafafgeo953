@@ -121,7 +121,7 @@ function startGame(initialWeaponId) {
   resetMapState();
   resetWaveState();
   resetGameState();
-  resetRunShopState()
+  resetRunShopState();
 
   const stage = getCurrentMap();
   if (stage && stage.worldWidth) STATE.world.width = stage.worldWidth;
@@ -148,6 +148,10 @@ function startGame(initialWeaponId) {
   renderPlayerUiIcon();
   resetWaveCoins(1);
 
+  if (typeof onAutoPlayRunStarted === "function") {
+    onAutoPlayRunStarted(initialWeaponId || STATE.player?.weapons?.[0]?.id || null);
+  }
+
   if (STATE.testMode.enabled && typeof openTestModePanel === 'function') {
     openTestModePanel();
   }
@@ -172,25 +176,44 @@ function resetRunShopState() {
 function gameLoop(timestamp) {
   if (!lastTime) lastTime = timestamp;
 
-  const dt = Math.min(0.033, (timestamp - lastTime) / 1000);
+  const rawDt = Math.min(0.033, (timestamp - lastTime) / 1000);
   lastTime = timestamp;
 
-  STATE.delta = dt;
-  STATE.time += dt;
+  STATE.delta = rawDt;
+  STATE.time += rawDt;
 
-  updateAmbientBubbles(dt);
+  const simSpeed = (typeof getAutoPlaySimSpeed === "function" && STATE.testMode?.enabled)
+    ? getAutoPlaySimSpeed()
+    : 1;
 
-  if (!STATE.paused && STATE.player) {
-    updateGame(dt);
+  const loops = Math.max(1, Math.floor(simSpeed));
+  const stepDt = rawDt;
+
+  for (let i = 0; i < loops; i++) {
+    updateAmbientBubbles(stepDt);
+
+    if (!STATE.paused && STATE.player) {
+      updateGame(stepDt);
+    } else {
+      if (typeof updateAutoPlayWhilePaused === "function") {
+        updateAutoPlayWhilePaused(stepDt);
+      }
+      if (typeof updateAutoBatchRestart === "function") {
+        updateAutoBatchRestart(stepDt);
+      }
+    }
   }
 
   renderGame();
-
   requestAnimationFrame(gameLoop);
 }
 
 function updateGame(dt) {
   STATE.elapsed += dt;
+
+  if (typeof updateAutoPlay === "function") {
+    updateAutoPlay(dt);
+  }
 
   updatePlayer(dt);
   updateWeapons(dt);
@@ -208,12 +231,10 @@ function updateGame(dt) {
   applyMapDamage(dt);
   updateCamera(false);
 
-  // レベルアップ画面
   if (STATE.levelUpQueue > 0 && !isScreenVisible("levelUpScreen")) {
     openLevelUp();
   }
 
-  // 死亡
   if (STATE.player.hp <= 0) {
     STATE.player.hp = 0;
     updateHUD();
@@ -227,7 +248,6 @@ function updateGame(dt) {
     return;
   }
 
-  // UI更新
   updateHUD();
 }
 
@@ -1001,6 +1021,15 @@ function endGame(clear) {
   STATE.paused = true;
   STATE.clear = !!clear;
   STATE.screen = "result";
+
+  const intercepted = typeof handleAutoBatchEnd === "function"
+    ? handleAutoBatchEnd(!!clear)
+    : false;
+
+  if (intercepted) {
+    hideAllScreens();
+    return;
+  }
 
   const rankingResult = saveRanking(STATE.score);
   showResultScreen(clear, rankingResult);

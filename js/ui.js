@@ -797,19 +797,21 @@ function ensureTestModePanelDom() {
       <div class="testModeTopRow">
         <div>
           <div class="testModeTitle">PCテストモード</div>
-          <div class="testModeSub">F2 で開閉。武器・敵・ショップ・Gold を即時調整できます。</div>
+          <div class="testModeSub">F2 で開閉。武器・敵・ショップ・Gold・自動プレイを管理できます。</div>
         </div>
         <div class="testModeActions">
           <button id="testModeCloseBtn" type="button">閉じる</button>
           <button id="testModeDisableBtn" type="button">通常モードに戻す</button>
         </div>
       </div>
+
       <div class="testModeGrid">
         <div class="testModeSection">
           <h3>武器</h3>
           <div class="testModeHint">ON/OFF、進化段階、分岐、Lv を変更できます。</div>
           <div id="testModeWeaponList" class="testModeWeaponList"></div>
         </div>
+
         <div class="testModeSection">
           <h3>敵スポーン</h3>
           <div class="testModeMiniGrid">
@@ -827,6 +829,7 @@ function ensureTestModePanelDom() {
             <button id="testClearEnemiesBtn" type="button">敵を全消去</button>
           </div>
         </div>
+
         <div class="testModeSection">
           <h3>ショップ</h3>
           <div class="testModeField">
@@ -852,8 +855,9 @@ function ensureTestModePanelDom() {
             <button id="testClearShopBtn" type="button">ショップ在庫をクリア</button>
           </div>
         </div>
+
         <div class="testModeSection">
-          <h3>装備 / XP / 進行</h3>
+          <h3>装備 / XP / 自動プレイ</h3>
 
           <div class="testModeField">
             <label>パッシブLv調整</label>
@@ -875,20 +879,56 @@ function ensureTestModePanelDom() {
           </div>
 
           <div class="testModeField">
-            <label>レベルアップ取得モーダル</label>
+            <label>レベルアップ / 自動プレイ</label>
             <div class="testModeActions">
               <button id="testAutoLevelUpToggleBtn" type="button">自動取得: OFF</button>
               <button id="testSkipLevelUpOnceBtn" type="button">今すぐ1回スキップ</button>
+              <button id="testAutoPlayToggleBtn" type="button">自動プレイ: OFF</button>
             </div>
           </div>
 
+          <div class="testModeMiniGrid">
+            <div class="testModeField">
+              <label>シミュ速度</label>
+              <select id="testAutoPlaySpeed">
+                <option value="1">1x</option>
+                <option value="2">2x</option>
+                <option value="4">4x</option>
+                <option value="8">8x</option>
+              </select>
+            </div>
+            <div class="testModeField">
+              <label>バッチ回数</label>
+              <input id="testAutoBatchCount" type="number" step="1" min="1" value="100">
+            </div>
+          </div>
+
+          <div class="testModeActions">
+            <button id="testAutoBatchStartBtn" type="button">バッチ開始</button>
+            <button id="testAutoBatchStopBtn" type="button">バッチ停止</button>
+            <button id="testAutoBatchCsvBtn" type="button">CSVダウンロード</button>
+          </div>
+
+          <div id="testAutoBatchSummary" class="testModeHint"></div>
+
+          <div class="testModeField">
+            <label>武器別勝率</label>
+            <textarea id="testAutoBatchWeaponStats" rows="7" readonly></textarea>
+          </div>
+
+          <div class="testModeField">
+            <label>Wave別死亡分布</label>
+            <textarea id="testAutoBatchDeathWaves" rows="7" readonly></textarea>
+          </div>
+
           <div class="testModeFooter">
-            <div class="testModeHint">テストモード中はタイトルの「テスト開始」または F2 で管理できます。</div>
+            <div class="testModeHint">PC専用の簡易自動テストです。まずは 100回前後の平均Waveとクリア率を見ます。</div>
             <div id="testModeStatus" class="testModeHint"></div>
           </div>
         </div>
       </div>
     </div>`;
+
   document.body.appendChild(wrap);
   return wrap;
 }
@@ -942,7 +982,8 @@ function setupTestModeUi() {
     hudRight.appendChild(btn);
   }
 
-  const wrap = ensureTestModePanelDom();
+  ensureTestModePanelDom();
+
   const effectSelect = getEl('testShopCustomEffect');
   if (effectSelect && effectSelect.options.length === 0) {
     ['heal','maxHp','absorbXp','reroll','weaponGain','passiveGain','weaponUpgrade','passiveUpgrade'].forEach((effect) => {
@@ -955,35 +996,61 @@ function setupTestModeUi() {
 
   const closeBtn = getEl('testModeCloseBtn');
   if (closeBtn) closeBtn.onclick = () => closeTestModePanel();
+
   const disableBtn = getEl('testModeDisableBtn');
   if (disableBtn) {
     disableBtn.onclick = () => {
       STATE.testMode.pendingStart = false;
       STATE.testMode.enabled = false;
+      if (typeof setAutoPlayEnabled === "function") setAutoPlayEnabled(false);
+      if (typeof stopAutoBatchTest === "function") stopAutoBatchTest();
       closeTestModePanel();
       updateTestModeStatus();
     };
   }
+
   const addBtn = getEl('testAddShopPresetBtn');
   if (addBtn) addBtn.onclick = () => addSelectedShopPreset();
+
   const addCustomBtn = getEl('testAddCustomShopBtn');
   if (addCustomBtn) addCustomBtn.onclick = () => addCustomShopItemFromPanel();
+
   const openShopBtn = getEl('testOpenShopNowBtn');
   if (openShopBtn) openShopBtn.onclick = () => { if (typeof openShop === 'function') openShop(); };
+
   const clearShopBtn = getEl('testClearShopBtn');
   if (clearShopBtn) clearShopBtn.onclick = () => clearTestShopStock();
+
   const enemyApplyBtn = getEl('testEnemyApplyBtn');
   if (enemyApplyBtn) enemyApplyBtn.onclick = () => applyTestEnemySettings();
+
   const clearEnemiesBtn = getEl('testClearEnemiesBtn');
-  if (clearEnemiesBtn) clearEnemiesBtn.onclick = () => { STATE.enemies = []; updateTestModeStatus('敵を全消去しました'); };
+  if (clearEnemiesBtn) {
+    clearEnemiesBtn.onclick = () => {
+      STATE.enemies = [];
+      updateTestModeStatus('敵を全消去しました');
+    };
+  }
+
   const goldAddBtn = getEl('testGoldAddBtn');
   if (goldAddBtn) goldAddBtn.onclick = () => changeGoldByPanel(1);
+
   const goldSubBtn = getEl('testGoldSubBtn');
   if (goldSubBtn) goldSubBtn.onclick = () => changeGoldByPanel(-1);
+
   const goldSetBtn = getEl('testGoldSetBtn');
   if (goldSetBtn) goldSetBtn.onclick = () => setGoldByPanel();
+
   const fullHealBtn = getEl('testFullHealBtn');
-  if (fullHealBtn) fullHealBtn.onclick = () => { if (STATE.player) { STATE.player.hp = STATE.player.maxHp; updateHUD(); updateTestModeStatus('HPを全回復しました'); } };
+  if (fullHealBtn) {
+    fullHealBtn.onclick = () => {
+      if (STATE.player) {
+        STATE.player.hp = STATE.player.maxHp;
+        updateHUD();
+        updateTestModeStatus('HPを全回復しました');
+      }
+    };
+  }
 
   const xpAddBtn = getEl('testXpAddBtn');
   if (xpAddBtn) {
@@ -1016,6 +1083,52 @@ function setupTestModeUi() {
     };
   }
 
+  const autoPlayToggleBtn = getEl('testAutoPlayToggleBtn');
+  if (autoPlayToggleBtn) {
+    autoPlayToggleBtn.onclick = () => {
+      const next = !(typeof isAutoPlayEnabled === "function" ? isAutoPlayEnabled() : false);
+      if (typeof setAutoPlayEnabled === "function") setAutoPlayEnabled(next);
+      autoPlayToggleBtn.textContent = `自動プレイ: ${next ? 'ON' : 'OFF'}`;
+      updateTestModeStatus(`自動プレイ ${next ? 'ON' : 'OFF'}`);
+    };
+  }
+
+  const autoPlaySpeed = getEl('testAutoPlaySpeed');
+  if (autoPlaySpeed) {
+    autoPlaySpeed.onchange = () => {
+      const value = Number(autoPlaySpeed.value || 1);
+      if (typeof setAutoPlaySimSpeed === "function") setAutoPlaySimSpeed(value);
+      updateTestModeStatus(`シミュ速度 ${value}x`);
+    };
+  }
+
+  const autoBatchStartBtn = getEl('testAutoBatchStartBtn');
+  if (autoBatchStartBtn) {
+    autoBatchStartBtn.onclick = () => {
+      const count = Math.max(1, Number(getEl('testAutoBatchCount')?.value || 100));
+      if (typeof beginAutoBatchTest === "function") beginAutoBatchTest(count);
+      refreshTestModePanel();
+      updateTestModeStatus(`自動テスト ${count}回開始`);
+    };
+  }
+
+  const autoBatchStopBtn = getEl('testAutoBatchStopBtn');
+  if (autoBatchStopBtn) {
+    autoBatchStopBtn.onclick = () => {
+      if (typeof stopAutoBatchTest === "function") stopAutoBatchTest();
+      refreshTestModePanel();
+      updateTestModeStatus('自動テスト停止');
+    };
+  }
+
+  const autoBatchCsvBtn = getEl('testAutoBatchCsvBtn');
+  if (autoBatchCsvBtn) {
+    autoBatchCsvBtn.onclick = () => {
+      const ok = typeof downloadAutoBatchCsv === "function" ? downloadAutoBatchCsv() : false;
+      updateTestModeStatus(ok ? 'CSVを書き出しました' : 'CSV対象データがありません');
+    };
+  }
+
   window.addEventListener('resize', refreshTestModeAvailability);
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && STATE.testMode?.panelOpen) {
@@ -1042,14 +1155,43 @@ function refreshTestModeAvailability() {
 function updateTestModeStatus(message = '') {
   const el = getEl('testModeStatus');
   if (!el) return;
+
   const selected = getTestModeEnemySpawner().selectedEnemyIds || [];
+  const auto = typeof getAutoPlayState === "function" ? getAutoPlayState() : null;
+
   const parts = [
     STATE.testMode?.enabled ? 'テストモードON' : '通常モード',
     `敵設定:${selected.length}種`,
     `Gold:${Math.floor(STATE.player?.gold || 0)}`
   ];
+
+  if (auto) {
+    parts.push(`自動:${auto.enabled ? 'ON' : 'OFF'}`);
+    parts.push(`速度:${auto.simSpeed || 1}x`);
+    if (auto.batchRunning) {
+      parts.push(`Batch:${Math.max(1, auto.batchRunIndex || 1)}/${Math.max(1, auto.batchTargetRuns || 1)}`);
+    } else if ((auto.batchResults || []).length > 0) {
+      parts.push(`結果:${(auto.batchResults || []).length}件`);
+    }
+  }
+
   if (message) parts.push(message);
   el.textContent = parts.join(' / ');
+
+  const summaryEl = getEl('testAutoBatchSummary');
+  if (summaryEl && auto && typeof formatAutoBatchSummaryText === "function") {
+    summaryEl.textContent = formatAutoBatchSummaryText();
+  }
+
+  const weaponStatsEl = getEl('testAutoBatchWeaponStats');
+  if (weaponStatsEl && typeof buildAutoBatchWeaponStatsText === "function") {
+    weaponStatsEl.textContent = buildAutoBatchWeaponStatsText();
+  }
+
+  const deathWaveEl = getEl('testAutoBatchDeathWaves');
+  if (deathWaveEl && typeof buildAutoBatchDeathWaveText === "function") {
+    deathWaveEl.textContent = buildAutoBatchDeathWaveText();
+  }
 }
 
 function openTestModePanel() {
@@ -1088,18 +1230,65 @@ function refreshTestModePanel() {
   populatePassiveTestRows();
   populateEnemyTestRows();
   populateShopPresetOptions();
+
   const spawner = getTestModeEnemySpawner();
-  const setValue = (id, value) => { const el = getEl(id); if (el) el.value = value; };
+  const setValue = (id, value) => {
+    const el = getEl(id);
+    if (el) el.value = value;
+  };
+
   setValue('testEnemyInterval', spawner.interval || 1);
   setValue('testEnemyCount', spawner.count || 1);
   setValue('testEnemyMinDist', spawner.minDist || 320);
   setValue('testEnemyMaxDist', spawner.maxDist || 460);
+
   const enabledEl = getEl('testEnemyEnabled');
   if (enabledEl) enabledEl.checked = !!spawner.enabled;
+
   const pauseEl = getEl('testEnemyPauseWaves');
   if (pauseEl) pauseEl.checked = spawner.pauseNormalWaves !== false;
+
   const goldSet = getEl('testGoldSet');
   if (goldSet) goldSet.value = Math.floor(STATE.player?.gold || 0);
+
+  const auto = typeof getAutoPlayState === "function" ? getAutoPlayState() : null;
+  const autoToggle = getEl('testAutoPlayToggleBtn');
+  if (autoToggle && auto) autoToggle.textContent = `自動プレイ: ${auto.enabled ? 'ON' : 'OFF'}`;
+
+  const autoSpeed = getEl('testAutoPlaySpeed');
+  if (autoSpeed && auto) autoSpeed.value = String(auto.simSpeed || 1);
+
+  const autoBatchCount = getEl('testAutoBatchCount');
+  if (autoBatchCount && auto) autoBatchCount.value = Number(auto.batchTargetRuns || 100);
+
+  const autoBatchStartBtn = getEl('testAutoBatchStartBtn');
+  if (autoBatchStartBtn && auto) {
+    autoBatchStartBtn.textContent = auto.batchRunning
+      ? `実行中 ${Math.max(0, auto.batchRunIndex || 0)}/${Math.max(1, auto.batchTargetRuns || 1)}`
+      : 'バッチ開始';
+  }
+
+  const batchSummary = getEl('testAutoBatchSummary');
+  if (batchSummary && auto) {
+    batchSummary.textContent = typeof formatAutoBatchSummaryText === "function"
+      ? formatAutoBatchSummaryText()
+      : '';
+  }
+
+  const weaponStatsEl = getEl('testAutoBatchWeaponStats');
+  if (weaponStatsEl) {
+    weaponStatsEl.textContent = typeof buildAutoBatchWeaponStatsText === "function"
+      ? buildAutoBatchWeaponStatsText()
+      : '';
+  }
+
+  const deathWaveEl = getEl('testAutoBatchDeathWaves');
+  if (deathWaveEl) {
+    deathWaveEl.textContent = typeof buildAutoBatchDeathWaveText === "function"
+      ? buildAutoBatchDeathWaveText()
+      : '';
+  }
+
   updateTestModeStatus();
 }
 
@@ -2018,7 +2207,10 @@ function tryAutoResolveLevelUpForTest() {
   if (!STATE.testMode.autoSkipLevelUp && !STATE.testMode.skipNextLevelUp) return false;
 
   const choices = STATE._levelUpChoices || [];
-  const choice = choices[0];
+  const choice = typeof chooseAutoLevelUpChoice === "function"
+    ? chooseAutoLevelUpChoice(choices)
+    : choices[0];
+
   if (!choice || typeof choice.apply !== 'function') return false;
 
   const ok = choice.apply();
