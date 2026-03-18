@@ -896,6 +896,39 @@ function updateHomingBullet(b, dt) {
 }
 
 function handleProjectileHits(b) {
+  const boss = typeof getActiveBoss === 'function' ? getActiveBoss() : null;
+
+  for (const sw of STATE.bossSwitches || []) {
+    if (sw.dead) continue;
+    if (dist(b.x, b.y, sw.x, sw.y) > b.radius + sw.r) continue;
+
+    if (typeof destroyBossSwitch === 'function') {
+      destroyBossSwitch(sw, boss);
+    }
+
+    b.pierce -= 1;
+    if (b.pierce <= 0) {
+      b.life = 0;
+      return;
+    }
+  }
+
+  for (const wall of STATE.bossWalls || []) {
+    const hitWall = circleRectHit(
+      b.x,
+      b.y,
+      b.radius || 0,
+      wall.x,
+      wall.y,
+      wall.w,
+      wall.h
+    );
+
+    if (!hitWall) continue;
+    b.life = 0;
+    return;
+  }
+
   for (const e of STATE.enemies) {
     if (b.alreadyHit.has(e.id)) continue;
     if (dist(b.x, b.y, e.x, e.y) > b.radius + e.r) continue;
@@ -953,6 +986,17 @@ function handleMineTrigger(b) {
 
 function explodeMine(b) {
   const radius = b.explodeRadius || 72;
+  const boss = typeof getActiveBoss === 'function' ? getActiveBoss() : null;
+
+  for (const sw of STATE.bossSwitches || []) {
+    if (sw.dead) continue;
+    if (dist(b.x, b.y, sw.x, sw.y) <= radius + sw.r) {
+      if (typeof destroyBossSwitch === 'function') {
+        destroyBossSwitch(sw, boss);
+      }
+    }
+  }
+
   for (const e of STATE.enemies) {
     if (dist(b.x, b.y, e.x, e.y) <= radius + e.r) damageEnemy(e, b.damage);
   }
@@ -966,24 +1010,6 @@ function explodeMine(b) {
 
   if ((b.chainCount || 0) > 0) {
     triggerMineChain(b, b.chainCount, b.chainRadius || radius, b.damage * (b.chainDamageMul || 0.45));
-  }
-}
-
-function triggerMineChain(origin, count, radius, damage) {
-  const candidates = [...STATE.enemies]
-    .filter((e) => dist(origin.x, origin.y, e.x, e.y) <= radius + e.r)
-    .sort((a, b) => dist(origin.x, origin.y, a.x, a.y) - dist(origin.x, origin.y, b.x, b.y))
-    .slice(0, count);
-
-  for (let i = 0; i < candidates.length; i++) {
-    const e = candidates[i];
-    const cx = e.x;
-    const cy = e.y;
-    const r = Math.max(42, radius * (0.42 + i * 0.06));
-    STATE.effects.push({ x: cx, y: cy, r, color: '#ff8c66', life: 0.22, fillAlpha: 0.14 });
-    for (const other of STATE.enemies) {
-      if (dist(cx, cy, other.x, other.y) <= r + other.r) damageEnemy(other, damage);
-    }
   }
 }
 

@@ -318,9 +318,10 @@ function handleWaveShop(newWaveIndex, prevWaveIndex) {
 
 function handleClearCheck() {
   if (STATE.isGameClear) return;
-  const clearTime = Number(STATE.waveData?.clearTime || 0);
-  if (clearTime > 0 && STATE.elapsed >= clearTime) {
-    STATE.isGameClear = true;
-    if (typeof onGameClear === 'function') onGameClear();
-  }
+  // クリア条件はラスボス撃破に変更
+  //const clearTime = Number(STATE.waveData?.clearTime || 0);
+  //if (clearTime > 0 && STATE.elapsed >= clearTime) {
+  //  STATE.isGameClear = true;
+  //  if (typeof onGameClear === 'function') onGameClear();
+  //}
 }

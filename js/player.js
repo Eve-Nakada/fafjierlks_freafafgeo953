@@ -73,6 +73,11 @@ function updatePlayer(dt) {
   p.y += my * moveSpeed * dt;
 
   resolvePlayerMapCollision(prevX, prevY);
+
+  if (typeof resolvePlayerBossHazardCollision === 'function') {
+    resolvePlayerBossHazardCollision(prevX, prevY);
+  }
+
   applyMapCurrent(dt, prevX, prevY);
 
   p.x = clamp(p.x, p.r, STATE.world.width - p.r);
@@ -80,11 +85,11 @@ function updatePlayer(dt) {
 
   // 画像順: 下 右 左 上
   if (Math.abs(mx) > Math.abs(my)) {
-    if (mx > 0) p.dirIndex = 2; // 右
-    else if (mx < 0) p.dirIndex = 1; // 左
+    if (mx > 0) p.dirIndex = 2;
+    else if (mx < 0) p.dirIndex = 1;
   } else if (Math.abs(my) > 0.001) {
-    if (my > 0) p.dirIndex = 0; // 下
-    else if (my < 0) p.dirIndex = 3; // 上
+    if (my > 0) p.dirIndex = 0;
+    else if (my < 0) p.dirIndex = 3;
   }
 
   if (p.invincibleTimer > 0) p.invincibleTimer -= dt;

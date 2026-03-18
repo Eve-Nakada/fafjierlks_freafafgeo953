@@ -59,14 +59,18 @@ function spawnEnemy(typeId, x, y, isBoss = false, bossKind = "boss") {
   if (!def) return null;
 
   const aiPreset = getEnemyAiPreset(typeId, isBoss, bossKind);
+  const isLeviathan = isBoss && bossKind === "leviathan";
+  const bossRadius = isBoss ? (def.bossRadius || (isLeviathan ? 60 : 48)) : 16;
+  const baseHp = isBoss ? def.hp * 5 : def.hp;
+
   const enemy = {
     id: `enemy_${Math.random().toString(36).slice(2)}`,
     typeId,
     x,
     y,
-    r: isBoss ? 28 : 16,
-    hp: def.hp,
-    maxHp: def.hp,
+    r: bossRadius,
+    hp: baseHp,
+    maxHp: baseHp,
     speed: def.speed,
     damage: def.damage,
     xp: def.xp,
@@ -89,7 +93,13 @@ function spawnEnemy(typeId, x, y, isBoss = false, bossKind = "boss") {
     contactMul: 1,
     lastDx: 1,
     lastDy: 0,
-    attacks: cloneEnemyAttacks(typeId)
+    attacks: cloneEnemyAttacks(typeId),
+
+    shieldActive: isBoss,
+    shieldRespawnDelay: isLeviathan ? 12 : 9,
+    shieldRespawnTimer: 0,
+    switchCount: isLeviathan ? 4 : 3,
+    wallPhaseTimer: rand(2.5, 4.5)
   };
 
   STATE.enemies.push(enemy);
@@ -619,6 +629,12 @@ function updateEnemyProjectiles(dt) {
 
 function damageEnemy(enemy, amount) {
   if (!enemy || enemy.dead) return;
+
+  if (enemy.isBoss && enemy.shieldActive) {
+    enemy.hitFlash = 0.35;
+    return;
+  }
+
   enemy.hp -= amount;
   enemy.hitFlash = 1;
 
@@ -648,11 +664,18 @@ function dropEnemyRewards(enemy) {
 
   if (enemy.isBoss) {
     STATE.score += enemy.bossKind === "leviathan" ? 3000 : 1200;
-    STATE.chests.push({
-      x: enemy.x,
-      y: enemy.y,
-      r: 18
-    });
+
+    if (enemy.bossKind === "leviathan") {
+      STATE.isGameClear = true;
+      if (typeof onGameClear === 'function') onGameClear();
+    } else {
+      STATE.chests.push({
+        x: enemy.x,
+        y: enemy.y,
+        r: 18
+      });
+    }
+
     onBossDefeated(enemy);
   } else {
     STATE.score += 20;
@@ -683,13 +706,33 @@ function renderEnemies(ctx) {
     if (e.isBoss) {
       const sheetKey = e.bossKind === "leviathan" ? "leviathan" : "boss";
       const dir = getEnemyDirIndex(e);
-      const ok = drawDirectionalSprite(ctx, sheetKey, dir, sx - 34, sy - 34, 68, 68);
+      const drawSize = e.r * 2.45;
+      const ok = drawDirectionalSprite(
+        ctx,
+        sheetKey,
+        dir,
+        sx - drawSize * 0.5,
+        sy - drawSize * 0.5,
+        drawSize,
+        drawSize
+      );
 
       if (!ok) {
         ctx.fillStyle = e.bossKind === "leviathan" ? "#b46cff" : "#ff9f7d";
         ctx.beginPath();
-        ctx.arc(sx, sy, 28, 0, Math.PI * 2);
+        ctx.arc(sx, sy, e.r, 0, Math.PI * 2);
         ctx.fill();
+      }
+
+      if (e.shieldActive) {
+        ctx.save();
+        ctx.globalAlpha = 0.45 + Math.sin(STATE.time * 6) * 0.08;
+        ctx.strokeStyle = e.bossKind === "leviathan" ? '#d9b4ff' : '#b7f1ff';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(sx, sy, e.r + 12, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
       }
     } else {
       const ok = drawSpriteFrame(ctx, "enemies", e.spriteIndex, sx - 22, sy - 22, 44, 44);

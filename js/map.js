@@ -34,13 +34,23 @@ function circleRectHit(cx, cy, cr, rx, ry, rw, rh) {
   return dist(cx, cy, nx, ny) <= cr;
 }
 
+function getDynamicBossWalls() {
+  return Array.isArray(STATE.bossWalls) ? STATE.bossWalls : [];
+}
+
+function getAllBlockingWalls() {
+  const map = getCurrentMap();
+  const staticWalls = map?.obstacles || [];
+  return staticWalls.concat(getDynamicBossWalls());
+}
+
 function resolvePlayerMapCollision(prevX, prevY) {
   const p = STATE.player;
   const map = getCurrentMap();
 
   if (!p || !map) return;
 
-  for (const wall of map.obstacles || []) {
+  for (const wall of getAllBlockingWalls()) {
     if (!circleRectHit(p.x, p.y, p.r, wall.x, wall.y, wall.w, wall.h)) continue;
 
     const hitXOnly = circleRectHit(p.x, prevY, p.r, wall.x, wall.y, wall.w, wall.h);
@@ -174,6 +184,15 @@ function renderMap(ctx) {
     ctx.strokeRect(wall.x - cam.x, wall.y - cam.y, wall.w, wall.h);
   }
 
+  for (const wall of STATE.bossWalls || []) {
+    ctx.fillStyle = wall.color || 'rgba(120, 220, 255, 0.16)';
+    ctx.fillRect(wall.x - cam.x, wall.y - cam.y, wall.w, wall.h);
+
+    ctx.strokeStyle = wall.stroke || 'rgba(170, 245, 255, 0.9)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(wall.x - cam.x, wall.y - cam.y, wall.w, wall.h);
+  }
+
   for (const trap of map.traps || []) {
     ctx.fillStyle = trap.color || 'rgba(255,80,80,0.28)';
     ctx.fillRect(trap.x - cam.x, trap.y - cam.y, trap.w, trap.h);
@@ -272,14 +291,52 @@ function renderMapGrid(ctx, cam) {
 }
 
 function isPointInsideObstacle(x, y, r = 0) {
-  const map = getCurrentMap();
-  if (!map) return false;
-
-  for (const wall of map.obstacles || []) {
+  for (const wall of getAllBlockingWalls()) {
     if (circleRectHit(x, y, r, wall.x, wall.y, wall.w, wall.h)) return true;
   }
 
   return false;
+}
+
+function renderBossSwitches(ctx) {
+  const cam = STATE.camera;
+
+  for (const sw of STATE.bossSwitches || []) {
+    if (sw.dead) continue;
+
+    const x = sw.x - cam.x;
+    const y = sw.y - cam.y;
+    const pulse = 0.8 + Math.sin(STATE.time * 7 + sw.x * 0.01) * 0.2;
+
+    ctx.save();
+
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = 'rgba(255, 220, 120, 0.18)';
+    ctx.beginPath();
+    ctx.arc(x, y, sw.r + 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#ffd46b';
+    ctx.beginPath();
+    ctx.arc(x, y, sw.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#fff2b8';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.strokeStyle = '#7a4d00';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - sw.r * 0.45, y);
+    ctx.lineTo(x + sw.r * 0.45, y);
+    ctx.moveTo(x, y - sw.r * 0.45);
+    ctx.lineTo(x, y + sw.r * 0.45);
+    ctx.stroke();
+
+    ctx.restore();
+  }
 }
 
 function isPointInsideTrap(x, y, r = 0) {

@@ -156,9 +156,12 @@ const STATE = {
     bossName: "",
     warningTimer: 0,
     warningText: "",
-    hazardTimer: 0
+    hazardTimer: 0,
+    switchRespawnTimer: 0
   },
   hazards: [],
+  bossSwitches: [],
+  bossWalls: [],
   ambientBubbles: [],
 
   // ----------------
