@@ -50,8 +50,20 @@ function updatePlayer(dt) {
   const p = STATE.player;
   if (!p) return;
 
-  let mx = STATE.input.moveX || 0;
-  let my = STATE.input.moveY || 0;
+  let mx = 0;
+  let my = 0;
+
+  const joystickActive = !!STATE.input.joystickActive;
+  const joyX = Number(STATE.input.joystickMoveX || 0);
+  const joyY = Number(STATE.input.joystickMoveY || 0);
+
+  if (joystickActive) {
+    mx = joyX;
+    my = joyY;
+  } else {
+    mx = Number(STATE.input.moveX || 0);
+    my = Number(STATE.input.moveY || 0);
+  }
 
   if (STATE.input.keys["a"] || STATE.input.keys["arrowleft"])  mx -= 1;
   if (STATE.input.keys["d"] || STATE.input.keys["arrowright"]) mx += 1;
@@ -59,9 +71,12 @@ function updatePlayer(dt) {
   if (STATE.input.keys["s"] || STATE.input.keys["arrowdown"])  my += 1;
 
   const len = Math.hypot(mx, my);
-  if (len > 0) {
+  if (len > 0.0001) {
     mx /= len;
     my /= len;
+  } else {
+    mx = 0;
+    my = 0;
   }
 
   const prevX = p.x;

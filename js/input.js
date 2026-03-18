@@ -15,11 +15,22 @@ function setupKeyboardInput() {
 function resetMoveInput() {
   STATE.input.moveX = 0;
   STATE.input.moveY = 0;
+  STATE.input.joystickMoveX = 0;
+  STATE.input.joystickMoveY = 0;
 }
 
 function isInteractiveElement(target) {
   if (!target) return false;
-  return !!target.closest("button, .scrollArea, .screen.active");
+
+  // ゲーム中の移動入力を止めたいものだけを明示的に除外
+  if (target.closest("button, input, select, textarea, label")) return true;
+  if (target.closest(".scrollArea")) return true;
+
+  // モーダル系スクリーン上はスティック開始しない
+  const activeScreen = target.closest(".screen.active");
+  if (activeScreen) return true;
+
+  return false;
 }
 
 function setupJoystickInput() {
@@ -29,14 +40,18 @@ function setupJoystickInput() {
 
   if (!overlay || !base || !stick) return;
 
+  function isMobilePlayable() {
+    return window.innerWidth <= 900;
+  }
+
   function setStick(dx, dy) {
     const max = 30;
-    const len = Math.hypot(dx, dy);
+    const len = Math.hypot(dx, dy) || 1;
 
     let x = dx;
     let y = dy;
 
-    if (len > max) {
+    if (Math.hypot(x, y) > max) {
       x = (dx / len) * max;
       y = (dy / len) * max;
     }
@@ -44,8 +59,13 @@ function setupJoystickInput() {
     stick.style.left = `${31 + x}px`;
     stick.style.top = `${31 + y}px`;
 
-    STATE.input.moveX = x / max;
-    STATE.input.moveY = y / max;
+    const nx = x / max;
+    const ny = y / max;
+
+    STATE.input.joystickMoveX = nx;
+    STATE.input.joystickMoveY = ny;
+    STATE.input.moveX = nx;
+    STATE.input.moveY = ny;
   }
 
   function placeBase(cx, cy) {
@@ -73,11 +93,16 @@ function setupJoystickInput() {
     resetMoveInput();
   }
 
+  function canStartJoystick(target) {
+    if (!isMobilePlayable()) return false;
+    if (STATE.paused) return false;
+    if (STATE.input.joystickActive) return false;
+    if (isInteractiveElement(target)) return false;
+    return true;
+  }
+
   window.addEventListener("pointerdown", (e) => {
-    if (window.innerWidth > 900) return;
-    if (STATE.paused) return;
-    if (STATE.input.joystickActive) return;
-    if (isInteractiveElement(e.target)) return;
+    if (!canStartJoystick(e.target)) return;
 
     STATE.input.joystickActive = true;
     STATE.input.pointerId = e.pointerId;
@@ -105,6 +130,10 @@ function setupJoystickInput() {
     if (!STATE.input.joystickActive) return;
     if (STATE.input.pointerId !== e.pointerId) return;
     releaseStick();
+  });
+
+  window.addEventListener("blur", () => {
+    if (STATE.input.joystickActive) releaseStick();
   });
 }
 

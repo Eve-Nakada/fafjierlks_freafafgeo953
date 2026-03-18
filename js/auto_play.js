@@ -18,13 +18,15 @@ function getAutoPlayState() {
       pendingRestart: false,
       restartDelay: 0.45,
       lastRunClear: false,
-      selectingShop: false
+      selectingShop: false,
+      promptCsvAfterBatch: false
     };
   }
 
   const s = STATE.testMode.autoPlayState;
   s.simSpeed = Math.max(1, Number(s.simSpeed || 1));
   s.batchTargetRuns = Math.max(1, Number(s.batchTargetRuns || 1));
+  s.promptCsvAfterBatch = !!s.promptCsvAfterBatch;
   return s;
 }
 
@@ -740,7 +742,9 @@ function captureAutoPlayRunResult(clear) {
     level: Number(p?.level || 0),
     gold: Number(p?.gold || 0),
     weaponId: weaponId || null,
-    weaponName: weaponDef?.name || weaponId || "unknown"
+    weaponName: weaponDef?.name || weaponId || "unknown",
+    weaponLoadout: buildAutoBatchWeaponLoadoutText(),
+    passiveLoadout: buildAutoBatchPassiveLoadoutText()
   });
 }
 
@@ -816,6 +820,8 @@ function handleAutoBatchEnd(clear) {
   if (s.batchRunIndex >= s.batchTargetRuns) {
     s.batchRunning = false;
     s.pendingRestart = false;
+    s.promptCsvAfterBatch = true;
+
     if (typeof refreshTestModePanel === "function") refreshTestModePanel();
     if (typeof updateTestModeStatus === "function") {
       updateTestModeStatus(`自動テスト完了 / ${formatAutoBatchSummaryText()}`);
@@ -963,7 +969,9 @@ function buildAutoBatchCsv() {
     "level",
     "gold",
     "weaponId",
-    "weaponName"
+    "weaponName",
+    "weaponLoadout",
+    "passiveLoadout"
   ];
 
   const lines = [header.join(",")];
@@ -981,12 +989,51 @@ function buildAutoBatchCsv() {
       row.level,
       row.gold,
       row.weaponId || "",
-      row.weaponName || ""
+      row.weaponName || "",
+      row.weaponLoadout || "",
+      row.passiveLoadout || ""
     ];
     lines.push(values.map(escapeAutoCsv).join(","));
   }
 
   return lines.join("\n");
+}
+
+function buildAutoBatchWeaponLoadoutText() {
+  const p = STATE.player;
+  if (!p || !Array.isArray(p.weapons) || p.weapons.length <= 0) return "";
+
+  return p.weapons.map((w) => {
+    const def = typeof getWeaponDef === "function" ? getWeaponDef(w.id) : null;
+    const name = def?.name || w.id || "unknown";
+    const stage = Number(w.evolutionStage || 0);
+    const stageLabel = stage === 0 ? "通常" : stage === 1 ? "第1進化" : "第2進化";
+    const branch = w.branchId ? `/${w.branchId}` : "";
+    return `${name}[${stageLabel}${branch}] Lv${w.level || 1}`;
+  }).join(" | ");
+}
+
+function buildAutoBatchPassiveLoadoutText() {
+  const p = STATE.player;
+  if (!p || !Array.isArray(p.passives) || p.passives.length <= 0) return "";
+
+  return p.passives.map((passiveId) => {
+    const def = typeof getPassiveDef === "function" ? getPassiveDef(passiveId) : null;
+    const lv = Number(p.passiveLevels?.[passiveId] || 0);
+    return `${def?.name || passiveId} Lv${lv}`;
+  }).join(" | ");
+}
+
+function shouldPromptAutoBatchCsv() {
+  const s = getAutoPlayState();
+  return !!(s.promptCsvAfterBatch && Array.isArray(s.batchResults) && s.batchResults.length > 0);
+}
+
+function consumeAutoBatchCsvPromptFlag() {
+  const s = getAutoPlayState();
+  const should = !!s.promptCsvAfterBatch;
+  s.promptCsvAfterBatch = false;
+  return should;
 }
 
 function downloadAutoBatchCsv() {

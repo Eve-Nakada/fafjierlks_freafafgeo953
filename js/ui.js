@@ -675,6 +675,8 @@ function setupUI() {
 
   setupShopPanelUi();
   setupTestModeUi();
+  ensureAutoBatchHudUi();
+  ensureAutoBatchCsvConfirmModal();
 }
 
 
@@ -1154,7 +1156,10 @@ function refreshTestModeAvailability() {
 
 function updateTestModeStatus(message = '') {
   const el = getEl('testModeStatus');
-  if (!el) return;
+  if (!el) {
+    updateAutoBatchHudUi();
+    return;
+  }
 
   const selected = getTestModeEnemySpawner().selectedEnemyIds || [];
   const auto = typeof getAutoPlayState === "function" ? getAutoPlayState() : null;
@@ -1192,6 +1197,106 @@ function updateTestModeStatus(message = '') {
   if (deathWaveEl && typeof buildAutoBatchDeathWaveText === "function") {
     deathWaveEl.textContent = buildAutoBatchDeathWaveText();
   }
+
+  updateAutoBatchHudUi();
+}
+
+function ensureAutoBatchHudUi() {
+  let el = getEl("autoBatchHud");
+  if (el) return el;
+
+  const hud = getEl("hud");
+  if (!hud) return null;
+
+  el = document.createElement("div");
+  el.id = "autoBatchHud";
+  el.style.position = "absolute";
+  el.style.left = "calc(var(--safe-left) + 8px)";
+  el.style.bottom = "calc(var(--safe-bottom) + 8px)";
+  el.style.zIndex = "14";
+  el.style.pointerEvents = "none";
+  el.style.padding = "6px 10px";
+  el.style.borderRadius = "999px";
+  el.style.border = "1px solid rgba(124,247,255,0.28)";
+  el.style.background = "rgba(0,18,30,0.76)";
+  el.style.color = "var(--accent2)";
+  el.style.fontSize = "12px";
+  el.style.fontWeight = "700";
+  el.style.display = "none";
+  hud.appendChild(el);
+  return el;
+}
+
+function updateAutoBatchHudUi() {
+  const el = ensureAutoBatchHudUi();
+  if (!el) return;
+
+  const auto = typeof getAutoPlayState === "function" ? getAutoPlayState() : null;
+  if (!auto || !auto.batchRunning) {
+    el.style.display = "none";
+    el.textContent = "";
+    return;
+  }
+
+  el.style.display = "block";
+  el.textContent = `AUTO TEST ${Math.max(1, auto.batchRunIndex || 1)} / ${Math.max(1, auto.batchTargetRuns || 1)}`;
+}
+
+function ensureAutoBatchCsvConfirmModal() {
+  let wrap = getEl("autoBatchCsvConfirmWrap");
+  if (wrap) return wrap;
+
+  wrap = document.createElement("div");
+  wrap.id = "autoBatchCsvConfirmWrap";
+  wrap.className = "screen";
+  wrap.style.zIndex = "60";
+  wrap.innerHTML = `
+    <div style="width:min(92vw,420px); display:grid; gap:12px; padding:16px; border-radius:16px; background:rgba(0,18,30,0.96); border:1px solid rgba(120,220,255,0.22); box-shadow:0 14px 42px rgba(0,0,0,0.42);">
+      <h2 style="margin:0;">CSV保存</h2>
+      <div class="choiceDesc">バッチテストが完了しました。結果CSVを保存しますか？</div>
+      <div class="choiceMeta" id="autoBatchCsvConfirmSummary"></div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+        <button id="autoBatchCsvNoBtn" type="button">保存しない</button>
+        <button id="autoBatchCsvYesBtn" type="button">保存する</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+
+  const noBtn = getEl("autoBatchCsvNoBtn");
+  if (noBtn) {
+    noBtn.onclick = () => closeAutoBatchCsvConfirmModal();
+  }
+
+  const yesBtn = getEl("autoBatchCsvYesBtn");
+  if (yesBtn) {
+    yesBtn.onclick = () => {
+      const ok = typeof downloadAutoBatchCsv === "function" ? downloadAutoBatchCsv() : false;
+      closeAutoBatchCsvConfirmModal();
+      if (typeof updateTestModeStatus === "function") {
+        updateTestModeStatus(ok ? "CSVを書き出しました" : "CSV対象データがありません");
+      }
+    };
+  }
+
+  return wrap;
+}
+
+function openAutoBatchCsvConfirmModal() {
+  const wrap = ensureAutoBatchCsvConfirmModal();
+  if (!wrap) return;
+
+  const summaryEl = getEl("autoBatchCsvConfirmSummary");
+  if (summaryEl && typeof formatAutoBatchSummaryText === "function") {
+    summaryEl.textContent = formatAutoBatchSummaryText();
+  }
+
+  wrap.classList.add("active");
+}
+
+function closeAutoBatchCsvConfirmModal() {
+  const wrap = getEl("autoBatchCsvConfirmWrap");
+  if (wrap) wrap.classList.remove("active");
 }
 
 function openTestModePanel() {
@@ -1290,6 +1395,7 @@ function refreshTestModePanel() {
   }
 
   updateTestModeStatus();
+  updateAutoBatchHudUi();
 }
 
 function populateWeaponTestRows() {
@@ -1525,7 +1631,10 @@ function setGoldByPanel() {
 function updateHUD() {
   if (typeof refreshTestModeAvailability === 'function') refreshTestModeAvailability();
   const p = STATE.player;
-  if (!p) return;
+  if (!p) {
+    updateAutoBatchHudUi();
+    return;
+  }
 
   const hpText = getEl("hpText");
   const hpBar = getEl("hpBar");
@@ -1570,6 +1679,7 @@ function updateHUD() {
   if (weaponBar) renderWeaponBar(weaponBar);
   renderDetailLists();
   updateBossHud();
+  updateAutoBatchHudUi();
 }
 
 function updateBossHud() {

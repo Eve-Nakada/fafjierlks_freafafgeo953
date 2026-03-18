@@ -1032,6 +1032,15 @@ function endGame(clear) {
 
   const rankingResult = saveRanking(STATE.score);
   showResultScreen(clear, rankingResult);
+
+  if (typeof shouldPromptAutoBatchCsv === "function" && shouldPromptAutoBatchCsv()) {
+    if (typeof consumeAutoBatchCsvPromptFlag === "function") {
+      consumeAutoBatchCsvPromptFlag();
+    }
+    if (typeof openAutoBatchCsvConfirmModal === "function") {
+      openAutoBatchCsvConfirmModal();
+    }
+  }
 }
 
 function onGameClear() {
