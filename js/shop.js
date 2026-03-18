@@ -350,6 +350,7 @@ function ensureShopStyles() {
       gap:10px;
       text-align:left;
     }
+
     .shopPanelCard {
       border:1px solid rgba(120,220,255,0.22);
       border-radius:16px;
@@ -357,6 +358,7 @@ function ensureShopStyles() {
       box-shadow:0 10px 30px rgba(0,0,0,0.35);
       padding:12px 14px;
     }
+
     .shopPanelTitleRow {
       display:flex;
       align-items:center;
@@ -364,11 +366,13 @@ function ensureShopStyles() {
       gap:12px;
       flex-wrap:wrap;
     }
+
     .shopPanelTitle {
       font-size:clamp(22px, 3.6vw, 30px);
       font-weight:800;
       letter-spacing:0.02em;
     }
+
     .shopPanelWave {
       color:#7cf7ff;
       font-size:13px;
@@ -378,17 +382,20 @@ function ensureShopStyles() {
       background:rgba(54,212,255,0.14);
       border:1px solid rgba(120,220,255,0.20);
     }
+
     .shopPanelSub {
       color:#9ed7e8;
       font-size:13px;
       line-height:1.55;
       min-height:1.6em;
     }
+
     .shopPanelMetaRow {
       display:flex;
       flex-wrap:wrap;
       gap:8px;
     }
+
     .shopBadge {
       font-size:12px;
       line-height:1;
@@ -398,89 +405,145 @@ function ensureShopStyles() {
       background:rgba(255,255,255,0.04);
       color:#eaf8ff;
     }
+
     .shopBadgeGold {
       color:#ffd166;
       border-color:rgba(255,209,102,0.24);
       background:rgba(255,209,102,0.10);
     }
+
     .choiceBtn.shopItemCard {
-      gap:8px;
-      align-items:stretch;
+      display:grid;
+      grid-template-rows:auto auto;
+      gap:10px;
+      align-items:start;
+      align-content:start;
+      text-align:left;
+      padding:14px 14px 18px;
+      min-height:152px;
+      height:auto;
+      overflow:hidden;
+      box-sizing:border-box;
     }
+
     .shopItemTopRow {
       display:flex;
       align-items:flex-start;
       justify-content:space-between;
       gap:10px;
+      min-width:0;
     }
+
     .shopItemTextBlock {
       min-width:0;
       flex:1 1 auto;
+      display:grid;
+      gap:4px;
+      align-content:start;
     }
+
+    .shopItemTextBlock .choiceTitle,
+    .shopItemTextBlock .choiceDesc,
+    .shopItemTextBlock .choiceMeta {
+      min-width:0;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+      white-space:normal;
+    }
+
     .shopItemPrice {
       color:#ffd166;
       font-size:15px;
       font-weight:800;
       white-space:nowrap;
       flex:0 0 auto;
+      align-self:flex-start;
     }
+
     .shopItemMetaRow {
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:10px;
-      margin-top:6px;
-      flex-wrap:wrap;
+      display:grid;
+      grid-template-columns:max-content minmax(0, 1fr);
+      align-items:start;
+      gap:8px 10px;
+      min-width:0;
+      min-height:28px;
+      margin-top:2px;
     }
+
     .shopItemStock {
       display:inline-flex;
       align-items:center;
+      justify-content:center;
       min-height:24px;
-      padding:5px 8px;
+      width:max-content;
+      max-width:100%;
+      padding:5px 10px;
       border-radius:999px;
       font-size:11px;
       font-weight:700;
       letter-spacing:0.02em;
+      line-height:1.2;
       border:1px solid rgba(124,247,255,0.24);
       background:rgba(124,247,255,0.10);
       color:#dff7ff;
-      flex:0 0 auto;
-      max-width:100%;
+      white-space:nowrap;
+      box-sizing:border-box;
     }
+
     .shopItemUnavailable {
       font-size:12px;
       color:#ff9c9c;
       font-weight:700;
-      line-height:1.5;
+      line-height:1.45;
       text-align:right;
-      flex:1 1 180px;
       min-width:0;
+      overflow-wrap:anywhere;
       word-break:break-word;
+      white-space:normal;
+      align-self:center;
     }
+
     .choiceBtn.shopItemCard.isSoldOut {
       opacity:0.46;
       filter:grayscale(0.9);
       border-color:rgba(255,255,255,0.08);
       background:rgba(120,120,120,0.16);
     }
+
     .choiceBtn.shopItemCard.isUnavailable:not(.isSoldOut) {
       opacity:0.78;
     }
 
     @media (max-width: 640px) {
+      .choiceBtn.shopItemCard {
+        grid-template-rows:auto auto;
+        gap:10px;
+        padding:14px 14px 20px;
+        min-height:168px;
+      }
+
       .shopPanelTitleRow,
       .shopItemTopRow {
         display:grid;
         grid-template-columns:1fr;
+        gap:8px;
       }
+
       .shopItemPrice {
         justify-self:start;
+        margin-top:0;
       }
+
       .shopItemMetaRow {
-        display:grid;
         grid-template-columns:1fr;
-        align-items:start;
+        gap:8px;
+        margin-top:4px;
       }
+
+      .shopItemStock {
+        justify-self:start;
+      }
+
       .shopItemUnavailable {
         text-align:left;
       }
@@ -921,59 +984,128 @@ function ensureShopSelectionStyles() {
   style.id = "shopSelectionStyle";
   style.textContent = `
     #shopSelectionOverlay {
-      position: absolute;
-      inset: 0;
-      z-index: 60;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      background: rgba(0,0,0,0.56);
+      position:absolute;
+      inset:0;
+      z-index:60;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      background:rgba(0,0,0,0.56);
+      box-sizing:border-box;
     }
+
     .shopSelectionPanel {
-      width: min(92vw, 760px);
-      max-height: min(72vh, 620px);
-      overflow: auto;
-      border: 1px solid rgba(120,220,255,0.22);
-      border-radius: 16px;
-      background: rgba(0,18,30,0.96);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-      padding: 14px;
-      display: grid;
-      gap: 10px;
+      width:min(92vw, 760px);
+      max-height:min(72vh, 620px);
+      overflow:auto;
+      border:1px solid rgba(120,220,255,0.22);
+      border-radius:16px;
+      background:rgba(0,18,30,0.96);
+      box-shadow:0 10px 30px rgba(0,0,0,0.35);
+      padding:14px;
+      display:grid;
+      gap:10px;
+      box-sizing:border-box;
     }
-    .shopSelectionTitle { font-size: 22px; font-weight: 700; }
-    .shopSelectionSub { color: #9ed7e8; font-size: 13px; line-height: 1.5; }
-    .shopSelectionChoices { display: grid; gap: 10px; }
-    .shopSelectionCard { text-align: left; }
+
+    .shopSelectionTitle {
+      font-size:22px;
+      font-weight:700;
+      line-height:1.25;
+    }
+
+    .shopSelectionSub {
+      color:#9ed7e8;
+      font-size:13px;
+      line-height:1.5;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+
+    .shopSelectionChoices {
+      display:grid;
+      gap:10px;
+    }
+
+    .shopSelectionCard {
+      text-align:left;
+      display:block;
+      padding:12px 12px 14px;
+      min-height:0;
+      height:auto;
+      overflow:hidden;
+      box-sizing:border-box;
+    }
+
     .shopSelectionCardInner {
       display:grid;
       grid-template-columns:64px minmax(0, 1fr);
       gap:12px;
-      align-items:center;
+      align-items:start;
+      min-width:0;
     }
+
     .shopSelectionIcon {
       width:56px;
       height:56px;
       border-radius:12px;
       border:1px solid rgba(255,255,255,0.08);
       background:rgba(255,255,255,0.04);
+      flex:0 0 auto;
     }
+
     .shopSelectionText {
       min-width:0;
       display:grid;
       gap:4px;
+      align-content:start;
     }
+
+    .shopSelectionText .choiceTitle,
+    .shopSelectionText .choiceDesc,
+    .shopSelectionText .choiceMeta {
+      min-width:0;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+      white-space:normal;
+    }
+
     .shopSelectionMeta {
       font-size:12px;
       color:#8fe6ff;
       font-weight:700;
+      line-height:1.45;
+      overflow-wrap:anywhere;
+      word-break:break-word;
     }
-    .shopSelectionCancel { margin-top: 4px; }
+
+    .shopSelectionCancel {
+      margin-top:4px;
+    }
 
     @media (max-width: 640px) {
+      #shopSelectionOverlay {
+        padding:12px;
+      }
+
+      .shopSelectionPanel {
+        width:min(94vw, 760px);
+        max-height:min(78vh, 720px);
+        padding:12px;
+      }
+
+      .shopSelectionCard {
+        padding:12px 12px 16px;
+      }
+
       .shopSelectionCardInner {
         grid-template-columns:1fr;
+        gap:10px;
+      }
+
+      .shopSelectionIcon {
+        justify-self:start;
       }
     }
   `;

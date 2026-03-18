@@ -337,20 +337,139 @@ function drawLockedIconToCanvas(canvas) {
   ctx.fillText("？", canvas.width / 2, canvas.height / 2 + 1);
 }
 
+function ensureWeaponSelectStyles() {
+  if (document.getElementById("weaponSelectInlineStyle")) return;
+
+  const style = document.createElement("style");
+  style.id = "weaponSelectInlineStyle";
+  style.textContent = `
+    .weaponSelectBtn{
+      width:100%;
+      text-align:left;
+      display:block;
+      min-height:0;
+      height:auto;
+      overflow:hidden;
+      padding:12px 12px 14px;
+      box-sizing:border-box;
+    }
+
+    .weaponSelectCardInner{
+      display:grid;
+      grid-template-columns:64px minmax(0, 1fr);
+      align-items:start;
+      gap:12px;
+      min-width:0;
+    }
+
+    .weaponSelectIcon{
+      display:block;
+      width:56px;
+      height:56px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      background:rgba(0,0,0,0.24);
+      image-rendering:pixelated;
+      image-rendering:crisp-edges;
+      flex:0 0 auto;
+    }
+
+    .weaponSelectText{
+      display:block;
+      min-width:0;
+      text-align:left;
+    }
+
+    .weaponSelectText .choiceTitle,
+    .weaponSelectText .choiceDesc,
+    .weaponSelectText .choiceMeta{
+      display:block;
+      min-width:0;
+      white-space:normal;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+
+    .weaponSelectText .choiceTitle{
+      color:var(--text);
+      font-weight:700;
+      font-size:16px;
+      line-height:1.35;
+      margin:0 0 4px 0;
+    }
+
+    .weaponSelectText .choiceDesc{
+      color:var(--sub);
+      font-size:13px;
+      line-height:1.45;
+      margin:0 0 4px 0;
+    }
+
+    .weaponSelectText .choiceMeta{
+      color:var(--accent2);
+      font-size:12px;
+      line-height:1.4;
+      margin:0;
+    }
+
+    @media (max-width:640px){
+      .weaponSelectBtn{
+        padding:12px 12px 14px;
+      }
+
+      /* スマホでも縦積みにせず、常にアイコン+文字の2カラム */
+      .weaponSelectCardInner{
+        grid-template-columns:56px minmax(0, 1fr);
+        gap:10px;
+      }
+
+      .weaponSelectIcon{
+        width:52px;
+        height:52px;
+      }
+
+      .weaponSelectText .choiceTitle{
+        font-size:15px;
+        line-height:1.3;
+      }
+
+      .weaponSelectText .choiceDesc{
+        font-size:12px;
+        line-height:1.4;
+      }
+
+      .weaponSelectText .choiceMeta{
+        font-size:11px;
+        line-height:1.35;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function buildWeaponSelectCardHtml(w, unlocked) {
-  const title = unlocked ? w.name : getUnknownLabel();
+  const title = unlocked ? (w.name || "") : getUnknownLabel();
   const desc = unlocked ? (w.desc || "") : "一度入手すると解放されます";
   const meta = unlocked ? "初期武器" : "未解放";
+
   return `
     <div class="weaponSelectCardInner">
-      <canvas class="weaponSelectIcon" data-weapon-select-icon="${w.iconIndex || 0}" width="56" height="56"></canvas>
+      <canvas
+        class="weaponSelectIcon"
+        data-weapon-select-icon="${w.iconIndex || 0}"
+        width="56"
+        height="56"
+      ></canvas>
+
       <div class="weaponSelectText">
         <div class="choiceTitle">${title}</div>
         <div class="choiceDesc">${desc}</div>
         <div class="choiceMeta">${meta}</div>
       </div>
-    </div>`;
+    </div>
+  `;
 }
+
 function renderWeaponCodex() {
   const wrap = getEl("weaponCodexList");
   if (!wrap) return;
@@ -1531,6 +1650,8 @@ function renderWeaponSelect() {
   const list = getEl("weaponSelectList");
   if (!list) return;
 
+  ensureWeaponSelectStyles();
+
   const weapons = STATE.gameData?.weapons || [];
   list.innerHTML = "";
 
@@ -1538,12 +1659,15 @@ function renderWeaponSelect() {
     const unlocked = isWeaponUnlocked(w.id);
     const btn = document.createElement("button");
     btn.className = `choiceBtn weaponSelectBtn ${unlocked ? "" : "lockedChoice"}`;
+    btn.type = "button";
     btn.innerHTML = buildWeaponSelectCardHtml(w, unlocked);
     btn.disabled = !unlocked;
+
     btn.onclick = () => {
       if (!unlocked) return;
       startGame(w.id);
     };
+
     list.appendChild(btn);
   }
 
@@ -1735,13 +1859,20 @@ function ensureLevelUpChoiceStyles() {
   style.textContent = `
     .levelUpChoiceCard {
       text-align:left;
+      display:block;
+      padding:12px 12px 14px;
+      min-height:0;
+      height:auto;
+      overflow:hidden;
+      box-sizing:border-box;
     }
 
     .levelUpChoiceInner {
       display:grid;
       grid-template-columns:64px minmax(0, 1fr);
       gap:12px;
-      align-items:center;
+      align-items:start;
+      min-width:0;
     }
 
     .levelUpChoiceIcon {
@@ -1752,6 +1883,7 @@ function ensureLevelUpChoiceStyles() {
       background:rgba(255,255,255,0.04);
       image-rendering:pixelated;
       image-rendering:crisp-edges;
+      flex:0 0 auto;
     }
 
     .levelUpChoiceIconPlaceholder {
@@ -1768,11 +1900,30 @@ function ensureLevelUpChoiceStyles() {
       min-width:0;
       display:grid;
       gap:4px;
+      align-content:start;
+    }
+
+    .levelUpChoiceText .choiceTitle,
+    .levelUpChoiceText .choiceDesc,
+    .levelUpChoiceText .choiceMeta {
+      min-width:0;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+      white-space:normal;
     }
 
     @media (max-width: 640px) {
+      .levelUpChoiceCard {
+        padding:12px 12px 16px;
+      }
+
       .levelUpChoiceInner {
         grid-template-columns:1fr;
+        gap:10px;
+      }
+
+      .levelUpChoiceIcon {
+        justify-self:start;
       }
     }
   `;

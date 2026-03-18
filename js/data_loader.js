@@ -35,7 +35,7 @@ async function loadAllData() {
     ]);
 
     try {
-      const shopRes = await fetch('shop_items.json');
+      const shopRes = await fetch('data/shop_items.json');
       if (shopRes.ok) {
         STATE.shopItemsData = await shopRes.json();
       }
