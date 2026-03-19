@@ -724,11 +724,13 @@ function captureAutoPlayRunResult(clear) {
   const s = getAutoPlayState();
   const p = STATE.player;
   const weaponId = s.currentWeaponId || p?.weapons?.[0]?.id || null;
-  const weaponDef = typeof getWeaponDef === "function" ? getWeaponDef(weaponId) : null;
 
   const deathCause = clear
     ? { id: "", label: "" }
     : (STATE.lastDamageCause || { id: "unknown", label: "不明" });
+
+  const weaponLoadoutMap = buildAutoBatchWeaponLoadoutMap();
+  const passiveLoadoutMap = buildAutoBatchPassiveLoadoutMap();
 
   s.batchResults.push({
     index: Number(s.batchRunIndex || 0),
@@ -742,7 +744,8 @@ function captureAutoPlayRunResult(clear) {
     level: Number(p?.level || 0),
     gold: Number(p?.gold || 0),
     weaponId: weaponId || null,
-    weaponName: weaponDef?.name || weaponId || "unknown",
+    weaponLoadoutMap,
+    passiveLoadoutMap,
     weaponLoadout: buildAutoBatchWeaponLoadoutText(),
     passiveLoadout: buildAutoBatchPassiveLoadoutText()
   });
@@ -954,9 +957,61 @@ function escapeAutoCsv(value) {
   return s;
 }
 
+function getAutoBatchWeaponCsvColumns() {
+  return Array.isArray(STATE.gameData?.weapons) ? STATE.gameData.weapons : [];
+}
+
+function getAutoBatchPassiveCsvColumns() {
+  return Array.isArray(STATE.gameData?.passives) ? STATE.gameData.passives : [];
+}
+
+function encodeAutoBatchWeaponLevel(weapon) {
+  if (!weapon) return 0;
+
+  const stage = Number(weapon.evolutionStage || 0);
+  const level = Math.max(1, Number(weapon.level || 1));
+
+  if (stage === 0) return Math.min(3, level);
+  if (stage === 1) return Math.min(7, 3 + level);
+  return Math.min(12, 7 + level);
+}
+
+function buildAutoBatchWeaponLoadoutMap() {
+  const out = {};
+  const defs = getAutoBatchWeaponCsvColumns();
+  const playerWeapons = Array.isArray(STATE.player?.weapons) ? STATE.player.weapons : [];
+
+  for (const def of defs) {
+    out[def.id] = 0;
+  }
+
+  for (const weapon of playerWeapons) {
+    if (!weapon || !weapon.id) continue;
+    out[weapon.id] = encodeAutoBatchWeaponLevel(weapon);
+  }
+
+  return out;
+}
+
+function buildAutoBatchPassiveLoadoutMap() {
+  const out = {};
+  const defs = getAutoBatchPassiveCsvColumns();
+  const passiveLevels = STATE.player?.passiveLevels || {};
+
+  for (const def of defs) {
+    out[def.id] = Math.max(0, Math.min(5, Number(passiveLevels[def.id] || 0)));
+  }
+
+  return out;
+}
+
 function buildAutoBatchCsv() {
   const s = getAutoPlayState();
   const rows = Array.isArray(s.batchResults) ? s.batchResults : [];
+
+  const weaponDefs = getAutoBatchWeaponCsvColumns();
+  const passiveDefs = getAutoBatchPassiveCsvColumns();
+
   const header = [
     "index",
     "clear",
@@ -969,14 +1024,16 @@ function buildAutoBatchCsv() {
     "level",
     "gold",
     "weaponId",
-    "weaponName",
-    "weaponLoadout",
-    "passiveLoadout"
+    ...weaponDefs.map((def) => `weapon_${def.id}`),
+    ...passiveDefs.map((def) => `passive_${def.id}`)
   ];
 
   const lines = [header.join(",")];
 
   for (const row of rows) {
+    const weaponLoadout = row.weaponLoadoutMap || {};
+    const passiveLoadout = row.passiveLoadoutMap || {};
+
     const values = [
       row.index,
       row.clear ? 1 : 0,
@@ -989,10 +1046,10 @@ function buildAutoBatchCsv() {
       row.level,
       row.gold,
       row.weaponId || "",
-      row.weaponName || "",
-      row.weaponLoadout || "",
-      row.passiveLoadout || ""
+      ...weaponDefs.map((def) => Number(weaponLoadout[def.id] || 0)),
+      ...passiveDefs.map((def) => Number(passiveLoadout[def.id] || 0))
     ];
+
     lines.push(values.map(escapeAutoCsv).join(","));
   }
 
@@ -1000,28 +1057,17 @@ function buildAutoBatchCsv() {
 }
 
 function buildAutoBatchWeaponLoadoutText() {
-  const p = STATE.player;
-  if (!p || !Array.isArray(p.weapons) || p.weapons.length <= 0) return "";
+  const loadoutMap = buildAutoBatchWeaponLoadoutMap();
+  const defs = getAutoBatchWeaponCsvColumns();
 
-  return p.weapons.map((w) => {
-    const def = typeof getWeaponDef === "function" ? getWeaponDef(w.id) : null;
-    const name = def?.name || w.id || "unknown";
-    const stage = Number(w.evolutionStage || 0);
-    const stageLabel = stage === 0 ? "通常" : stage === 1 ? "第1進化" : "第2進化";
-    const branch = w.branchId ? `/${w.branchId}` : "";
-    return `${name}[${stageLabel}${branch}] Lv${w.level || 1}`;
-  }).join(" | ");
+  return defs.map((def) => `${def.id}:${Number(loadoutMap[def.id] || 0)}`).join(" | ");
 }
 
 function buildAutoBatchPassiveLoadoutText() {
-  const p = STATE.player;
-  if (!p || !Array.isArray(p.passives) || p.passives.length <= 0) return "";
+  const loadoutMap = buildAutoBatchPassiveLoadoutMap();
+  const defs = getAutoBatchPassiveCsvColumns();
 
-  return p.passives.map((passiveId) => {
-    const def = typeof getPassiveDef === "function" ? getPassiveDef(passiveId) : null;
-    const lv = Number(p.passiveLevels?.[passiveId] || 0);
-    return `${def?.name || passiveId} Lv${lv}`;
-  }).join(" | ");
+  return defs.map((def) => `${def.id}:${Number(loadoutMap[def.id] || 0)}`).join(" | ");
 }
 
 function shouldPromptAutoBatchCsv() {

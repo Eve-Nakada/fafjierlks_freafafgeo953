@@ -1205,25 +1205,27 @@ function ensureAutoBatchHudUi() {
   let el = getEl("autoBatchHud");
   if (el) return el;
 
-  const hud = getEl("hud");
-  if (!hud) return null;
-
   el = document.createElement("div");
   el.id = "autoBatchHud";
-  el.style.position = "absolute";
-  el.style.left = "calc(var(--safe-left) + 8px)";
-  el.style.bottom = "calc(var(--safe-bottom) + 8px)";
-  el.style.zIndex = "14";
+  el.style.position = "fixed";
+  el.style.right = "calc(var(--safe-right) + 8px)";
+  el.style.top = "calc(var(--safe-top) + 56px)";
+  el.style.zIndex = "18";
   el.style.pointerEvents = "none";
   el.style.padding = "6px 10px";
   el.style.borderRadius = "999px";
   el.style.border = "1px solid rgba(124,247,255,0.28)";
-  el.style.background = "rgba(0,18,30,0.76)";
+  el.style.background = "rgba(0,18,30,0.82)";
   el.style.color = "var(--accent2)";
   el.style.fontSize = "12px";
   el.style.fontWeight = "700";
+  el.style.lineHeight = "1.2";
+  el.style.whiteSpace = "nowrap";
+  el.style.maxWidth = "calc(100vw - 24px)";
+  el.style.boxShadow = "0 6px 18px rgba(0,0,0,0.28)";
   el.style.display = "none";
-  hud.appendChild(el);
+
+  document.body.appendChild(el);
   return el;
 }
 
@@ -1232,14 +1234,16 @@ function updateAutoBatchHudUi() {
   if (!el) return;
 
   const auto = typeof getAutoPlayState === "function" ? getAutoPlayState() : null;
-  if (!auto || !auto.batchRunning) {
+  const shouldShow = !!(auto && auto.batchRunning && !STATE.uiSimple);
+
+  if (!shouldShow) {
     el.style.display = "none";
     el.textContent = "";
     return;
   }
 
   el.style.display = "block";
-  el.textContent = `AUTO TEST ${Math.max(1, auto.batchRunIndex || 1)} / ${Math.max(1, auto.batchTargetRuns || 1)}`;
+  el.textContent = `AUTO ${Math.max(1, auto.batchRunIndex || 1)}/${Math.max(1, auto.batchTargetRuns || 1)}`;
 }
 
 function ensureAutoBatchCsvConfirmModal() {
@@ -1630,6 +1634,7 @@ function setGoldByPanel() {
 
 function updateHUD() {
   if (typeof refreshTestModeAvailability === 'function') refreshTestModeAvailability();
+
   const p = STATE.player;
   if (!p) {
     updateAutoBatchHudUi();
@@ -1646,6 +1651,9 @@ function updateHUD() {
   const weaponBar = getEl("weaponBar");
 
   const hpRatio = p.maxHp > 0 ? clamp(p.hp / p.maxHp, 0, 1) : 0;
+  const maxWave = Math.max(1, Array.isArray(STATE.waveData?.waves) ? STATE.waveData.waves.length : 1);
+  const currentWave = Math.max(1, Number(STATE.currentWave || 1));
+  const auto = typeof getAutoPlayState === "function" ? getAutoPlayState() : null;
 
   if (hpBar) {
     hpBar.style.width = `${hpRatio * 100}%`;
@@ -1660,9 +1668,22 @@ function updateHUD() {
     else hpText.classList.remove("hpLow");
   }
 
-  if (xpText) xpText.textContent = `Lv ${p.level}`;
-  if (waveText) waveText.textContent = `Wave ${STATE.currentWave}`;
-  if (goldText) goldText.textContent = `Gold ${Math.floor(p.gold)}`;
+  if (xpText) {
+    if (!STATE.uiSimple && auto && auto.batchRunning) {
+      xpText.textContent = `Lv ${p.level} / Auto ${Math.max(1, auto.batchRunIndex || 1)} / ${Math.max(1, auto.batchTargetRuns || 1)}`;
+    } else {
+      xpText.textContent = `Lv ${p.level}`;
+    }
+  }
+
+  if (waveText) {
+    waveText.textContent = `Wave ${currentWave} / ${maxWave}`;
+  }
+
+  if (goldText) {
+    goldText.textContent = `Gold ${Math.floor(p.gold)}`;
+  }
+
   if (scoreText) {
     const chain = STATE.scoreState?.killChainCount || 0;
     const noDamage = Math.floor(STATE.scoreState?.noDamageTimer || 0);
