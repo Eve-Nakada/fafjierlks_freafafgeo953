@@ -1863,14 +1863,14 @@
     },
     "leviathan": {
       "name": "リヴァイアサン",
-      "hp": 25000,
+      "hp": 35000,
       "speed": 82,
       "damage": 40,
       "xp": 20,
       "gold": 80,
       "spriteIndex": 0,
       "bossScale": 3,
-      "shieldHp": 3000,
+      "shieldHp": 6000,
       "shieldRespawnDelay": 10,
       "switchCount": 0
     }
