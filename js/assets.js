@@ -77,6 +77,24 @@ async function loadAssets() {
       img: await loadImage('images/drone.png')
     };
   }
+
+  if (!STATE.assets.boss_star_drone) {
+    STATE.assets.boss_star_drone = {
+      src: 'images/attack_star.png',
+      cols: 1,
+      rows: 1,
+      img: await loadImage('images/attack_star.png')
+    };
+  }
+
+  if (!STATE.assets.boss_wave_drone) {
+    STATE.assets.boss_wave_drone = {
+      src: 'images/attack_wave.png',
+      cols: 1,
+      rows: 1,
+      img: await loadImage('images/attack_wave.png')
+    };
+  }
 }
 
 function createFallbackXpGemSheet() {
@@ -145,6 +163,31 @@ function drawSpriteFrame(ctx, key, index, dx, dy, dw, dh) {
 
 function drawDirectionalSprite(ctx, key, dirIndex, dx, dy, dw, dh) {
   return drawSpriteFrame(ctx, key, dirIndex, dx, dy, dw, dh);
+}
+
+function drawRotatedSpriteFrame(ctx, key, index, x, y, w, h, rotation = 0) {
+  const sheet = getSheet(key);
+  if (!sheet || !sheet.img) return false;
+
+  const cols = sheet.cols || 1;
+  const rows = sheet.rows || 1;
+  const sw = Math.floor(sheet.img.width / cols);
+  const sh = Math.floor(sheet.img.height / rows);
+  const safeIndex = Math.max(0, Math.min(index, cols * rows - 1));
+  const sx = (safeIndex % cols) * sw;
+  const sy = Math.floor(safeIndex / cols) * sh;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+  ctx.drawImage(
+    sheet.img,
+    sx, sy, sw, sh,
+    -w * 0.5, -h * 0.5, w, h
+  );
+  ctx.restore();
+
+  return true;
 }
 
 // ===============================

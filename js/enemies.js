@@ -46,6 +46,62 @@ function getEnemyAiPreset(typeId, isBoss = false, bossKind = "boss") {
   };
 }
 
+function getBossSpriteKey(enemy) {
+  if (!enemy) return 'enemies';
+  if (enemy.typeId === 'boss_manta') return 'boss';
+  if (enemy.typeId === 'leviathan' || enemy.bossKind === 'leviathan') return 'leviathan';
+  return 'enemies';
+}
+
+function getBossDrawScale(enemy) {
+  const def = getEnemyDef(enemy?.typeId) || {};
+  return Math.max(1, Number(enemy?.bossScale || def.bossScale || 1));
+}
+
+function getEnemyDirectionalIndex(enemy) {
+  if (!enemy) return 0;
+
+  const dx = Number(enemy.vx || 0);
+  const dy = Number(enemy.vy || 0);
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx >= 0 ? 1 : 3;
+  }
+
+  // 上下を逆転
+  return dy >= 0 ? 0 : 2;
+}
+
+function getBossBaseSize(enemy) {
+  const base = Number(enemy?.baseRenderSize || enemy?.r * 2.6 || 72);
+  return base * getBossDrawScale(enemy);
+}
+
+function canBossTakeDamage(enemy) {
+  if (!enemy?.isBoss) return true;
+  return !enemy.shieldActive;
+}
+
+function applyBossShieldDamage(enemy, damage) {
+  if (!enemy?.isBoss || !enemy.shieldActive) return false;
+
+  const dmg = Math.max(0, Number(damage || 0));
+  if (dmg <= 0) return true;
+
+  enemy.shieldHp = Math.max(0, Number(enemy.shieldHp || enemy.shieldMaxHp || 3000) - dmg);
+
+  addEffect?.(enemy.x, enemy.y, enemy.r * 1.45, '#8de8ff', 0.12, 0.18);
+
+  if (enemy.shieldHp <= 0) {
+    enemy.shieldHp = 0;
+    enemy.shieldActive = false;
+    enemy.shieldRespawnTimer = Math.max(0.5, Number(enemy.shieldRespawnDelay || 10));
+    addEffect?.(enemy.x, enemy.y, enemy.r * 1.8, '#c8f3ff', 0.24, 0.3);
+  }
+
+  return true;
+}
+
 function cloneEnemyAttacks(typeId) {
   const def = getEnemyDef(typeId) || {};
   return (def.attacks || []).map((a) => ({
@@ -54,56 +110,171 @@ function cloneEnemyAttacks(typeId) {
   }));
 }
 
-function spawnEnemy(typeId, x, y, isBoss = false, bossKind = "boss") {
+function spawnEnemy(typeId, x, y, isBoss = false, behavior = 'normal') {
   const def = getEnemyDef(typeId);
   if (!def) return null;
 
-  const aiPreset = getEnemyAiPreset(typeId, isBoss, bossKind);
-  const isLeviathan = isBoss && bossKind === "leviathan";
-  const bossRadius = isBoss ? (def.bossRadius || (isLeviathan ? 60 : 48)) : 16;
-  const baseHp = isBoss ? def.hp * 5 : def.hp;
+  const r = isBoss ? 42 : 16 + Math.max(0, Number(def.hp || 40)) * 0.02;
+  const bossScale = isBoss ? Math.max(1, Number(def.bossScale || 3)) : 1;
+  const shieldMaxHp = isBoss ? Math.max(1, Number(def.shieldHp || 3000)) : 0;
 
   const enemy = {
     id: `enemy_${Math.random().toString(36).slice(2)}`,
     typeId,
     x,
     y,
-    r: bossRadius,
-    hp: baseHp,
-    maxHp: baseHp,
-    speed: def.speed,
-    damage: def.damage,
-    xp: def.xp,
-    gold: def.gold || 0,
-    isBoss,
-    bossKind,
-    spriteIndex: def.spriteIndex || 0,
-    hitFlash: 0,
-    dead: false,
-    aiType: aiPreset.aiType,
-    aiState: "approach",
-    aiTimer: rand(0.15, 0.7),
-    aiDir: Math.random() < 0.5 ? -1 : 1,
-    preferRange: aiPreset.preferRange || 0,
-    burstSpeedMul: aiPreset.burstSpeedMul || 1.8,
-    strafeSpeedMul: aiPreset.strafeSpeedMul || 0.8,
-    wobbleMul: aiPreset.wobbleMul || 0.6,
-    rushDuration: aiPreset.rushDuration || 0.5,
-    restDuration: aiPreset.restDuration || 0.8,
-    contactMul: 1,
-    lastDx: 1,
-    lastDy: 0,
-    attacks: cloneEnemyAttacks(typeId),
-
-    shieldActive: isBoss,
-    shieldRespawnDelay: isLeviathan ? 12 : 9,
+    vx: 0,
+    vy: 0,
+    r,
+    hp: Number(def.hp || 10),
+    maxHp: Number(def.hp || 10),
+    speed: Number(def.speed || 60),
+    damage: Number(def.damage || 10),
+    xp: Number(def.xp || 1),
+    gold: Number(def.gold || 0),
+    spriteIndex: Number(def.spriteIndex || 0),
+    ai: def.ai || { type: behavior || 'normal' },
+    attacks: Array.isArray(def.attacks) ? def.attacks.map((a) => ({ ...a, timer: rand(0.1, Math.max(0.2, Number(a.cooldown || 1))) })) : [],
+    isBoss: !!isBoss,
+    bossKind: behavior,
+    bossScale,
+    baseRenderSize: isBoss ? 72 : 40,
+    shieldActive: !!isBoss && shieldMaxHp > 0,
+    shieldHp: shieldMaxHp,
+    shieldMaxHp,
+    shieldRespawnDelay: Math.max(0.5, Number(def.shieldRespawnDelay || 10)),
     shieldRespawnTimer: 0,
-    switchCount: isLeviathan ? 4 : 3,
-    wallPhaseTimer: rand(2.5, 4.5)
+    switchCount: Number(def.switchCount || 0),
+    wallPhaseTimer: isBoss ? 2.8 : 0,
+    attackDrones: [],
+    attackPatternTimer: 0,
+    waveBeamCooldown: 2.8,
+    waveBeamTimer: 1.5,
+    dead: false,
+    damageFlash: 0
   };
 
   STATE.enemies.push(enemy);
   return enemy;
+}
+
+function spawnBossOrbitDroneBurst(boss, kind = 'star', count = 5) {
+  if (!boss) return;
+  if (!Array.isArray(boss.attackDrones)) boss.attackDrones = [];
+
+  const liveCount = boss.attackDrones.filter((d) => !d.dead).length;
+  if (liveCount >= count) return;
+
+  const spawnCount = count - liveCount;
+  const baseAngle = rand(0, Math.PI * 2);
+
+  for (let i = 0; i < spawnCount; i++) {
+    boss.attackDrones.push({
+      id: `boss_drone_${Math.random().toString(36).slice(2)}`,
+      kind,
+      angle: baseAngle + (Math.PI * 2 * i) / Math.max(1, spawnCount),
+      orbitRadius: boss.r + getBossBaseSize(boss) * 0.42,
+      orbitSpeed: kind === 'wave' ? 1.7 : 2.1,
+      hoverTime: kind === 'wave' ? 1.5 : 1.25,
+      chargeSpeed: kind === 'wave' ? 330 : 380,
+      phase: 'orbit',
+      x: boss.x,
+      y: boss.y,
+      vx: 0,
+      vy: 0,
+      rot: 0,
+      size: kind === 'wave' ? 34 : 26,
+      damage: boss.damage * (kind === 'wave' ? 0.95 : 0.85),
+      life: 5.0,
+      dead: false
+    });
+  }
+}
+
+function updateBossAttackDrones(boss, dt) {
+  if (!boss || !Array.isArray(boss.attackDrones) || !STATE.player) return;
+  const p = STATE.player;
+  const next = [];
+
+  for (const d of boss.attackDrones) {
+    if (!d || d.dead) continue;
+
+    d.life -= dt;
+    if (d.life <= 0) continue;
+
+    if (d.phase === 'orbit') {
+      d.hoverTime -= dt;
+      d.angle += d.orbitSpeed * dt;
+      d.x = boss.x + Math.cos(d.angle) * d.orbitRadius;
+      d.y = boss.y + Math.sin(d.angle) * d.orbitRadius;
+      d.rot += dt * 5.5;
+
+      if (d.hoverTime <= 0) {
+        const ang = angle(d.x, d.y, p.x, p.y);
+        d.vx = Math.cos(ang) * d.chargeSpeed;
+        d.vy = Math.sin(ang) * d.chargeSpeed;
+        d.phase = 'charge';
+        d.rot = ang;
+      }
+    } else {
+      d.x += d.vx * dt;
+      d.y += d.vy * dt;
+      d.rot = Math.atan2(d.vy, d.vx);
+
+      if (
+        d.x < -80 || d.x > STATE.world.width + 80 ||
+        d.y < -80 || d.y > STATE.world.height + 80
+      ) {
+        continue;
+      }
+    }
+
+    if (dist(d.x, d.y, p.x, p.y) <= (d.size * 0.38) + p.r) {
+      damagePlayer?.(d.damage, {
+        id: d.kind === 'wave' ? 'leviathan_wave_drone' : 'boss_star_drone',
+        label: d.kind === 'wave' ? 'リヴァイアサン波ドローン' : 'ボスエイ星ドローン'
+      });
+      continue;
+    }
+
+    next.push(d);
+  }
+
+  boss.attackDrones = next;
+}
+
+function renderBossAttackDrones(ctx, boss) {
+  if (!boss || !Array.isArray(boss.attackDrones) || boss.attackDrones.length <= 0) return;
+
+  const cam = STATE.camera;
+
+  for (const d of boss.attackDrones) {
+    const x = d.x - cam.x;
+    const y = d.y - cam.y;
+    const key = d.kind === 'wave' ? 'boss_wave_drone' : 'boss_star_drone';
+
+    const ok = drawRotatedSpriteFrame(
+      ctx,
+      key,
+      0,
+      x,
+      y,
+      d.size,
+      d.size,
+      d.rot || 0
+    );
+
+    if (!ok) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(d.rot || 0);
+      ctx.fillStyle = d.kind === 'wave' ? '#9fe7ff' : '#ffe28a';
+      ctx.beginPath();
+      ctx.arc(0, 0, d.size * 0.32, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
 }
 
 function spawnEnemyAroundPlayer(typeId, minDist = 320, maxDist = 460, isBoss = false, bossKind = "boss") {
@@ -183,38 +354,55 @@ function updateEnemies(dt) {
   const p = STATE.player;
   if (!p) return;
 
-  for (const e of STATE.enemies) {
-    if (e.dead) continue;
+  const next = [];
 
-    const target = getEnemyPrimaryTarget(p);
+  for (const enemy of STATE.enemies || []) {
+    if (!enemy || enemy.dead) continue;
 
-    updateEnemyAi(e, target, dt);
-    updateEnemyAttacks(e, target, dt);
-    e.hitFlash = Math.max(0, e.hitFlash - dt * 6);
+    enemy.damageFlash = Math.max(0, Number(enemy.damageFlash || 0) - dt);
 
-    const contactCause = {
-      id: e.isBoss ? "boss_contact" : "enemy_contact",
-      label: e.isBoss ? "ボス接触" : "敵接触"
-    };
+    const dx = p.x - enemy.x;
+    const dy = p.y - enemy.y;
+    const len = Math.hypot(dx, dy) || 1;
 
-    const barrier = getActiveBarrierDrone();
-    if (barrier && dist(e.x, e.y, barrier.x, barrier.y) <= e.r + getDroneRadius(barrier)) {
-      damageDrone(barrier, e.damage * (e.contactMul || 1) * dt * 6);
-      continue;
+    const speedMul = enemy.isBoss ? 0.9 : 1.0;
+    enemy.vx = (dx / len) * enemy.speed * speedMul;
+    enemy.vy = (dy / len) * enemy.speed * speedMul;
+
+    enemy.x += enemy.vx * dt;
+    enemy.y += enemy.vy * dt;
+
+    enemy.x = clamp(enemy.x, enemy.r, STATE.world.width - enemy.r);
+    enemy.y = clamp(enemy.y, enemy.r, STATE.world.height - enemy.r);
+
+    if (enemy.isBoss) {
+      updateBossAttackDrones(enemy, dt);
     }
 
-    const otherDrone = getDroneHitByCircle(e.x, e.y, e.r, false);
-    if (otherDrone) {
-      damageDrone(otherDrone, e.damage * (e.contactMul || 1) * dt * 6);
-      continue;
+    if (dist(enemy.x, enemy.y, p.x, p.y) <= enemy.r + p.r) {
+      damagePlayer?.(enemy.damage * dt, {
+        id: enemy.typeId,
+        label: getEnemyDef(enemy.typeId)?.name || enemy.typeId
+      });
     }
 
-    if (dist(e.x, e.y, p.x, p.y) <= e.r + p.r) {
-      damagePlayer(e.damage * (e.contactMul || 1) * dt * 6, contactCause);
+    if (enemy.hp > 0) {
+      next.push(enemy);
+    } else {
+      enemy.dead = true;
+      if (enemy.isBoss && typeof onBossDefeated === 'function') {
+        onBossDefeated(enemy);
+      }
+      if (enemy.typeId === 'leviathan') {
+        STATE.isGameClear = true;
+      }
+      dropXPGem?.(enemy.x, enemy.y, enemy.xp || 1);
+      if ((enemy.gold || 0) > 0) addGold?.(enemy.gold);
+      addEffect?.(enemy.x, enemy.y, enemy.isBoss ? 44 : 22, enemy.isBoss ? '#ffd8c7' : '#ffb0a0', 0.24, 0.26);
     }
   }
 
-  resolveEnemyDeaths();
+  STATE.enemies = next;
 }
 
 function updateEnemyAi(e, target, dt) {
@@ -637,21 +825,21 @@ function updateEnemyProjectiles(dt) {
   STATE.enemyBullets = next;
 }
 
-function damageEnemy(enemy, amount) {
-  if (!enemy || enemy.dead) return;
+function damageEnemy(enemy, damage, source = null) {
+  if (!enemy || enemy.dead) return false;
+
+  const dmg = Math.max(0, Number(damage || 0));
+  if (dmg <= 0) return false;
+
+  enemy.damageFlash = 0.12;
 
   if (enemy.isBoss && enemy.shieldActive) {
-    enemy.hitFlash = 0.35;
-    return;
+    applyBossShieldDamage(enemy, dmg);
+    return true;
   }
 
-  enemy.hp -= amount;
-  enemy.hitFlash = 1;
-
-  if (enemy.hp <= 0) {
-    enemy.hp = 0;
-    enemy.dead = true;
-  }
+  enemy.hp = Math.max(0, Number(enemy.hp || 0) - dmg);
+  return true;
 }
 
 function resolveEnemyDeaths() {
@@ -703,61 +891,109 @@ function dropEnemyRewards(enemy) {
 function renderEnemies(ctx) {
   const cam = STATE.camera;
 
-  for (const e of STATE.enemies) {
-    const sx = e.x - cam.x;
-    const sy = e.y - cam.y;
+  for (const enemy of STATE.enemies || []) {
+    if (!enemy || enemy.dead) continue;
+
+    const x = enemy.x - cam.x;
+    const y = enemy.y - cam.y;
+
+    let size = enemy.isBoss ? getBossBaseSize(enemy) : (enemy.baseRenderSize || 40);
+    const dirIndex = getEnemyDirectionalIndex(enemy);
+    const spriteKey = getBossSpriteKey(enemy);
+
+    let drawOk = false;
 
     ctx.save();
 
-    if (e.hitFlash > 0) {
-      ctx.globalAlpha = 0.75;
+    if (enemy.damageFlash > 0) {
+      ctx.globalAlpha = 0.8;
     }
 
-    if (e.isBoss) {
-      const sheetKey = e.bossKind === "leviathan" ? "leviathan" : "boss";
-      const dir = getEnemyDirIndex(e);
-      const drawSize = e.r * 2.45;
-      const ok = drawDirectionalSprite(
+    if (enemy.isBoss) {
+      drawOk = drawDirectionalSprite(
         ctx,
-        sheetKey,
-        dir,
-        sx - drawSize * 0.5,
-        sy - drawSize * 0.5,
-        drawSize,
-        drawSize
+        spriteKey,
+        dirIndex,
+        x - size * 0.5,
+        y - size * 0.5,
+        size,
+        size
       );
-
-      if (!ok) {
-        ctx.fillStyle = e.bossKind === "leviathan" ? "#b46cff" : "#ff9f7d";
-        ctx.beginPath();
-        ctx.arc(sx, sy, e.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      if (e.shieldActive) {
-        ctx.save();
-        ctx.globalAlpha = 0.45 + Math.sin(STATE.time * 6) * 0.08;
-        ctx.strokeStyle = e.bossKind === "leviathan" ? '#d9b4ff' : '#b7f1ff';
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.arc(sx, sy, e.r + 12, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
     } else {
-      const ok = drawSpriteFrame(ctx, "enemies", e.spriteIndex, sx - 22, sy - 22, 44, 44);
+      drawOk = drawSpriteFrame(
+        ctx,
+        "enemies",
+        enemy.spriteIndex || 0,
+        x - size * 0.5,
+        y - size * 0.5,
+        size,
+        size
+      );
+    }
 
-      if (!ok) {
-        ctx.fillStyle = "#ffcc88";
-        ctx.beginPath();
-        ctx.arc(sx, sy, 16, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    if (!drawOk) {
+      ctx.fillStyle = enemy.isBoss ? '#ffb38a' : '#ffcc88';
+      ctx.beginPath();
+      ctx.arc(x, y, enemy.r, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     ctx.restore();
-    renderEnemyHpBar(ctx, e, sx, sy);
+
+    if (enemy.isBoss) {
+      renderBossShieldRing(ctx, enemy, x, y, size);
+      renderBossAttackDrones(ctx, enemy);
+    }
+
+    renderEnemyHpBar(ctx, enemy, x, y, size);
   }
+}
+
+function renderBossShieldRing(ctx, enemy, x, y, size) {
+  if (!enemy?.isBoss) return;
+
+  const radius = size * 0.62;
+  const lineW = Math.max(6, size * 0.055);
+
+  let ratio = 0;
+  let color = '#8de8ff';
+
+  if (enemy.shieldActive) {
+    ratio = clamp((enemy.shieldHp || 0) / Math.max(1, enemy.shieldMaxHp || 1), 0, 1);
+    color = '#8de8ff';
+  } else {
+    ratio = clamp(
+      1 - (enemy.shieldRespawnTimer || 0) / Math.max(0.001, enemy.shieldRespawnDelay || 10),
+      0,
+      1
+    );
+    color = '#ffe28a';
+  }
+
+  ctx.save();
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+  ctx.lineWidth = lineW;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, -Math.PI * 0.5, Math.PI * 1.5);
+  ctx.stroke();
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineW;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(x, y, radius, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * ratio);
+  ctx.stroke();
+
+  if (enemy.shieldActive) {
+    ctx.strokeStyle = 'rgba(141,232,255,0.35)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, radius + lineW * 0.65, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
 }
 
 function getEnemyDirIndex(enemy) {
@@ -770,16 +1006,24 @@ function getEnemyDirIndex(enemy) {
   return dy > 0 ? 2 : 0;
 }
 
-function renderEnemyHpBar(ctx, e, x, y) {
-  const w = e.isBoss ? 54 : 34;
-  const h = 4;
-  const ratio = clamp(e.hp / e.maxHp, 0, 1);
+function renderEnemyHpBar(ctx, enemy, x, y, size = 40) {
+  const w = enemy.isBoss ? Math.max(90, size * 0.6) : Math.max(28, size * 0.55);
+  const h = enemy.isBoss ? 8 : 5;
+  const top = y - size * 0.62 - 12;
 
-  ctx.fillStyle = "rgba(0,0,0,0.45)";
-  ctx.fillRect(x - w * 0.5, y - (e.isBoss ? 44 : 28), w, h);
+  const ratio = clamp((enemy.hp || 0) / Math.max(1, enemy.maxHp || 1), 0, 1);
 
-  ctx.fillStyle = e.isBoss ? "#ff9f7d" : "#ff6b6b";
-  ctx.fillRect(x - w * 0.5, y - (e.isBoss ? 44 : 28), w * ratio, h);
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.38)';
+  ctx.fillRect(x - w * 0.5, top, w, h);
+
+  ctx.fillStyle = enemy.isBoss ? '#ff8f70' : '#8fffaa';
+  ctx.fillRect(x - w * 0.5, top, w * ratio, h);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x - w * 0.5, top, w, h);
+  ctx.restore();
 }
 
 function renderEnemyProjectiles(ctx) {

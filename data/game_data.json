@@ -1849,95 +1849,30 @@
       ]
     },
     "boss_manta": {
-      "name": "ボスエイ",
-      "hp": 900,
+      "name": "ボススター",
+      "hp": 12000,
       "speed": 76,
       "damage": 28,
       "xp": 20,
       "gold": 25,
       "spriteIndex": 0,
-      "ai": {
-        "type": "boss_weave",
-        "preferRange": 160,
-        "strafeSpeedMul": 0.75,
-        "burstSpeedMul": 1.8,
-        "rushDuration": 0.7,
-        "restDuration": 0.8
-      },
-      "attacks": [
-        {
-          "type": "spread",
-          "cooldown": 2.6,
-          "triggerRange": 320,
-          "count": 7,
-          "spread": 0.9,
-          "projectileSpeed": 190,
-          "life": 2.0,
-          "radius": 7,
-          "damageMul": 0.8,
-          "color": "#ffb48f"
-        },
-        {
-          "type": "summon",
-          "cooldown": 8.5,
-          "count": 3,
-          "summonType": "ray",
-          "radius": 96
-        },
-        {
-          "type": "pulse",
-          "cooldown": 5.4,
-          "triggerRange": 140,
-          "radius": 78,
-          "telegraph": 0.8,
-          "damageMul": 1.1,
-          "color": "#ffb48f"
-        }
-      ]
+      "bossScale": 3,
+      "shieldHp": 3000,
+      "shieldRespawnDelay": 10,
+      "switchCount": 0
     },
     "leviathan": {
       "name": "リヴァイアサン",
-      "hp": 2200,
+      "hp": 25000,
       "speed": 82,
       "damage": 40,
       "xp": 20,
       "gold": 80,
       "spriteIndex": 0,
-      "ai": {
-        "type": "boss_dash",
-        "preferRange": 180,
-        "burstSpeedMul": 2.6,
-        "rushDuration": 0.9,
-        "restDuration": 0.9
-      },
-      "attacks": [
-        {
-          "type": "ring",
-          "cooldown": 3.4,
-          "count": 12,
-          "projectileSpeed": 160,
-          "life": 2.2,
-          "radius": 7,
-          "damageMul": 0.8,
-          "color": "#a590ff"
-        },
-        {
-          "type": "summon",
-          "cooldown": 10.0,
-          "count": 4,
-          "summonType": "deep_ghost",
-          "radius": 120
-        },
-        {
-          "type": "pulse",
-          "cooldown": 4.8,
-          "triggerRange": 170,
-          "radius": 92,
-          "telegraph": 0.7,
-          "damageMul": 1.0,
-          "color": "#c48cff"
-        }
-      ]
+      "bossScale": 3,
+      "shieldHp": 3000,
+      "shieldRespawnDelay": 10,
+      "switchCount": 0
     }
   },
   "shopItems": [

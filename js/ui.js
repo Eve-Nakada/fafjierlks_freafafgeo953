@@ -1899,8 +1899,21 @@ function updateBossHud() {
 
   if (wrap) wrap.style.display = boss ? "block" : "none";
   if (boss && nameEl && bar) {
-    nameEl.textContent = be.bossName || getEnemyDef(boss.typeId)?.name || "BOSS";
-    bar.style.width = `${clamp(boss.hp / Math.max(1, boss.maxHp), 0, 1) * 100}%`;
+    const hpRatio = clamp(boss.hp / Math.max(1, boss.maxHp), 0, 1);
+    const shieldRatio = boss.shieldActive
+      ? clamp((boss.shieldHp || 0) / Math.max(1, boss.shieldMaxHp || 1), 0, 1)
+      : clamp(
+          1 - (boss.shieldRespawnTimer || 0) / Math.max(0.001, boss.shieldRespawnDelay || 10),
+          0,
+          1
+        );
+
+    const shieldIcon = boss.shieldActive
+      ? ` / Shield ${Math.round(shieldRatio * 100)}%`
+      : ` / Recharge ${Math.round(shieldRatio * 100)}%`;
+
+    nameEl.textContent = `${be.bossName || getEnemyDef(boss.typeId)?.name || "BOSS"}${shieldIcon}`;
+    bar.style.width = `${hpRatio * 100}%`;
   }
 }
 

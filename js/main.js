@@ -391,13 +391,37 @@ function openChestReward() {
 function triggerBossEvent(boss, wave) {
   if (!boss) return;
   const def = getEnemyDef(boss.typeId) || {};
+
+  boss.maxHp = Number(def.hp || boss.maxHp || boss.hp || 1000);
+  boss.hp = Math.min(Number(boss.hp || boss.maxHp), boss.maxHp);
+
+  boss.shieldMaxHp = Math.max(1, Number(def.shieldHp || 3000));
+  boss.shieldHp = boss.shieldActive === false
+    ? 0
+    : Math.min(
+        boss.shieldMaxHp,
+        Number.isFinite(boss.shieldHp) ? boss.shieldHp : boss.shieldMaxHp
+      );
+
+  boss.shieldActive = boss.shieldHp > 0;
+  boss.shieldRespawnDelay = Math.max(0.5, Number(def.shieldRespawnDelay || 10));
+  boss.shieldRespawnTimer = boss.shieldActive ? 0 : boss.shieldRespawnDelay;
+
+  boss.bossScale = Math.max(1, Number(def.bossScale || 3));
+
+  if (!Array.isArray(boss.attackDrones)) boss.attackDrones = [];
+  boss.attackPatternTimer = 0;
+  boss.waveBeamCooldown = 2.8;
+  boss.waveBeamTimer = 1.6;
+
   STATE.bossEvent = {
     active: true,
     bossId: boss.id,
     bossName: def.name || wave?.theme || "BOSS",
     warningTimer: 2.2,
     warningText: `${wave?.theme || "BOSS"} - ${def.name || "大型反応"}`,
-    hazardTimer: 1.8
+    hazardTimer: 1.8,
+    switchRespawnTimer: 0
   };
 }
 
@@ -448,18 +472,27 @@ function updateBossEvent(dt) {
 function updateBossShieldState(boss, dt) {
   if (!boss?.isBoss) return;
 
+  boss.shieldMaxHp = Math.max(1, Number(boss.shieldMaxHp || 3000));
+  boss.shieldRespawnDelay = Math.max(0.5, Number(boss.shieldRespawnDelay || 10));
+
   if (boss.shieldActive) {
-    if (!Array.isArray(STATE.bossSwitches) || STATE.bossSwitches.length <= 0) {
-      spawnBossSwitches(boss);
+    boss.shieldHp = clamp(Number(boss.shieldHp || boss.shieldMaxHp), 0, boss.shieldMaxHp);
+    if (boss.shieldHp <= 0) {
+      boss.shieldActive = false;
+      boss.shieldHp = 0;
+      boss.shieldRespawnTimer = boss.shieldRespawnDelay;
     }
     return;
   }
 
-  boss.shieldRespawnTimer = Math.max(0, (boss.shieldRespawnTimer || 0) - dt);
+  boss.shieldRespawnTimer = Math.max(0, Number(boss.shieldRespawnTimer || boss.shieldRespawnDelay) - dt);
 
   if (boss.shieldRespawnTimer <= 0) {
     boss.shieldActive = true;
-    spawnBossSwitches(boss);
+    boss.shieldHp = boss.shieldMaxHp;
+    boss.shieldRespawnTimer = 0;
+
+    addEffect?.(boss.x, boss.y, boss.r * 1.9, '#8de8ff', 0.26, 0.32);
   }
 }
 
@@ -507,23 +540,7 @@ function spawnBossSwitches(boss) {
 
 function destroyBossSwitch(sw, boss) {
   if (!sw || sw.dead) return;
-
   sw.dead = true;
-  STATE.effects.push({
-    x: sw.x,
-    y: sw.y,
-    r: 28,
-    color: '#ffe29a',
-    life: 0.28,
-    fillAlpha: 0.22
-  });
-
-  STATE.bossSwitches = (STATE.bossSwitches || []).filter((s) => !s.dead);
-
-  if (STATE.bossSwitches.length <= 0 && boss) {
-    boss.shieldActive = false;
-    boss.shieldRespawnTimer = boss.shieldRespawnDelay || 10;
-  }
 }
 
 function spawnBossWallRect(x, y, w, h) {
@@ -572,9 +589,21 @@ function updateBossWalls(boss, dt) {
 
 function spawnBossHazard(boss) {
   const p = STATE.player;
-  if (!p) return;
+  if (!p || !boss) return;
+
+  if (typeof spawnBossOrbitDroneBurst === 'function') {
+    if (boss.typeId === 'boss_manta') {
+      spawnBossOrbitDroneBurst(boss, 'star', 5);
+    } else if (boss.typeId === 'leviathan' || boss.bossKind === 'leviathan') {
+      spawnBossOrbitDroneBurst(boss, 'wave', 5);
+    }
+  }
 
   if (boss.typeId === 'leviathan' || boss.bossKind === 'leviathan') {
+    if (typeof spawnLeviathanWaveBeams === 'function') {
+      spawnLeviathanWaveBeams(boss);
+    }
+
     if (Math.random() < 0.34) {
       const horizontal = Math.random() < 0.5;
       const laneThickness = rand(90, 130);
@@ -681,53 +710,90 @@ function spawnBossHazard(boss) {
     });
     return;
   }
+}
 
-  const nearPlayer = Math.random() < 0.58;
+function spawnLeviathanWaveBeams(boss) {
+  const p = STATE.player;
+  if (!boss || !p) return;
 
-  if (Math.random() < 0.4) {
-    const radius = rand(130, 180);
-    const x = clamp(p.x + rand(-110, 110), radius + 8, STATE.world.width - radius - 8);
-    const y = clamp(p.y + rand(-110, 110), radius + 8, STATE.world.height - radius - 8);
+  const horizontal = Math.random() < 0.5;
+  const gap = rand(90, 130);
+  const thickness = rand(52, 72);
+  const life = 1.9;
+  const telegraph = 0.95;
+  const damage = boss.damage * 1.05;
+
+  if (horizontal) {
+    const centerY = clamp(p.y + rand(-120, 120), 120, STATE.world.height - 120);
 
     STATE.hazards.push({
-      kind: 'mega_bomb',
-      x,
-      y,
-      radius,
-      telegraph: 1.25,
-      life: 1.55,
-      damage: boss.damage * 1.25,
-      color: 'rgba(255,145,110,0.30)',
-      stroke: '#ffd8c7'
+      kind: 'wave_beam',
+      x: STATE.world.width * 0.5,
+      y: clamp(centerY - gap, thickness, STATE.world.height - thickness),
+      width: STATE.world.width - 120,
+      height: thickness,
+      telegraph,
+      life,
+      damage,
+      blocksMovement: false,
+      color: 'rgba(120,200,255,0.30)',
+      stroke: '#c9f4ff'
     });
-    return;
+
+    STATE.hazards.push({
+      kind: 'wave_beam',
+      x: STATE.world.width * 0.5,
+      y: clamp(centerY + gap, thickness, STATE.world.height - thickness),
+      width: STATE.world.width - 120,
+      height: thickness,
+      telegraph,
+      life,
+      damage,
+      blocksMovement: false,
+      color: 'rgba(120,200,255,0.30)',
+      stroke: '#c9f4ff'
+    });
+  } else {
+    const centerX = clamp(p.x + rand(-120, 120), 120, STATE.world.width - 120);
+
+    STATE.hazards.push({
+      kind: 'wave_beam',
+      x: clamp(centerX - gap, thickness, STATE.world.width - thickness),
+      y: STATE.world.height * 0.5,
+      width: thickness,
+      height: STATE.world.height - 120,
+      telegraph,
+      life,
+      damage,
+      blocksMovement: false,
+      color: 'rgba(120,200,255,0.30)',
+      stroke: '#c9f4ff'
+    });
+
+    STATE.hazards.push({
+      kind: 'wave_beam',
+      x: clamp(centerX + gap, thickness, STATE.world.width - thickness),
+      y: STATE.world.height * 0.5,
+      width: thickness,
+      height: STATE.world.height - 120,
+      telegraph,
+      life,
+      damage,
+      blocksMovement: false,
+      color: 'rgba(120,200,255,0.30)',
+      stroke: '#c9f4ff'
+    });
   }
-
-  const radius = rand(62, 112);
-  const x = nearPlayer
-    ? clamp(p.x + rand(-120, 120), radius + 8, STATE.world.width - radius - 8)
-    : clamp(boss.x + rand(-180, 180), radius + 8, STATE.world.width - radius - 8);
-  const y = nearPlayer
-    ? clamp(p.y + rand(-120, 120), radius + 8, STATE.world.height - radius - 8)
-    : clamp(boss.y + rand(-180, 180), radius + 8, STATE.world.height - radius - 8);
-
-  STATE.hazards.push({
-    kind: 'circle',
-    x,
-    y,
-    radius,
-    telegraph: 0.85,
-    life: 1.0,
-    damage: boss.damage * 0.9,
-    color: 'rgba(255,145,110,0.42)',
-    stroke: '#ffd8c7'
-  });
 }
 
 function pointInBossHazard(hz, x, y, pad = 0) {
   if (!hz) return false;
 
-  if (hz.kind === 'lane' || hz.kind === 'laser_wall') {
+  if (
+    hz.kind === 'lane' ||
+    hz.kind === 'laser_wall' ||
+    hz.kind === 'wave_beam'
+  ) {
     return (
       x >= hz.x - hz.width * 0.5 - pad &&
       x <= hz.x + hz.width * 0.5 + pad &&
@@ -806,33 +872,45 @@ function renderBossHazards(ctx) {
 
     ctx.save();
 
-    if (hz.kind === 'lane' || hz.kind === 'laser_wall') {
-      ctx.globalAlpha = hz.triggered ? 0.26 : 0.12 * pulse;
-      ctx.fillStyle = hz.color;
-      ctx.fillRect(x - hz.width * 0.5, y - hz.height * 0.5, hz.width, hz.height);
+    if (hz.kind === 'lane' || hz.kind === 'laser_wall' || hz.kind === 'wave_beam') {
+      const telegraphing = hz.telegraph > 0;
+      ctx.globalAlpha = telegraphing ? 0.28 + pulse * 0.18 : 0.36 + pulse * 0.10;
+      ctx.fillStyle = hz.color || 'rgba(255,120,120,0.24)';
+      ctx.fillRect(
+        x - hz.width * 0.5,
+        y - hz.height * 0.5,
+        hz.width,
+        hz.height
+      );
 
-      ctx.globalAlpha = hz.triggered ? 0.9 : 0.76;
-      ctx.strokeStyle = hz.stroke || '#c8f3ff';
-      ctx.lineWidth = hz.triggered ? 4 : 2.5;
-      ctx.setLineDash(hz.triggered ? [] : [16, 10]);
-      ctx.strokeRect(x - hz.width * 0.5, y - hz.height * 0.5, hz.width, hz.height);
+      ctx.globalAlpha = telegraphing ? 0.85 : 1;
+      ctx.strokeStyle = hz.stroke || '#ffffff';
+      ctx.lineWidth = hz.kind === 'wave_beam' ? 4 : 3;
+      ctx.strokeRect(
+        x - hz.width * 0.5,
+        y - hz.height * 0.5,
+        hz.width,
+        hz.height
+      );
 
-      if (hz.kind === 'laser_wall' && hz.triggered) {
-        ctx.globalAlpha = 0.85;
-        ctx.lineWidth = 6;
-        ctx.strokeStyle = hz.stroke || '#ffffff';
-        ctx.setLineDash([]);
-
-        if (hz.width > hz.height) {
-          ctx.beginPath();
-          ctx.moveTo(x - hz.width * 0.5, y);
-          ctx.lineTo(x + hz.width * 0.5, y);
-          ctx.stroke();
-        } else {
-          ctx.beginPath();
-          ctx.moveTo(x, y - hz.height * 0.5);
-          ctx.lineTo(x, y + hz.height * 0.5);
-          ctx.stroke();
+      if (hz.kind === 'wave_beam') {
+        const stripes = 5;
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+        ctx.lineWidth = 2;
+        for (let i = 1; i <= stripes; i++) {
+          if (hz.width >= hz.height) {
+            const yy = y - hz.height * 0.5 + (hz.height / (stripes + 1)) * i;
+            ctx.beginPath();
+            ctx.moveTo(x - hz.width * 0.5, yy);
+            ctx.lineTo(x + hz.width * 0.5, yy);
+            ctx.stroke();
+          } else {
+            const xx = x - hz.width * 0.5 + (hz.width / (stripes + 1)) * i;
+            ctx.beginPath();
+            ctx.moveTo(xx, y - hz.height * 0.5);
+            ctx.lineTo(xx, y + hz.height * 0.5);
+            ctx.stroke();
+          }
         }
       }
 
@@ -840,44 +918,32 @@ function renderBossHazards(ctx) {
       continue;
     }
 
+    ctx.globalAlpha = hz.telegraph > 0 ? 0.22 + pulse * 0.12 : 0.34 + pulse * 0.1;
+    ctx.fillStyle = hz.color || 'rgba(255,120,120,0.24)';
+
     if (hz.kind === 'ring') {
-      ctx.globalAlpha = hz.triggered ? 0.32 : 0.12 * pulse;
-      ctx.fillStyle = hz.color;
       ctx.beginPath();
-      ctx.arc(x, y, hz.radius, 0, Math.PI * 2);
+      ctx.arc(x, y, hz.radius || 0, 0, Math.PI * 2);
       ctx.arc(x, y, hz.innerRadius || 0, 0, Math.PI * 2, true);
       ctx.fill('evenodd');
-
-      ctx.globalAlpha = hz.triggered ? 0.95 : 0.8;
-      ctx.strokeStyle = hz.stroke || '#d7c3ff';
-      ctx.lineWidth = hz.triggered ? 4 : 2.5;
-      ctx.setLineDash(hz.triggered ? [] : [12, 9]);
-
+      ctx.globalAlpha = hz.telegraph > 0 ? 0.88 : 1;
+      ctx.strokeStyle = hz.stroke || '#fff';
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(x, y, hz.radius, 0, Math.PI * 2);
+      ctx.arc(x, y, hz.radius || 0, 0, Math.PI * 2);
       ctx.stroke();
-
       ctx.beginPath();
       ctx.arc(x, y, hz.innerRadius || 0, 0, Math.PI * 2);
       ctx.stroke();
-
-      ctx.restore();
-      continue;
+    } else {
+      ctx.beginPath();
+      ctx.arc(x, y, hz.radius || 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = hz.telegraph > 0 ? 0.88 : 1;
+      ctx.strokeStyle = hz.stroke || '#fff';
+      ctx.lineWidth = 3;
+      ctx.stroke();
     }
-
-    ctx.globalAlpha = hz.triggered ? 0.32 : 0.12 * pulse;
-    ctx.fillStyle = hz.color;
-    ctx.beginPath();
-    ctx.arc(x, y, hz.radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.globalAlpha = hz.triggered ? 0.95 : 0.78;
-    ctx.strokeStyle = hz.stroke || '#ffb28f';
-    ctx.lineWidth = hz.triggered ? 4 : 2.5;
-    ctx.setLineDash(hz.triggered ? [] : [12, 10]);
-    ctx.beginPath();
-    ctx.arc(x, y, hz.radius, 0, Math.PI * 2);
-    ctx.stroke();
 
     ctx.restore();
   }
