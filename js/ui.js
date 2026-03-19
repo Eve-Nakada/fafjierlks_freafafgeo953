@@ -136,6 +136,180 @@ function getPassiveNameFromId(id) {
   return (STATE.gameData?.passives || []).find(p => p.id === id)?.name || id || "なし";
 }
 
+function getWeaponsRelatedToPassive(passiveId) {
+  const weapons = STATE.gameData?.weapons || [];
+  if (!passiveId) return [];
+
+  return weapons.filter((weapon) => {
+    const synergies = Array.isArray(weapon?.synergies) ? weapon.synergies : [];
+    const evolutions = getWeaponGrowthBranches(weapon);
+
+    const hasSynergy = synergies.some((s) => s?.passiveId === passiveId);
+    const hasEvolutionNeed = evolutions.some((branch) => {
+      if (branch?.needsPassive === passiveId) return true;
+      if (branch?.secondStage?.needsPassive === passiveId) return true;
+      return false;
+    });
+
+    return hasSynergy || hasEvolutionNeed;
+  });
+}
+
+function buildPassiveRelatedWeaponsHtml(passiveId) {
+  const relatedWeapons = getWeaponsRelatedToPassive(passiveId);
+  if (!relatedWeapons.length) return "";
+
+  return `
+    <div class="detailRelatedWeapons">
+      <div class="detailRelatedWeaponsLabel">関連武器</div>
+      <div class="detailRelatedWeaponsIcons">
+        ${relatedWeapons.map((weapon) => `
+          <div
+            class="detailRelatedWeaponChip"
+            title="${weapon.name || weapon.id}"
+            aria-label="${weapon.name || weapon.id}"
+          >
+            <canvas
+              class="detailRelatedWeaponIcon"
+              data-related-weapon-icon="${weapon.iconIndex || 0}"
+              width="28"
+              height="28"
+            ></canvas>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderPassiveRelatedWeaponIcons(root = document) {
+  root.querySelectorAll("canvas[data-related-weapon-icon]").forEach((canvas) => {
+    drawWeaponIconToCanvas(canvas, Number(canvas.dataset.relatedWeaponIcon || 0));
+  });
+}
+
+function getLevelUpChoicePassiveDef(choice) {
+  if (!choice || choice.type !== "passive") return null;
+
+  if (choice.key?.startsWith("passive_")) {
+    return getPassiveDef(choice.key.slice("passive_".length));
+  }
+
+  if (choice.passiveId) {
+    return getPassiveDef(choice.passiveId);
+  }
+
+  return null;
+}
+
+function buildLevelUpPassiveRelatedWeaponsHtml(choice) {
+  const passiveDef = getLevelUpChoicePassiveDef(choice);
+  if (!passiveDef) return "";
+
+  const relatedWeapons = getWeaponsRelatedToPassive(passiveDef.id);
+  if (!relatedWeapons.length) return "";
+
+  return `
+    <div class="levelUpRelatedWeapons">
+      <div class="levelUpRelatedWeaponsLabel">関連武器</div>
+      <div class="levelUpRelatedWeaponsIcons">
+        ${relatedWeapons.map((weapon) => `
+          <button
+            type="button"
+            class="levelUpRelatedWeaponBtn"
+            data-related-weapon-name="${weapon.name || weapon.id}"
+            aria-label="${weapon.name || weapon.id}"
+            title="${weapon.name || weapon.id}"
+          >
+            <canvas
+              class="levelUpRelatedWeaponIcon"
+              data-levelup-related-weapon-icon="${weapon.iconIndex || 0}"
+              width="24"
+              height="24"
+            ></canvas>
+          </button>
+        `).join("")}
+      </div>
+      <div class="levelUpRelatedWeaponName" data-levelup-related-weapon-name-text></div>
+    </div>
+  `;
+}
+
+function renderLevelUpRelatedWeaponIcons(root = document) {
+  root.querySelectorAll("canvas[data-levelup-related-weapon-icon]").forEach((canvas) => {
+    drawWeaponIconToCanvas(canvas, Number(canvas.dataset.levelupRelatedWeaponIcon || 0));
+  });
+}
+
+function bindLevelUpRelatedWeaponButtons(root) {
+  if (!root || root.dataset.relatedWeaponBound === "1") return;
+  root.dataset.relatedWeaponBound = "1";
+
+  root.addEventListener("click", (e) => {
+    const btn = e.target.closest(".levelUpRelatedWeaponBtn");
+    if (!btn) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const name = btn.dataset.relatedWeaponName || "";
+    const card = btn.closest(".levelUpChoiceCard");
+    const nameEl = card?.querySelector("[data-levelup-related-weapon-name-text]");
+    if (!nameEl) return;
+
+    nameEl.textContent = name;
+  });
+}
+
+function ensurePassiveRelatedWeaponStyles() {
+  if (document.getElementById("passiveRelatedWeaponStyle")) return;
+
+  const style = document.createElement("style");
+  style.id = "passiveRelatedWeaponStyle";
+  style.textContent = `
+    .detailRelatedWeapons{
+      margin-top:6px;
+      display:grid;
+      gap:6px;
+    }
+
+    .detailRelatedWeaponsLabel{
+      font-size:11px;
+      color:var(--sub);
+      line-height:1.2;
+    }
+
+    .detailRelatedWeaponsIcons{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      align-items:center;
+    }
+
+    .detailRelatedWeaponChip{
+      width:30px;
+      height:30px;
+      border-radius:8px;
+      border:1px solid rgba(120,220,255,0.18);
+      background:rgba(255,255,255,0.04);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      flex:0 0 auto;
+    }
+
+    .detailRelatedWeaponIcon{
+      width:28px;
+      height:28px;
+      image-rendering:pixelated;
+      image-rendering:crisp-edges;
+      display:block;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 
 function buildEvolutionHintText(def, inst = null) {
   const branches = getWeaponGrowthBranches(def);
@@ -148,13 +322,18 @@ function buildEvolutionHintText(def, inst = null) {
   if (stage >= 1 && inst?.branchId) {
     const branch = branches.find((b) => b.branchId === inst.branchId);
     const second = branch?.secondStage;
-    if (!second) return `第2進化条件: 第1進化Lv${evo1Max} + 宝箱`;
-    return `第2進化条件: 第1進化Lv${evo1Max} + ${getPassiveNameFromId(second.needsPassive)} + 宝箱`;
+
+    if (!second) {
+      return `第2進化条件: 第1進化Lv${evo1Max}`;
+    }
+
+    return `第2進化条件: 第1進化Lv${evo1Max} + ${getPassiveNameFromId(second.needsPassive)}`;
   }
 
   const names = branches.map((b) => getPassiveNameFromId(b.needsPassive)).filter(Boolean);
   const uniq = [...new Set(names)];
-  return `進化条件: 通常Lv${normalMax} + ${uniq.join(" / ")} + 宝箱`;
+
+  return `進化条件: 通常Lv${normalMax} + ${uniq.join(" / ")} `;
 }
 
 
@@ -1794,9 +1973,15 @@ function renderDetailLists() {
   const p = STATE.player;
   if (!p) return;
 
+  ensurePassiveRelatedWeaponStyles();
+
   const weaponDetailList = getEl("weaponDetailList");
   const passiveDetailList = getEl("passiveDetailList");
-  const weaponSignature = JSON.stringify((p.weapons || []).map((w) => [w.id, w.level, w.evolutionStage || 0, w.branchId || ""]));
+
+  const weaponSignature = JSON.stringify(
+    (p.weapons || []).map((w) => [w.id, w.level, w.evolutionStage || 0, w.branchId || ""])
+  );
+
   const passiveSignature = JSON.stringify({
     passives: p.passives || [],
     levels: p.passiveLevels || {},
@@ -1823,14 +2008,15 @@ function renderDetailLists() {
 
   if (passiveDetailList && passiveDetailList.dataset.signature !== passiveSignature) {
     passiveDetailList.dataset.signature = passiveSignature;
+
     const passiveHtml = (p.passives || []).map((passiveId) => {
-      const def = (STATE.gameData?.passives || []).find(x => x.id === passiveId);
+      const def = getPassiveDef(passiveId);
       const lv = p.passiveLevels[passiveId] || 0;
-    
+
       const growthBtn = def?.evolutions?.length
         ? `<button class="miniBtn" type="button" data-open-passive-growth="1" data-passive-id="${passiveId}">成長表</button>`
         : "";
-    
+
       return `
         <div class="detailEntryBlock">
           <div class="detailEntry">
@@ -1838,20 +2024,26 @@ function renderDetailLists() {
             <div class="detailValue">Lv${lv} ${growthBtn}</div>
           </div>
           ${def?.evolutions?.length ? `<div class="detailSub detailSubAccent">${buildPassiveEvolutionHintText(def, lv)}</div>` : ""}
+          ${buildPassiveRelatedWeaponsHtml(passiveId)}
         </div>`;
     }).join("");
-
-    getEl("passiveDetailList")?.addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-open-passive-growth]");
-      if (!btn) return;
-      openPassiveGrowth(btn.dataset.passiveId);
-    });
 
     passiveDetailList.innerHTML = `${passiveHtml}
       <div class="detailEntry">
         <div class="detailName">リロール券</div>
         <div class="detailValue">${p.rerollTickets || 0}枚</div>
       </div>`;
+  }
+
+  renderPassiveRelatedWeaponIcons(passiveDetailList || document);
+
+  if (passiveDetailList && !passiveDetailList.dataset.passiveGrowthBound) {
+    passiveDetailList.dataset.passiveGrowthBound = "1";
+    passiveDetailList.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-open-passive-growth]");
+      if (!btn) return;
+      openPassiveGrowth(btn.dataset.passiveId);
+    });
   }
 }
 
@@ -2232,6 +2424,64 @@ function ensureLevelUpChoiceStyles() {
       white-space:normal;
     }
 
+    .levelUpRelatedWeapons{
+      margin-top:6px;
+      display:grid;
+      gap:6px;
+    }
+
+    .levelUpRelatedWeaponsLabel{
+      font-size:11px;
+      color:var(--sub);
+      line-height:1.2;
+    }
+
+    .levelUpRelatedWeaponsIcons{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      align-items:center;
+    }
+
+    .levelUpRelatedWeaponBtn{
+      min-height:0;
+      width:28px;
+      height:28px;
+      padding:0;
+      border-radius:8px;
+      border:1px solid rgba(120,220,255,0.18);
+      background:rgba(255,255,255,0.04);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      box-shadow:none;
+    }
+
+    .levelUpRelatedWeaponBtn:hover{
+      filter:brightness(1.08);
+    }
+
+    .levelUpRelatedWeaponBtn:active{
+      transform:translateY(1px) scale(0.98);
+    }
+
+    .levelUpRelatedWeaponIcon{
+      width:24px;
+      height:24px;
+      display:block;
+      image-rendering:pixelated;
+      image-rendering:crisp-edges;
+      pointer-events:none;
+    }
+
+    .levelUpRelatedWeaponName{
+      min-height:16px;
+      font-size:11px;
+      color:var(--accent2);
+      line-height:1.2;
+    }
+
     @media (max-width: 640px) {
       .levelUpChoiceCard {
         padding:12px 12px 16px;
@@ -2288,10 +2538,15 @@ function renderLevelUpChoices() {
 
     const weaponDef = getLevelUpChoiceWeaponDef(c);
     const hasWeaponIcon = !!weaponDef;
+    const passiveDef = getLevelUpChoicePassiveDef(c);
 
     const iconHtml = hasWeaponIcon
       ? `<canvas class="levelUpChoiceIcon" data-levelup-weapon-icon="${weaponDef.iconIndex || 0}" width="56" height="56"></canvas>`
-      : `<div class="levelUpChoiceIcon levelUpChoiceIconPlaceholder">${c.type === "passive" ? "装備" : c.type === "gold" ? "GOLD" : "選択"}</div>`;
+      : `<div class="levelUpChoiceIcon levelUpChoiceIconPlaceholder">${passiveDef ? "装備" : c.type === "gold" ? "GOLD" : "選択"}</div>`;
+
+    const relatedWeaponsHtml = passiveDef
+      ? buildLevelUpPassiveRelatedWeaponsHtml(c)
+      : "";
 
     btn.innerHTML = `
       <div class="levelUpChoiceInner">
@@ -2300,6 +2555,7 @@ function renderLevelUpChoices() {
           <div class="choiceTitle">${c.name}</div>
           <div class="choiceDesc">${c.desc || ""}</div>
           <div class="choiceMeta">${c.meta || ""}</div>
+          ${relatedWeaponsHtml}
         </div>
       </div>
     `;
@@ -2325,6 +2581,9 @@ function renderLevelUpChoices() {
   wrap.querySelectorAll("canvas[data-levelup-weapon-icon]").forEach((canvas) => {
     drawWeaponIconToCanvas(canvas, Number(canvas.dataset.levelupWeaponIcon || 0));
   });
+
+  renderLevelUpRelatedWeaponIcons(wrap);
+  bindLevelUpRelatedWeaponButtons(wrap);
 
   updateLevelUpRerollButton();
 
