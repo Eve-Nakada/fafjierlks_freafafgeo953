@@ -536,30 +536,31 @@ function fireMine(w, def) {
     targets.push({ x: p.x + rand(-120, 120), y: p.y + rand(-120, 120) });
   }
 
-  for (const pos of targets) {
-    spawnBullet({
-      x: pos.x,
-      y: pos.y,
-      vx: 0,
-      vy: 0,
-      life: 3.0,
-      radius: 16,
-      damage: getWeaponDamage(w, def),
-      pierce: 999,
-      weaponId: w.id,
-      weaponPattern: getWeaponCurrentPattern(w),
-      weaponStage: w.evolutionStage || 0,
-      weaponLevel: w.level || 1,
-      type: 'mine',
-      color: '#ffd166',
-      explodeRadius: tuning.explodeRadius,
-      warningRadius: tuning.warningRadius,
-      armDelay: 0.35,
-      chainCount: tuning.mineChainCount,
-      chainRadius: tuning.mineChainRadius,
-      chainDamageMul: tuning.mineChainDamageMul
-    });
-  }
+ for (const pos of targets) {
+   spawnBullet({
+     x: pos.x,
+     y: pos.y,
+     vx: 0,
+     vy: 0,
+     life: 3.0,
+     radius: 16,
+     damage: getWeaponDamage(w, def),
+     pierce: 999,
+     weaponId: w.id,
+     weaponPattern: getWeaponCurrentPattern(w),
+     weaponStage: w.evolutionStage || 0,
+     weaponLevel: w.level || 1,
+     type: 'mine',
+     color: '#ffd166',
+     explodeRadius: tuning.explodeRadius,
+     warningRadius: tuning.warningRadius,
+     armDelay: 0.35,
+     selfSafeTimer: 0.5,
+     chainCount: tuning.mineChainCount,
+     chainRadius: tuning.mineChainRadius,
+     chainDamageMul: tuning.mineChainDamageMul
+   });
+ }
 }
 
 function fireJellyField(w, def) {
@@ -812,6 +813,7 @@ function spawnBullet(b) {
     turnRate: b.turnRate || 0,
     length: b.length || 0,
     armDelay: b.armDelay || 0,
+    selfSafeTimer: b.selfSafeTimer || 0,
     splitCount: b.splitCount || 0,
     chainCount: b.chainCount || 0,
     chainRadius: b.chainRadius || 0,
@@ -854,6 +856,10 @@ function updateBullets(dt) {
       updateHomingBullet(b, dt);
       handleProjectileHits(b);
     } else if (b.type === "mine") {
+      if (b.selfSafeTimer > 0) {
+        b.selfSafeTimer = Math.max(0, b.selfSafeTimer - dt);
+      }
+      
       handleMineTrigger(b);
     } else if (b.type === "field") {
       updateFieldBullet(b, dt);
@@ -973,47 +979,53 @@ function spawnMissileSplitShots(b, enemy) {
   }
 }
 
-function handleMineTrigger(b) {
-  if (b.armDelay > 0) return;
-  for (const e of STATE.enemies) {
-    if (dist(b.x, b.y, e.x, e.y) <= b.radius + e.r + 6) {
-      explodeMine(b);
-      b.life = 0;
-      return;
-    }
-  }
+function handleMineTrigger(mine, enemy = null) {
+  if (!mine || mine.exploded) return false;
+
+  mine.exploded = true;
+  explodeMine(mine, enemy);
+  return true;
 }
 
-function explodeMine(b) {
-  const radius = b.explodeRadius || 72;
-  const boss = typeof getActiveBoss === 'function' ? getActiveBoss() : null;
+function isMineSelfDamageProtected(mine) {
+  return !!mine && Number(mine.selfSafeTimer || 0) > 0;
+}
 
-  for (const sw of STATE.bossSwitches || []) {
-    if (sw.dead) continue;
-    if (dist(b.x, b.y, sw.x, sw.y) <= radius + sw.r) {
-      if (typeof destroyBossSwitch === 'function') {
-        destroyBossSwitch(sw, boss);
-      }
+function explodeMine(mine, triggerEnemy = null) {
+  if (!mine) return;
+
+  const radius = Number(mine.explodeRadius || mine.r || 70);
+  const damage = Number(mine.damage || 0);
+
+  addEffect?.(mine.x, mine.y, radius, "#ffb36b", 0.18, 0.22);
+
+  for (const enemy of STATE.enemies || []) {
+    if (!enemy || enemy.dead) continue;
+    if (dist(mine.x, mine.y, enemy.x, enemy.y) <= radius + (enemy.r || 0)) {
+      damageEnemy?.(enemy, damage, {
+        id: "mine",
+        label: "機雷爆発"
+      });
     }
   }
 
-  for (const e of STATE.enemies) {
-    if (dist(b.x, b.y, e.x, e.y) <= radius + e.r) damageEnemy(e, b.damage);
+  if (typeof triggerMineChain === "function") {
+    triggerMineChain(mine);
   }
 
   const p = STATE.player;
-  if (p && dist(b.x, b.y, p.x, p.y) <= radius + p.r) {
-    damagePlayer(Math.max(8, b.damage * 0.75), {
-      id: "self_mine",
-      label: "自機機雷爆風"
-    });
+  if (p) {
+    const hitPlayer = dist(mine.x, mine.y, p.x, p.y) <= radius + (p.r || 0);
+
+    if (hitPlayer && !isMineSelfDamageProtected(mine)) {
+      damagePlayer?.(damage * 0.5, {
+        id: "self_mine",
+        label: "自機機雷爆風"
+      });
+    }
   }
 
-  STATE.effects.push({ x: b.x, y: b.y, r: radius, color: '#ffb347', life: 0.28, fillAlpha: 0.2 });
-
-  if ((b.chainCount || 0) > 0) {
-    triggerMineChain(b, b.chainCount, b.chainRadius || radius, b.damage * (b.chainDamageMul || 0.45));
-  }
+  mine.life = 0;
 }
 
 function triggerMineChain(sourceMine, chainCount, chainRadius, chainDamage) {
