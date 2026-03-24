@@ -3,15 +3,93 @@
 // ===============================
 
 function resetWaveState() {
+  applyWaveBalanceOverrides();
+
   const waves = STATE.waveData?.waves || [];
   for (const wave of waves) {
     delete wave._spawnTimer;
     delete wave._bossSpawned;
     delete wave._leviathanSpawned;
     delete wave._mapCoinsSpawned;
+    delete wave._eliteSpawned;
   }
   STATE.lastShopWave = 0;
   STATE.mapCoins = [];
+}
+
+function createBalancedLateWave(index, at, theme, formation, count, enemyTypes, guaranteedTypes, enemyWeights, mapCoins = { normal: 0, rare: 0 }) {
+  return {
+    index,
+    at,
+    spawnInterval: 999,
+    count,
+    theme,
+    enemyTypes: [...enemyTypes],
+    guaranteedTypes: [...guaranteedTypes],
+    enemyWeights: { ...enemyWeights },
+    formation,
+    mapCoins: { ...mapCoins },
+    elite: true
+  };
+}
+
+function applyWaveBalanceOverrides() {
+  if (!STATE.waveData || !Array.isArray(STATE.waveData.waves)) return;
+
+  const base = STATE.waveData.waves.filter((w) => Number(w.index || 0) < 16);
+
+  base.push(
+    createBalancedLateWave(
+      16,
+      792,
+      "強化敵パターン1",
+      "encircle",
+      8,
+      ["shark", "deep_ghost"],
+      ["shark", "deep_ghost", "shark", "deep_ghost"],
+      { shark: 3, deep_ghost: 3 },
+      { normal: 6, rare: 2 }
+    ),
+    createBalancedLateWave(
+      17,
+      812,
+      "強化敵パターン2",
+      "rush_pack",
+      8,
+      ["barracuda", "electric_eel", "shark"],
+      ["barracuda", "electric_eel", "barracuda", "electric_eel"],
+      { barracuda: 4, electric_eel: 4, shark: 2 },
+      { normal: 6, rare: 3 }
+    ),
+    createBalancedLateWave(
+      18,
+      832,
+      "強化敵パターン3",
+      "finale_mix",
+      10,
+      ["shark", "deep_ghost", "barracuda", "electric_eel"],
+      ["shark", "deep_ghost", "barracuda", "electric_eel"],
+      { shark: 3, deep_ghost: 3, barracuda: 2, electric_eel: 2 },
+      { normal: 8, rare: 4 }
+    ),
+    {
+      index: 19,
+      at: 852,
+      spawnInterval: 999,
+      count: 0,
+      theme: "深淵の主",
+      enemyTypes: [],
+      guaranteedTypes: [],
+      formation: "boss_only",
+      mapCoins: { normal: 0, rare: 0 },
+      leviathan: {
+        at: 852,
+        typeId: "leviathan"
+      }
+    }
+  );
+
+  STATE.waveData.waves = base;
 }
 
 function getWaveDefs() {
@@ -129,7 +207,127 @@ function addWaveCoins(waveIndex) {
   }
 }
 
+function isBalancedEliteWave(wave) {
+  return !!wave?.elite;
+}
+
+function getEliteShieldHitsForWave(wave) {
+  const idx = Number(wave?.index || 0);
+  if (idx === 16) return 1;
+  if (idx === 17) return 2;
+  return Math.random() < 0.5 ? 1 : 2;
+}
+
+function spawnBalancedEliteEnemy(typeId, x, y, shieldHits, pattern) {
+  const enemy = spawnEnemy(typeId, x, y, false, "normal");
+  if (!enemy) return null;
+
+  if (typeof makeEliteEnemy === "function") {
+    makeEliteEnemy(enemy, {
+      hpMul: 3,
+      shieldHits,
+      pattern,
+      xpBonus: 2,
+      goldBonus: 2
+    });
+  }
+
+  return enemy;
+}
+
+function spawnBalancedEliteWaveEnemies(wave) {
+  const spawnList = buildWaveSpawnList(wave);
+  if (spawnList.length <= 0) return;
+
+  const formation = wave.formation || "scatter";
+  const count = spawnList.length;
+  const shieldHits = getEliteShieldHitsForWave(wave);
+  const pattern = `wave_${wave.index || 0}`;
+
+  if (formation === "encircle") {
+    for (let i = 0; i < count; i++) {
+      const ang = (Math.PI * 2 * i) / count;
+      const d = 330 + (i % 3) * 30;
+      const p = STATE.player;
+      if (!p) return;
+      const x = clamp(p.x + Math.cos(ang) * d, 32, STATE.world.width - 32);
+      const y = clamp(p.y + Math.sin(ang) * d, 32, STATE.world.height - 32);
+      spawnBalancedEliteEnemy(spawnList[i], x, y, shieldHits, pattern);
+    }
+    return;
+  }
+
+  if (formation === "rush_pack") {
+    const p = STATE.player;
+    if (!p) return;
+
+    for (let i = 0; i < count; i++) {
+      const side = i < Math.ceil(count / 2) ? "left" : "right";
+      const d = 300 + (i % 3) * 36;
+      let x = p.x;
+      let y = p.y;
+
+      if (side === "left") x -= d;
+      else x += d;
+
+      y += rand(-140, 140);
+
+      x = clamp(x, 32, STATE.world.width - 32);
+      y = clamp(y, 32, STATE.world.height - 32);
+
+      spawnBalancedEliteEnemy(spawnList[i], x, y, shieldHits, pattern);
+    }
+    return;
+  }
+
+  if (formation === "finale_mix") {
+    const p = STATE.player;
+    if (!p) return;
+
+    const half = Math.max(1, Math.floor(count / 2));
+
+    for (let i = 0; i < half; i++) {
+      const ang = (Math.PI * 2 * i) / half;
+      const d = 320 + (i % 2) * 28;
+      const x = clamp(p.x + Math.cos(ang) * d, 32, STATE.world.width - 32);
+      const y = clamp(p.y + Math.sin(ang) * d, 32, STATE.world.height - 32);
+      spawnBalancedEliteEnemy(spawnList[i], x, y, shieldHits, pattern);
+    }
+
+    for (let i = half; i < count; i++) {
+      const side = i % 2 === 0 ? "top" : "bottom";
+      const d = 360 + (i - half) * 16;
+      let x = p.x + rand(-140, 140);
+      let y = p.y;
+
+      if (side === "top") y -= d;
+      else y += d;
+
+      x = clamp(x, 32, STATE.world.width - 32);
+      y = clamp(y, 32, STATE.world.height - 32);
+
+      spawnBalancedEliteEnemy(spawnList[i], x, y, shieldHits, pattern);
+    }
+    return;
+  }
+
+  for (const typeId of spawnList) {
+    const p = STATE.player;
+    if (!p) return;
+    const ang = rand(0, Math.PI * 2);
+    const d = rand(320, 480);
+    const x = clamp(p.x + Math.cos(ang) * d, 32, STATE.world.width - 32);
+    const y = clamp(p.y + Math.sin(ang) * d, 32, STATE.world.height - 32);
+    spawnBalancedEliteEnemy(typeId, x, y, shieldHits, pattern);
+  }
+}
+
 function spawnWaveEnemies(wave) {
+  if (isBalancedEliteWave(wave)) {
+    spawnBalancedEliteWaveEnemies(wave);
+    return;
+  }
+
   const spawnList = buildWaveSpawnList(wave);
   if (spawnList.length <= 0) return;
   spawnByFormation(wave, shuffleCopy(spawnList));
@@ -288,12 +486,13 @@ function spawnEnemyAroundPlayerAngle(typeId, distance, ang, isBoss, behavior) {
 }
 
 function handleWaveBossSpawn(wave) {
+  if (!wave || isBalancedEliteWave(wave)) return;
   if (!wave.boss) return;
   if (wave._bossSpawned) return;
   if (STATE.elapsed < (wave.boss.at || 0)) return;
 
   wave._bossSpawned = true;
-  const boss = spawnEnemyAroundPlayer(wave.boss.typeId, 260, 300, true, 'boss');
+  const boss = spawnEnemyAroundPlayer(wave.boss.typeId, 260, 300, true, "boss");
   if (boss) triggerBossEvent(boss, wave);
 }
 

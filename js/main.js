@@ -587,61 +587,70 @@ function updateBossWalls(boss, dt) {
   STATE.bossWalls = next;
 }
 
+function getBossTelegraphedAttackDamage(boss) {
+  if (!boss) return 120;
+  if (boss.typeId === "leviathan" || boss.bossKind === "leviathan") return 400;
+  if (boss.typeId === "boss_manta") return 200;
+  return Math.max(80, Number(boss.damage || 0));
+}
+
 function spawnBossHazard(boss) {
   const p = STATE.player;
   if (!p || !boss) return;
 
-  if (typeof spawnBossOrbitDroneBurst === 'function') {
-    if (boss.typeId === 'boss_manta') {
-      spawnBossOrbitDroneBurst(boss, 'star', 5);
-    } else if (boss.typeId === 'leviathan' || boss.bossKind === 'leviathan') {
-      spawnBossOrbitDroneBurst(boss, 'wave', 5);
+  if (typeof spawnBossOrbitDroneBurst === "function") {
+    if (boss.typeId === "boss_manta") {
+      spawnBossOrbitDroneBurst(boss, "star", 5);
+    } else if (boss.typeId === "leviathan" || boss.bossKind === "leviathan") {
+      spawnBossOrbitDroneBurst(boss, "wave", 5);
     }
   }
 
-  if (boss.typeId === 'leviathan' || boss.bossKind === 'leviathan') {
-    if (typeof spawnLeviathanWaveBeams === 'function') {
+  const heavyDamage = getBossTelegraphedAttackDamage(boss);
+
+  if (boss.typeId === "leviathan" || boss.bossKind === "leviathan") {
+    if (typeof spawnLeviathanWaveBeams === "function") {
       spawnLeviathanWaveBeams(boss);
     }
 
     if (Math.random() < 0.34) {
       const horizontal = Math.random() < 0.5;
-      const laneThickness = rand(90, 130);
+      const laneThickness = rand(96, 138);
       const laneLength = horizontal ? STATE.world.width - 120 : STATE.world.height - 120;
       const x = horizontal ? STATE.world.width * 0.5 : clamp(p.x + rand(-120, 120), 90, STATE.world.width - 90);
       const y = horizontal ? clamp(p.y + rand(-120, 120), 90, STATE.world.height - 90) : STATE.world.height * 0.5;
 
       STATE.hazards.push({
-        kind: 'laser_wall',
+        kind: "laser_wall",
         x,
         y,
         width: horizontal ? laneLength : laneThickness,
         height: horizontal ? laneThickness : laneLength,
-        telegraph: 1.15,
-        life: 3.8,
-        damage: boss.damage * 1.1,
+        telegraph: 1.35,
+        life: 4.0,
+        damage: heavyDamage,
         blocksMovement: true,
-        color: 'rgba(170,120,255,0.26)',
-        stroke: '#ead7ff'
+        color: "rgba(170,120,255,0.26)",
+        stroke: "#ead7ff"
       });
       return;
     }
 
-    if (Math.random() < 0.52) {
-      const radius = rand(150, 220);
+    if (Math.random() < 0.56) {
+      const radius = rand(165, 235);
       const x = clamp(p.x + rand(-90, 90), radius + 8, STATE.world.width - radius - 8);
       const y = clamp(p.y + rand(-90, 90), radius + 8, STATE.world.height - radius - 8);
 
       STATE.hazards.push({
-        kind: 'mega_bomb',
+        kind: "mega_bomb",
         x,
         y,
         radius,
-        telegraph: 1.55,
-        life: 1.95,
-        damage: boss.damage * 1.45,
-        color: 'rgba(255, 110, 150, 0.28)',
-        stroke: '#ffd0dd'
+        telegraph: 1.75,
+        life: 2.15,
+        damage: heavyDamage,
+        color: "rgba(255,110,150,0.28)",
+        stroke: "#ffd0dd"
       });
       return;
     }
@@ -649,66 +658,65 @@ function spawnBossHazard(boss) {
     const cx = clamp((Math.random() < 0.55 ? p.x : boss.x) + rand(-90, 90), 180, STATE.world.width - 180);
     const cy = clamp((Math.random() < 0.55 ? p.y : boss.y) + rand(-90, 90), 180, STATE.world.height - 180);
     const innerRadius = rand(48, 78);
-    const outerRadius = innerRadius + rand(70, 118);
+    const outerRadius = innerRadius + rand(78, 126);
 
     STATE.hazards.push({
-      kind: 'ring',
+      kind: "ring",
       x: cx,
       y: cy,
       innerRadius,
       radius: outerRadius,
-      telegraph: 1.05,
-      life: 1.24,
-      damage: boss.damage * 0.95,
-      color: 'rgba(160,120,255,0.42)',
-      stroke: '#d7c3ff'
+      telegraph: 1.25,
+      life: 1.45,
+      damage: heavyDamage,
+      color: "rgba(160,120,255,0.42)",
+      stroke: "#d7c3ff"
     });
     return;
   }
 
-  if (boss.typeId === 'boss_manta') {
+  if (boss.typeId === "boss_manta") {
     if (Math.random() < 0.45) {
       const horizontal = Math.random() < 0.5;
-      const laneThickness = rand(70, 100);
+      const laneThickness = rand(72, 108);
       const laneLength = horizontal ? STATE.world.width - 140 : STATE.world.height - 140;
       const x = horizontal ? STATE.world.width * 0.5 : clamp(p.x + rand(-100, 100), 90, STATE.world.width - 90);
       const y = horizontal ? clamp(p.y + rand(-100, 100), 90, STATE.world.height - 90) : STATE.world.height * 0.5;
 
       STATE.hazards.push({
-        kind: 'laser_wall',
+        kind: "laser_wall",
         x,
         y,
         width: horizontal ? laneLength : laneThickness,
         height: horizontal ? laneThickness : laneLength,
-        telegraph: 0.95,
-        life: 3.0,
-        damage: boss.damage,
+        telegraph: 1.15,
+        life: 3.2,
+        damage: heavyDamage,
         blocksMovement: true,
-        color: 'rgba(110,220,255,0.24)',
-        stroke: '#c8f3ff'
+        color: "rgba(110,220,255,0.24)",
+        stroke: "#c8f3ff"
       });
       return;
     }
 
     const horizontal = Math.random() < 0.5;
-    const laneThickness = rand(88, 132);
+    const laneThickness = rand(90, 138);
     const laneLength = horizontal ? STATE.world.width - 120 : STATE.world.height - 120;
     const x = horizontal ? STATE.world.width * 0.5 : clamp((Math.random() < 0.65 ? p.x : boss.x) + rand(-150, 150), 80, STATE.world.width - 80);
     const y = horizontal ? clamp((Math.random() < 0.65 ? p.y : boss.y) + rand(-150, 150), 80, STATE.world.height - 80) : STATE.world.height * 0.5;
 
     STATE.hazards.push({
-      kind: 'lane',
+      kind: "lane",
       x,
       y,
       width: horizontal ? laneLength : laneThickness,
       height: horizontal ? laneThickness : laneLength,
-      telegraph: 0.9,
-      life: 1.05,
-      damage: boss.damage * 0.82,
-      color: 'rgba(110,220,255,0.34)',
-      stroke: '#c8f3ff'
+      telegraph: 1.05,
+      life: 1.2,
+      damage: heavyDamage,
+      color: "rgba(110,220,255,0.34)",
+      stroke: "#c8f3ff"
     });
-    return;
   }
 }
 
@@ -717,17 +725,17 @@ function spawnLeviathanWaveBeams(boss) {
   if (!boss || !p) return;
 
   const horizontal = Math.random() < 0.5;
-  const gap = rand(90, 130);
-  const thickness = rand(52, 72);
-  const life = 1.9;
-  const telegraph = 0.95;
-  const damage = boss.damage * 1.05;
+  const gap = rand(92, 132);
+  const thickness = rand(56, 76);
+  const life = 2.0;
+  const telegraph = 1.15;
+  const damage = getBossTelegraphedAttackDamage(boss);
 
   if (horizontal) {
     const centerY = clamp(p.y + rand(-120, 120), 120, STATE.world.height - 120);
 
     STATE.hazards.push({
-      kind: 'wave_beam',
+      kind: "wave_beam",
       x: STATE.world.width * 0.5,
       y: clamp(centerY - gap, thickness, STATE.world.height - thickness),
       width: STATE.world.width - 120,
@@ -736,12 +744,12 @@ function spawnLeviathanWaveBeams(boss) {
       life,
       damage,
       blocksMovement: false,
-      color: 'rgba(120,200,255,0.30)',
-      stroke: '#c9f4ff'
+      color: "rgba(120,200,255,0.30)",
+      stroke: "#c9f4ff"
     });
 
     STATE.hazards.push({
-      kind: 'wave_beam',
+      kind: "wave_beam",
       x: STATE.world.width * 0.5,
       y: clamp(centerY + gap, thickness, STATE.world.height - thickness),
       width: STATE.world.width - 120,
@@ -750,14 +758,14 @@ function spawnLeviathanWaveBeams(boss) {
       life,
       damage,
       blocksMovement: false,
-      color: 'rgba(120,200,255,0.30)',
-      stroke: '#c9f4ff'
+      color: "rgba(120,200,255,0.30)",
+      stroke: "#c9f4ff"
     });
   } else {
     const centerX = clamp(p.x + rand(-120, 120), 120, STATE.world.width - 120);
 
     STATE.hazards.push({
-      kind: 'wave_beam',
+      kind: "wave_beam",
       x: clamp(centerX - gap, thickness, STATE.world.width - thickness),
       y: STATE.world.height * 0.5,
       width: thickness,
@@ -766,12 +774,12 @@ function spawnLeviathanWaveBeams(boss) {
       life,
       damage,
       blocksMovement: false,
-      color: 'rgba(120,200,255,0.30)',
-      stroke: '#c9f4ff'
+      color: "rgba(120,200,255,0.30)",
+      stroke: "#c9f4ff"
     });
 
     STATE.hazards.push({
-      kind: 'wave_beam',
+      kind: "wave_beam",
       x: clamp(centerX + gap, thickness, STATE.world.width - thickness),
       y: STATE.world.height * 0.5,
       width: thickness,
@@ -780,8 +788,8 @@ function spawnLeviathanWaveBeams(boss) {
       life,
       damage,
       blocksMovement: false,
-      color: 'rgba(120,200,255,0.30)',
-      stroke: '#c9f4ff'
+      color: "rgba(120,200,255,0.30)",
+      stroke: "#c9f4ff"
     });
   }
 }
@@ -809,6 +817,94 @@ function pointInBossHazard(hz, x, y, pad = 0) {
   }
 
   return d <= (hz.radius || 0) + pad;
+}
+
+function getActiveStageData() {
+  if (typeof getCurrentMap === "function") {
+    const stage = getCurrentMap();
+    if (stage) return stage;
+  }
+  return STATE.mapData?.stages?.[0] || null;
+}
+
+function isPointInsideStageRect(x, y, rect) {
+  if (!rect) return false;
+  return (
+    x >= Number(rect.x || 0) &&
+    y >= Number(rect.y || 0) &&
+    x <= Number(rect.x || 0) + Number(rect.w || 0) &&
+    y <= Number(rect.y || 0) + Number(rect.h || 0)
+  );
+}
+
+function getMapTrapAt(x, y) {
+  const stage = getActiveStageData();
+  const traps = Array.isArray(stage?.traps) ? stage.traps : [];
+  let best = null;
+
+  for (const trap of traps) {
+    if (!isPointInsideStageRect(x, y, trap)) continue;
+    if (!best || Number(trap.damage || 0) > Number(best.damage || 0)) {
+      best = trap;
+    }
+  }
+
+  return best;
+}
+
+function getTrapDamageRate(trap) {
+  if (!trap) return 0;
+  const raw = Number(trap.damage || 0);
+
+  // map_data.json の damage: 10 / 12 / 14 / 15 を
+  // そのまま「毎秒10% / 12% / 14% / 15%」として扱う
+  if (raw > 1) return raw / 100;
+
+  return Math.max(0, raw);
+}
+
+function applyMapDamage(dt) {
+  const p = STATE.player;
+  if (!p || p.hp <= 0) return;
+
+  const trap = getMapTrapAt(p.x, p.y);
+
+  if (!trap) {
+    p._mapTrapAccum = 0;
+    return;
+  }
+
+  p._mapTrapAccum = Number(p._mapTrapAccum || 0) + dt;
+
+  // 0.25秒ごとの割合ダメージTick
+  const tickSpan = 0.25;
+  if (p._mapTrapAccum < tickSpan) return;
+
+  const ticks = Math.floor(p._mapTrapAccum / tickSpan);
+  p._mapTrapAccum -= ticks * tickSpan;
+
+  const ratePerSec = getTrapDamageRate(trap);
+  const baseDamage = p.maxHp * ratePerSec * tickSpan * ticks;
+
+  // ダメージ床は割合ベース。防御は軽く効かせる
+  const reduced = Math.max(1, baseDamage - (p.stats.armor || 0) * 0.35 * ticks);
+
+  if (typeof setLastDamageCause === "function") {
+    setLastDamageCause({
+      id: "map_trap",
+      label: "ダメージ床"
+    });
+  }
+
+  p.hp = Math.max(0, p.hp - reduced);
+  p.damageFlash = Math.max(Number(p.damageFlash || 0), 0.12);
+
+  if (STATE.scoreState) {
+    STATE.scoreState.noDamageTimer = 0;
+    STATE.scoreState.noDamageTier = 0;
+    STATE.scoreState.killChainTimer = 0;
+    STATE.scoreState.killChainCount = 0;
+  }
 }
 
 function updateBossHazards(dt) {

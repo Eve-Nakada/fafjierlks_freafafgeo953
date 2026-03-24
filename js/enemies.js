@@ -102,6 +102,38 @@ function applyBossShieldDamage(enemy, damage) {
   return true;
 }
 
+function makeEliteEnemy(enemy, options = {}) {
+  if (!enemy) return null;
+
+  const hpMul = Math.max(1, Number(options.hpMul || 3));
+  const shieldHits = Math.max(1, Math.round(Number(options.shieldHits || 1)));
+
+  enemy.isElite = true;
+  enemy.elitePattern = options.pattern || "elite";
+  enemy.eliteShieldHits = shieldHits;
+  enemy.eliteShieldMaxHits = shieldHits;
+
+  enemy.hp = Math.max(1, Math.round(Number(enemy.hp || 1) * hpMul));
+  enemy.maxHp = enemy.hp;
+
+  enemy.gold = Math.max(Number(enemy.gold || 0), Number(options.goldBonus || 0) + Number(enemy.gold || 0));
+  enemy.xp = Math.max(Number(enemy.xp || 0), Number(options.xpBonus || 0) + Number(enemy.xp || 0));
+
+  return enemy;
+}
+
+function consumeEliteBarrierHit(enemy) {
+  if (!enemy?.isElite) return false;
+  if ((enemy.eliteShieldHits || 0) <= 0) return false;
+
+  enemy.eliteShieldHits = Math.max(0, Number(enemy.eliteShieldHits || 0) - 1);
+  enemy.damageFlash = 0.08;
+
+  addEffect?.(enemy.x, enemy.y, Math.max(18, (enemy.r || 18) * 1.6), "#8de8ff", 0.14, 0.16);
+
+  return true;
+}
+
 function cloneEnemyAttacks(typeId) {
   const def = getEnemyDef(typeId) || {};
   return (def.attacks || []).map((a) => ({
@@ -158,7 +190,7 @@ function spawnEnemy(typeId, x, y, isBoss = false, behavior = 'normal') {
   return enemy;
 }
 
-function spawnBossOrbitDroneBurst(boss, kind = 'star', count = 5) {
+function spawnBossOrbitDroneBurst(boss, kind = "star", count = 5) {
   if (!boss) return;
   if (!Array.isArray(boss.attackDrones)) boss.attackDrones = [];
 
@@ -167,6 +199,7 @@ function spawnBossOrbitDroneBurst(boss, kind = 'star', count = 5) {
 
   const spawnCount = count - liveCount;
   const baseAngle = rand(0, Math.PI * 2);
+  const heavyDamage = (kind === "wave") ? 400 : 200;
 
   for (let i = 0; i < spawnCount; i++) {
     boss.attackDrones.push({
@@ -174,18 +207,18 @@ function spawnBossOrbitDroneBurst(boss, kind = 'star', count = 5) {
       kind,
       angle: baseAngle + (Math.PI * 2 * i) / Math.max(1, spawnCount),
       orbitRadius: boss.r + getBossBaseSize(boss) * 0.42,
-      orbitSpeed: kind === 'wave' ? 1.7 : 2.1,
-      hoverTime: kind === 'wave' ? 1.5 : 1.25,
-      chargeSpeed: kind === 'wave' ? 330 : 380,
-      phase: 'orbit',
+      orbitSpeed: kind === "wave" ? 1.7 : 2.1,
+      hoverTime: kind === "wave" ? 1.7 : 1.4,
+      chargeSpeed: kind === "wave" ? 340 : 390,
+      phase: "orbit",
       x: boss.x,
       y: boss.y,
       vx: 0,
       vy: 0,
       rot: 0,
-      size: kind === 'wave' ? 34 : 26,
-      damage: boss.damage * (kind === 'wave' ? 0.95 : 0.85),
-      life: 5.0,
+      size: kind === "wave" ? 36 : 28,
+      damage: heavyDamage,
+      life: 5.4,
       dead: false
     });
   }
@@ -833,6 +866,11 @@ function damageEnemy(enemy, damage, source = null) {
 
   enemy.damageFlash = 0.12;
 
+  if (enemy.isElite && (enemy.eliteShieldHits || 0) > 0) {
+    consumeEliteBarrierHit(enemy);
+    return true;
+  }
+
   if (enemy.isBoss && enemy.shieldActive) {
     applyBossShieldDamage(enemy, dmg);
     return true;
@@ -1014,15 +1052,30 @@ function renderEnemyHpBar(ctx, enemy, x, y, size = 40) {
   const ratio = clamp((enemy.hp || 0) / Math.max(1, enemy.maxHp || 1), 0, 1);
 
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.38)';
+  ctx.fillStyle = "rgba(0,0,0,0.38)";
   ctx.fillRect(x - w * 0.5, top, w, h);
 
-  ctx.fillStyle = enemy.isBoss ? '#ff8f70' : '#8fffaa';
+  ctx.fillStyle = enemy.isBoss ? "#ff8f70" : enemy.isElite ? "#ffd166" : "#8fffaa";
   ctx.fillRect(x - w * 0.5, top, w * ratio, h);
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+  ctx.strokeStyle = "rgba(255,255,255,0.16)";
   ctx.lineWidth = 1;
   ctx.strokeRect(x - w * 0.5, top, w, h);
+
+  if (enemy.isElite && (enemy.eliteShieldMaxHits || 0) > 0) {
+    const total = Math.max(1, Number(enemy.eliteShieldMaxHits || 0));
+    const remain = Math.max(0, Number(enemy.eliteShieldHits || 0));
+    const dotY = top - 7;
+    const startX = x - ((total - 1) * 6) * 0.5;
+
+    for (let i = 0; i < total; i++) {
+      ctx.fillStyle = i < remain ? "#8de8ff" : "rgba(255,255,255,0.18)";
+      ctx.beginPath();
+      ctx.arc(startX + i * 6, dotY, 2.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   ctx.restore();
 }
 
