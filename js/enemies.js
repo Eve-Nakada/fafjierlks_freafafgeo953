@@ -231,45 +231,70 @@ function spawnBossOrbitDroneBurst(boss, kind = "star", count = 5) {
   if (!Array.isArray(boss.attackDrones)) boss.attackDrones = [];
 
   const liveCount = boss.attackDrones.filter((d) => !d.dead).length;
-  const cap = kind === "wave" ? count : Math.max(count, 7);
+  const cap = Math.max(count, kind === "wave" ? 8 : 7);
   if (liveCount >= cap) return;
 
   const spawnCount = cap - liveCount;
   const baseAngle = rand(0, Math.PI * 2);
 
+  const modeTable = kind === "wave"
+    ? ["charge", "boomerang", "turret", "spiral", "cross", "homing"]
+    : ["charge", "boomerang", "turret", "spiral", "cross", "homing"];
+
   for (let i = 0; i < spawnCount; i++) {
-    let starMode = "charge";
-
-    if (kind === "star") {
-      const roll = i % 3;
-      if (roll === 0) starMode = "charge";
-      else if (roll === 1) starMode = "boomerang";
-      else starMode = "turret";
-    }
-
+    const mode = modeTable[i % modeTable.length];
     const isWave = kind === "wave";
 
     boss.attackDrones.push({
       id: `boss_drone_${Math.random().toString(36).slice(2)}`,
       kind,
-      mode: isWave ? "charge" : starMode,
+      mode,
       angle: baseAngle + (Math.PI * 2 * i) / Math.max(1, spawnCount),
-      orbitRadius: boss.r + getBossBaseSize(boss) * (isWave ? 0.42 : 0.46),
-      orbitSpeed: isWave ? 1.7 : 2.25,
-      hoverTime: isWave ? 1.7 : rand(0.7, 1.25),
-      chargeSpeed: isWave ? 340 : (starMode === "boomerang" ? 330 : 400),
+
+      orbitRadius: boss.r + getBossBaseSize(boss) * (isWave ? 0.44 : 0.46),
+      orbitSpeed: isWave ? 1.85 : 2.35,
+      hoverTime: isWave ? rand(0.9, 1.45) : rand(0.7, 1.2),
+
+      chargeSpeed:
+        mode === "boomerang" ? (isWave ? 340 : 330) :
+        mode === "homing" ? (isWave ? 290 : 280) :
+        (isWave ? 380 : 410),
+
       phase: "orbit",
       x: boss.x,
       y: boss.y,
       vx: 0,
       vy: 0,
       rot: 0,
-      size: isWave ? 36 : (starMode === "turret" ? 30 : 28),
-      damage: isWave ? 400 : (starMode === "turret" ? 140 : 200),
-      life: isWave ? 5.4 : 6.0,
-      shotTimer: starMode === "turret" ? 0.32 : 0,
-      burstLeft: starMode === "turret" ? 3 : 0,
-      returnDelay: starMode === "boomerang" ? 0.42 : 0,
+
+      size:
+        mode === "turret" ? (isWave ? 34 : 30) :
+        mode === "cross" ? (isWave ? 38 : 30) :
+        (isWave ? 36 : 28),
+
+      damage:
+        mode === "turret" ? (isWave ? 180 : 140) :
+        mode === "homing" ? (isWave ? 220 : 160) :
+        (isWave ? 400 : 200),
+
+      life: isWave ? 6.4 : 5.8,
+
+      shotTimer:
+        mode === "turret" ? 0.22 :
+        mode === "spiral" ? 0.08 :
+        mode === "cross" ? 0.36 :
+        mode === "homing" ? 0.42 :
+        0,
+
+      burstLeft:
+        mode === "turret" ? 4 :
+        mode === "spiral" ? 18 :
+        mode === "cross" ? 3 :
+        mode === "homing" ? 4 :
+        0,
+
+      spiralAngle: rand(0, Math.PI * 2),
+      returnDelay: mode === "boomerang" ? 0.42 : 0,
       dead: false
     });
   }
@@ -281,23 +306,91 @@ function updateBossAttackDrones(boss, dt) {
   const p = STATE.player;
   const next = [];
 
+  const emitCrossShot = (x, y, speed, damage, radius, color) => {
+    const dirs = [
+      { x: 1, y: 0 },
+      { x: -1, y: 0 },
+      { x: 0, y: 1 },
+      { x: 0, y: -1 }
+    ];
+  
+    for (const dir of dirs) {
+      spawnEnemyProjectile({
+        x,
+        y,
+        vx: dir.x * speed,
+        vy: dir.y * speed,
+        life: 1.9,
+        radius,
+        damage,
+        color,
+        visual: "cross"
+      });
+    }
+  };
+
+  const emitSpiralShot = (d, speed, damage, radius, color) => {
+    d.spiralAngle = Number(d.spiralAngle || 0) + 0.52;
+    for (let k = 0; k < 2; k++) {
+      const ang = d.spiralAngle + Math.PI * k;
+      spawnEnemyProjectile({
+        x: d.x,
+        y: d.y,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed,
+        life: 2.2,
+        radius,
+        damage,
+        color,
+        spin: d.kind === "wave" ? 3.8 : 3.2,
+        visual: "spiral"
+      });
+    }
+  };
+
+  const emitHomingMiniStar = (d, speed, damage, radius, color, turnRate) => {
+    const base = angle(d.x, d.y, p.x, p.y);
+    for (let i = -1; i <= 1; i++) {
+      const ang = base + i * 0.18;
+      spawnEnemyProjectile({
+        type: "homing",
+        x: d.x,
+        y: d.y,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed,
+        life: 2.8,
+        radius,
+        damage,
+        color,
+        turnRate,
+        targetId: "player",
+        trail: true,
+        visual: "star"
+      });
+    }
+  };
+
   for (const d of boss.attackDrones) {
     if (!d || d.dead) continue;
 
     d.life -= dt;
     if (d.life <= 0) continue;
 
+    const isWave = d.kind === "wave";
+    const bulletColor = isWave ? "#bda7ff" : "#ffe28a";
+    const bulletColor2 = isWave ? "#d8c8ff" : "#ffd59c";
+
     if (d.phase === "orbit") {
       d.hoverTime -= dt;
       d.angle += (d.orbitSpeed || 0) * dt;
       d.x = boss.x + Math.cos(d.angle) * (d.orbitRadius || 0);
       d.y = boss.y + Math.sin(d.angle) * (d.orbitRadius || 0);
-      d.rot += dt * 5.5;
+      d.rot += dt * (isWave ? 4.4 : 5.5);
 
       if (d.hoverTime <= 0) {
         const ang = angle(d.x, d.y, p.x, p.y);
 
-        if (d.mode === "turret") {
+        if (d.mode === "turret" || d.mode === "spiral" || d.mode === "cross" || d.mode === "homing") {
           d.phase = "turret";
           d.rot = ang;
         } else {
@@ -311,43 +404,101 @@ function updateBossAttackDrones(boss, dt) {
       d.rot = angle(d.x, d.y, p.x, p.y);
       d.shotTimer = Math.max(0, Number(d.shotTimer || 0) - dt);
 
-      if (d.shotTimer <= 0 && (d.burstLeft || 0) > 0) {
-        d.shotTimer = 0.24;
+      if (d.mode === "turret" && d.shotTimer <= 0 && (d.burstLeft || 0) > 0) {
+        d.shotTimer = isWave ? 0.18 : 0.22;
         d.burstLeft -= 1;
 
-        // 正面3WAY
         const base = angle(d.x, d.y, p.x, p.y);
         for (let i = -1; i <= 1; i++) {
-          const ang = base + i * 0.24;
+          const ang = base + i * (isWave ? 0.18 : 0.24);
           spawnEnemyProjectile({
             x: d.x,
             y: d.y,
-            vx: Math.cos(ang) * 240,
-            vy: Math.sin(ang) * 240,
-            life: 1.8,
-            radius: 7,
-            damage: 70,
-            color: "#ffe28a"
+            vx: Math.cos(ang) * (isWave ? 260 : 240),
+            vy: Math.sin(ang) * (isWave ? 260 : 240),
+            life: 1.9,
+            radius: isWave ? 8 : 7,
+            damage: isWave ? 90 : 70,
+            color: bulletColor
           });
         }
 
-        // 最後にリング弾
         if (d.burstLeft <= 0) {
-          for (let i = 0; i < 8; i++) {
-            const ang = (Math.PI * 2 * i) / 8;
+          for (let i = 0; i < (isWave ? 10 : 8); i++) {
+            const ang = (Math.PI * 2 * i) / (isWave ? 10 : 8);
             spawnEnemyProjectile({
               x: d.x,
               y: d.y,
-              vx: Math.cos(ang) * 190,
-              vy: Math.sin(ang) * 190,
-              life: 1.7,
+              vx: Math.cos(ang) * (isWave ? 210 : 190),
+              vy: Math.sin(ang) * (isWave ? 210 : 190),
+              life: 1.8,
               radius: 6,
-              damage: 55,
-              color: "#ffd59c"
+              damage: isWave ? 65 : 55,
+              color: bulletColor2
             });
           }
           continue;
         }
+      }
+
+      if (d.mode === "spiral" && d.shotTimer <= 0 && (d.burstLeft || 0) > 0) {
+        d.shotTimer = isWave ? 0.065 : 0.08;
+        d.burstLeft -= 1;
+        emitSpiralShot(
+          d,
+          isWave ? 230 : 210,
+          isWave ? 62 : 48,
+          isWave ? 7 : 6,
+          bulletColor
+        );
+        if (d.burstLeft <= 0) continue;
+      }
+
+      if (d.mode === "cross" && d.shotTimer <= 0 && (d.burstLeft || 0) > 0) {
+        d.shotTimer = isWave ? 0.28 : 0.36;
+        d.burstLeft -= 1;
+
+        emitCrossShot(
+          d.x,
+          d.y,
+          isWave ? 240 : 210,
+          isWave ? 82 : 60,
+          isWave ? 8 : 6,
+          bulletColor2
+        );
+
+        const base = angle(d.x, d.y, p.x, p.y) + Math.PI / 4;
+        for (let i = 0; i < 4; i++) {
+          const ang = base + (Math.PI * 2 * i) / 4;
+          spawnEnemyProjectile({
+            x: d.x,
+            y: d.y,
+            vx: Math.cos(ang) * (isWave ? 220 : 190),
+            vy: Math.sin(ang) * (isWave ? 220 : 190),
+            life: 1.9,
+            radius: isWave ? 7 : 6,
+            damage: isWave ? 74 : 52,
+            color: bulletColor
+          });
+        }
+
+        if (d.burstLeft <= 0) continue;
+      }
+
+      if (d.mode === "homing" && d.shotTimer <= 0 && (d.burstLeft || 0) > 0) {
+        d.shotTimer = isWave ? 0.34 : 0.42;
+        d.burstLeft -= 1;
+
+        emitHomingMiniStar(
+          d,
+          isWave ? 180 : 165,
+          isWave ? 76 : 56,
+          isWave ? 7 : 6,
+          bulletColor,
+          isWave ? 5.2 : 4.6
+        );
+
+        if (d.burstLeft <= 0) continue;
       }
     } else if (d.phase === "charge") {
       d.x += (d.vx || 0) * dt;
@@ -400,32 +551,164 @@ function renderBossAttackDrones(ctx, boss) {
 
   const cam = STATE.camera;
 
+  const drawStarShape = (ctx, spikes, outerR, innerR, fill, stroke, rot = 0) => {
+    ctx.save();
+    ctx.rotate(rot);
+    ctx.beginPath();
+    for (let i = 0; i < spikes * 2; i++) {
+      const rr = i % 2 === 0 ? outerR : innerR;
+      const a = -Math.PI * 0.5 + (Math.PI / spikes) * i;
+      const x = Math.cos(a) * rr;
+      const y = Math.sin(a) * rr;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = Math.max(1.5, outerR * 0.12);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  const drawCrossShape = (ctx, size, fill, stroke, rot = 0) => {
+    const arm = size * 0.22;
+    const len = size * 0.52;
+    ctx.save();
+    ctx.rotate(rot);
+    ctx.beginPath();
+    ctx.rect(-arm, -len, arm * 2, len * 2);
+    ctx.rect(-len, -arm, len * 2, arm * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = Math.max(1.5, size * 0.08);
+    ctx.stroke();
+    ctx.restore();
+  };
+
   for (const d of boss.attackDrones) {
+    if (!d || d.dead) continue;
+
     const x = d.x - cam.x;
     const y = d.y - cam.y;
-    const key = d.kind === 'wave' ? 'boss_wave_drone' : 'boss_star_drone';
+    const key = d.kind === "wave" ? "boss_wave_drone" : "boss_star_drone";
+    const isWave = d.kind === "wave";
 
+    const baseGlow = isWave ? "rgba(189,167,255,0.30)" : "rgba(255,226,138,0.30)";
+    const coreFill = isWave ? "#cdbdff" : "#ffe28a";
+    const coreFill2 = isWave ? "#9f86ff" : "#ffbf5f";
+    const stroke = isWave ? "#efe7ff" : "#fff5c2";
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    // 外周グロー
+    ctx.globalAlpha = 0.75;
+    const glowR = d.size * (d.mode === "cross" ? 0.72 : 0.62);
+    ctx.fillStyle = baseGlow;
+    ctx.beginPath();
+    ctx.arc(0, 0, glowR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 画像があればベースとして使う
     const ok = drawRotatedSpriteFrame(
       ctx,
       key,
       0,
-      x,
-      y,
+      0,
+      0,
       d.size,
       d.size,
       d.rot || 0
     );
 
+    // 画像の有無に関わらず、モードごとの上描き演出を追加
     if (!ok) {
+      if (d.mode === "cross") {
+        drawCrossShape(ctx, d.size * 0.72, coreFill, stroke, d.rot || 0);
+      } else {
+        drawStarShape(
+          ctx,
+          isWave ? 5 : 4,
+          d.size * 0.34,
+          d.size * 0.16,
+          coreFill,
+          stroke,
+          d.rot || 0
+        );
+      }
+    } else {
       ctx.save();
-      ctx.translate(x, y);
       ctx.rotate(d.rot || 0);
-      ctx.fillStyle = d.kind === 'wave' ? '#9fe7ff' : '#ffe28a';
-      ctx.beginPath();
-      ctx.arc(0, 0, d.size * 0.32, 0, Math.PI * 2);
-      ctx.fill();
+
+      if (d.mode === "cross") {
+        ctx.globalAlpha = 0.55;
+        drawCrossShape(ctx, d.size * 0.62, "rgba(255,255,255,0.18)", stroke, 0);
+      } else {
+        ctx.globalAlpha = 0.50;
+        drawStarShape(
+          ctx,
+          isWave ? 5 : 4,
+          d.size * 0.28,
+          d.size * 0.12,
+          "rgba(255,255,255,0.16)",
+          "rgba(255,255,255,0.45)",
+          0
+        );
+      }
+
       ctx.restore();
     }
+
+    // 渦巻き型は回転リング追加
+    if (d.mode === "spiral") {
+      ctx.save();
+      ctx.rotate((d.rot || 0) + STATE.time * (isWave ? 2.4 : 3.0));
+      ctx.strokeStyle = isWave ? "rgba(216,200,255,0.85)" : "rgba(255,213,156,0.88)";
+      ctx.lineWidth = Math.max(1.4, d.size * 0.06);
+
+      for (let k = 0; k < 2; k++) {
+        ctx.beginPath();
+        for (let i = 0; i <= 20; i++) {
+          const t = i / 20;
+          const a = t * Math.PI * 1.5 + k * Math.PI;
+          const rr = d.size * (0.08 + t * 0.34);
+          const px = Math.cos(a) * rr;
+          const py = Math.sin(a) * rr;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 追尾型は尾を強調
+    if (d.mode === "homing" || d.phase === "charge" || d.phase === "return") {
+      const tailLen = d.size * 0.60;
+      ctx.save();
+      ctx.rotate(d.rot || 0);
+      const grad = ctx.createLinearGradient(-tailLen, 0, 0, 0);
+      grad.addColorStop(0, "rgba(255,255,255,0)");
+      grad.addColorStop(1, isWave ? "rgba(189,167,255,0.75)" : "rgba(255,226,138,0.75)");
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = Math.max(2, d.size * 0.10);
+      ctx.beginPath();
+      ctx.moveTo(-tailLen, 0);
+      ctx.lineTo(-d.size * 0.12, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 中心コア
+    ctx.fillStyle = coreFill2;
+    ctx.beginPath();
+    ctx.arc(0, 0, d.size * 0.10, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
   }
 }
 
@@ -935,7 +1218,16 @@ function spawnEnemyProjectile(opts) {
     radius: opts.radius || 5,
     damage: opts.damage || 4,
     color: opts.color || "#ffd0a0",
-    triggered: false
+    triggered: false,
+
+    turnRate: Number(opts.turnRate || 0),
+    targetId: opts.targetId || null,
+    spin: Number(opts.spin || 0),
+    age: 0,
+    trail: !!opts.trail,
+
+    // 描画強化用
+    visual: opts.visual || null
   });
 }
 
@@ -944,13 +1236,23 @@ function updateEnemyProjectiles(dt) {
   if (!p) return;
 
   const next = [];
+
   for (const b of STATE.enemyBullets || []) {
     b.life -= dt;
+    b.age = Number(b.age || 0) + dt;
     if (b.life <= 0) continue;
 
     const projectileCause = {
-      id: b.type === "pulse" ? "enemy_pulse" : "enemy_projectile",
-      label: b.type === "pulse" ? "敵パルス弾" : "敵弾"
+      id: b.type === "pulse"
+        ? "enemy_pulse"
+        : b.type === "homing"
+        ? "enemy_homing_projectile"
+        : "enemy_projectile",
+      label: b.type === "pulse"
+        ? "敵パルス弾"
+        : b.type === "homing"
+        ? "追尾弾"
+        : "敵弾"
     };
 
     if (b.type === "pulse") {
@@ -974,8 +1276,46 @@ function updateEnemyProjectiles(dt) {
       continue;
     }
 
+    if (b.type === "homing") {
+      let target = null;
+
+      const barrier = getActiveBarrierDrone();
+      if (barrier) {
+        target = barrier;
+      } else if (b.targetId === "player") {
+        target = p;
+      } else {
+        target = p;
+      }
+
+      const desired = angle(b.x, b.y, target.x, target.y);
+      const current = Math.atan2(b.vy || 0, b.vx || 0);
+      let diff = desired - current;
+
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+
+      const speed = Math.max(1, Math.hypot(b.vx || 0, b.vy || 0));
+      const turn = Math.max(0, Number(b.turnRate || 4.5));
+      const newAngle = current + clamp(diff, -turn * dt, turn * dt);
+
+      b.vx = Math.cos(newAngle) * speed;
+      b.vy = Math.sin(newAngle) * speed;
+    }
+
     b.x += b.vx * dt;
     b.y += b.vy * dt;
+
+    if ((b.spin || 0) !== 0) {
+      const ang = Math.atan2(b.vy || 0, b.vx || 0) + b.spin * dt;
+      const speed = Math.max(1, Math.hypot(b.vx || 0, b.vy || 0));
+      b.vx = Math.cos(ang) * speed;
+      b.vy = Math.sin(ang) * speed;
+    }
+
+    if (b.trail) {
+      addEffect?.(b.x, b.y, Math.max(4, (b.radius || 5) * 1.15), b.color || "#ffd0a0", 0.08, 0.10);
+    }
 
     const barrier = getActiveBarrierDrone();
     if (barrier && dist(b.x, b.y, barrier.x, barrier.y) <= b.radius + getDroneRadius(barrier)) {
@@ -1227,33 +1567,170 @@ function renderEnemyHpBar(ctx, enemy, x, y, size = 40) {
 
 function renderEnemyProjectiles(ctx) {
   const cam = STATE.camera;
+
+  const drawStarShot = (x, y, r, fill, stroke, rot = 0, spikes = 4) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.beginPath();
+    for (let i = 0; i < spikes * 2; i++) {
+      const rr = i % 2 === 0 ? r : r * 0.45;
+      const a = -Math.PI * 0.5 + (Math.PI / spikes) * i;
+      const px = Math.cos(a) * rr;
+      const py = Math.sin(a) * rr;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = Math.max(1.2, r * 0.18);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  const drawCrossShot = (x, y, r, fill, stroke, rot = 0) => {
+    const arm = r * 0.42;
+    const len = r * 1.22;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.beginPath();
+    ctx.rect(-arm, -len, arm * 2, len * 2);
+    ctx.rect(-len, -arm, len * 2, arm * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = Math.max(1.1, r * 0.16);
+    ctx.stroke();
+    ctx.restore();
+  };
+
   for (const b of STATE.enemyBullets || []) {
+    if (!b) continue;
+
     const x = b.x - cam.x;
     const y = b.y - cam.y;
+    const age = Number(b.age || 0);
+    const vx = Number(b.vx || 0);
+    const vy = Number(b.vy || 0);
+    const speed = Math.hypot(vx, vy);
+    const ang = Math.atan2(vy || 0, vx || 1);
 
     if (b.type === "pulse") {
+      const telegraphRatio = clamp(1 - Math.max(0, Number(b.delay || 0)) / Math.max(0.001, Number(b.life || 0) + Math.max(0, Number(b.delay || 0))), 0, 1);
+      const rr = Number(b.radius || 32);
+
       ctx.save();
-      const warnAlpha = b.triggered ? 0.45 : 0.18;
-      ctx.globalAlpha = warnAlpha;
-      ctx.fillStyle = b.color;
+      ctx.translate(x, y);
+
+      ctx.globalAlpha = 0.18 + telegraphRatio * 0.18;
+      ctx.fillStyle = b.color || "rgba(255,201,153,0.28)";
       ctx.beginPath();
-      ctx.arc(x, y, b.radius, 0, Math.PI * 2);
+      ctx.arc(0, 0, rr, 0, Math.PI * 2);
       ctx.fill();
-      ctx.globalAlpha = 0.9;
-      ctx.strokeStyle = b.color;
-      ctx.lineWidth = 2;
+
+      ctx.globalAlpha = 0.45 + telegraphRatio * 0.35;
+      ctx.strokeStyle = b.color || "#ffc999";
+      ctx.lineWidth = 2 + telegraphRatio * 2;
       ctx.beginPath();
-      ctx.arc(x, y, b.radius, 0, Math.PI * 2);
+      ctx.arc(0, 0, rr * (0.86 + Math.sin(STATE.time * 10 + rr) * 0.05), 0, Math.PI * 2);
       ctx.stroke();
+
       ctx.restore();
       continue;
     }
 
+    // 追尾弾の尾
+    if (b.type === "homing" || b.trail) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ang);
+      const tail = Math.max(10, (b.radius || 6) * 3.4);
+      const grad = ctx.createLinearGradient(-tail, 0, 0, 0);
+      grad.addColorStop(0, "rgba(255,255,255,0)");
+      grad.addColorStop(1, b.color || "#ffd0a0");
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = Math.max(2, (b.radius || 6) * 0.7);
+      ctx.beginPath();
+      ctx.moveTo(-tail, 0);
+      ctx.lineTo(-(b.radius || 6) * 0.3, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // spin 付き弾は渦弾として描画
+    if ((b.spin || 0) !== 0) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(age * 8 + ang);
+
+      ctx.strokeStyle = b.color || "#ffd0a0";
+      ctx.lineWidth = Math.max(1.4, (b.radius || 6) * 0.18);
+
+      for (let k = 0; k < 2; k++) {
+        ctx.beginPath();
+        for (let i = 0; i <= 18; i++) {
+          const t = i / 18;
+          const a = t * Math.PI * 1.4 + k * Math.PI;
+          const rr = (b.radius || 6) * (0.2 + t * 0.95);
+          const px = Math.cos(a) * rr;
+          const py = Math.sin(a) * rr;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(1.5, (b.radius || 6) * 0.22), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      continue;
+    }
+
+    // 十字弾らしい見た目
+    if (Math.abs(Math.abs(vx) - Math.abs(vy)) < 24 && speed > 120 && (b.radius || 0) >= 6.5) {
+      drawCrossShot(
+        x,
+        y,
+        b.radius || 6,
+        b.color || "#ffd59c",
+        "rgba(255,255,255,0.8)",
+        ang + Math.PI * 0.25
+      );
+      continue;
+    }
+
+    // 追尾小星弾や星系の見た目
+    if (b.type === "homing" || (b.radius || 0) >= 6) {
+      drawStarShot(
+        x,
+        y,
+        b.radius || 6,
+        b.color || "#ffe28a",
+        "rgba(255,255,255,0.78)",
+        ang + age * 2.8,
+        4
+      );
+      continue;
+    }
+
+    // 通常弾
     ctx.save();
-    ctx.fillStyle = b.color;
+    ctx.translate(x, y);
+
+    ctx.fillStyle = b.color || "#ffd0a0";
     ctx.beginPath();
-    ctx.arc(x, y, b.radius, 0, Math.PI * 2);
+    ctx.arc(0, 0, b.radius || 5, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.strokeStyle = "rgba(255,255,255,0.58)";
+    ctx.lineWidth = 1.1;
+    ctx.stroke();
+
     ctx.restore();
   }
 }
