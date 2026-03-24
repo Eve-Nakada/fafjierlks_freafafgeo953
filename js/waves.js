@@ -201,11 +201,14 @@ function spawnBalancedEliteEnemy(typeId, x, y, shieldHits, pattern) {
 
   if (typeof makeEliteEnemy === "function") {
     makeEliteEnemy(enemy, {
-      hpMul: 3,
+      hpMul: 15,
+      sizeMul: 3,
+      damageMul: 2.2,
+      speedMul: 1.12,
       shieldHits,
       pattern,
-      xpBonus: 2,
-      goldBonus: 2
+      xpBonus: 6,
+      goldBonus: 6
     });
   }
 

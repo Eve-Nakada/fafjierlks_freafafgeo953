@@ -1940,28 +1940,28 @@
     },
     "boss_manta": {
       "name": "ボススター",
-      "hp": 12000,
+      "hp": 22000,
       "speed": 76,
       "damage": 28,
       "xp": 20,
       "gold": 25,
       "spriteIndex": 0,
       "bossScale": 3,
-      "shieldHp": 3000,
+      "shieldHp": 3200,
       "shieldRespawnDelay": 10,
       "switchCount": 0
     },
     "leviathan": {
       "name": "リヴァイアサン",
-      "hp": 35000,
+      "hp": 55000,
       "speed": 82,
       "damage": 40,
       "xp": 20,
       "gold": 80,
       "spriteIndex": 0,
       "bossScale": 3,
-      "shieldHp": 6000,
-      "shieldRespawnDelay": 10,
+      "shieldHp": 6500,
+      "shieldRespawnDelay": 5,
       "switchCount": 0
     }
   },

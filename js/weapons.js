@@ -565,7 +565,10 @@ function fireMine(w, def) {
       selfSafeTimer: 0.1,
       chainCount: tuning.mineChainCount,
       chainRadius: tuning.mineChainRadius,
-      chainDamageMul: tuning.mineChainDamageMul
+      chainDamageMul: tuning.mineChainDamageMul,
+      pendingExplode: false,
+      pendingExplodeTimer: 0,
+      triggerEnemy: null
     });
   }
 }
@@ -847,6 +850,21 @@ function updateBullets(dt) {
   const next = [];
 
   for (const b of STATE.bullets) {
+    // 機雷の「起爆待ち」は通常lifeより優先して進める
+    if (b.type === "mine" && b.pendingExplode) {
+      b.pendingExplodeTimer = Math.max(0, Number(b.pendingExplodeTimer || 0) - dt);
+      b.selfSafeTimer = Math.max(0, Number(b.selfSafeTimer || 0) - dt);
+      b.life = Math.max(0, Number(b.life || 0) - dt);
+
+      if (b.pendingExplodeTimer <= 0) {
+        explodeMine(b, b.triggerEnemy || null);
+        continue;
+      }
+
+      next.push(b);
+      continue;
+    }
+
     b.life -= dt;
     b.armDelay = Math.max(0, (b.armDelay || 0) - dt);
 
@@ -866,7 +884,7 @@ function updateBullets(dt) {
       if (b.selfSafeTimer > 0) {
         b.selfSafeTimer = Math.max(0, b.selfSafeTimer - dt);
       }
-      
+
       handleMineTrigger(b);
     } else if (b.type === "field") {
       updateFieldBullet(b, dt);
@@ -988,9 +1006,40 @@ function spawnMissileSplitShots(b, enemy) {
 
 function handleMineTrigger(mine, enemy = null) {
   if (!mine || mine.exploded) return false;
+  if (mine.pendingExplode) return false;
+  if ((mine.armDelay || 0) > 0) return false;
 
-  mine.exploded = true;
-  explodeMine(mine, enemy);
+  let trigger = enemy;
+
+  if (!trigger) {
+    for (const e of STATE.enemies || []) {
+      if (!e || e.dead) continue;
+      if (dist(mine.x, mine.y, e.x, e.y) <= (mine.r || 16) + (e.r || 0)) {
+        trigger = e;
+        break;
+      }
+    }
+  }
+
+  if (!trigger) return false;
+
+  // 即爆発ではなく、接触後0.5秒で起爆
+  mine.pendingExplode = true;
+  mine.pendingExplodeTimer = 0.5;
+  mine.triggerEnemy = trigger || null;
+
+  // 起爆待ち中に自然消滅しないよう最低限の猶予を確保
+  mine.life = Math.max(Number(mine.life || 0), 0.55);
+
+  addEffect?.(
+    mine.x,
+    mine.y,
+    Math.max(14, Number(mine.warningRadius || mine.explodeRadius || mine.r || 16) * 0.42),
+    "#ffd166",
+    0.18,
+    0.10
+  );
+
   return true;
 }
 
