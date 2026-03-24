@@ -1154,27 +1154,3 @@ function getPassiveBalanceLevel(passiveId) {
   const idx = Math.max(0, Math.min(stageDef.levels.length - 1, localLv - 1));
   return stageDef.levels[idx] || null;
 }
-
-function getPassiveCurrentPattern(passiveId) {
-  const stage = getPassiveEvolutionStage(passiveId);
-  const branchId = getPassiveBranchId(passiveId);
-  const branch = getPassiveBranchDef(passiveId, branchId);
-  if (!branch) return null;
-  if (stage === 1) return branch.pattern || null;
-  if (stage >= 2) return branch.secondStage?.pattern || branch.pattern || null;
-  return null;
-}
-
-function getPassiveBalanceLevel(passiveId) {
-  const stage = getPassiveEvolutionStage(passiveId);
-  const level = getPassiveLevel(passiveId);
-  const def = getPassiveDef(passiveId);
-  if (!def?.balance?.stages) return null;
-
-  const stageKey = stage <= 0 ? "normal" : stage === 1 ? "evolution1" : "evolution2";
-  const stageDef = def.balance.stages.find(s => s.key === stageKey);
-  if (!stageDef?.levels?.length) return null;
-
-  const idx = Math.max(0, Math.min(stageDef.levels.length - 1, level - 1));
-  return stageDef.levels[idx];
-}

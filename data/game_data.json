@@ -1379,6 +1379,26 @@
             "levelLabels": [
               "ドローン解放",
               "攻撃力強化 / 進化可能"
+            ],
+            "levels": [
+              {
+                "count": 2,
+                "atk": 2,
+                "hp": 10,
+                "burstCount": 1,
+                "pierce": 1,
+                "doubleBarrel": false,
+                "fireCooldown": 0.62
+              },
+              {
+                "count": 2,
+                "atk": 5,
+                "hp": 15,
+                "burstCount": 1,
+                "pierce": 1,
+                "doubleBarrel": false,
+                "fireCooldown": 0.54
+              }
             ]
           },
           {
@@ -1387,6 +1407,26 @@
             "levelLabels": [
               "進化直後",
               "完成"
+            ],
+            "levels": [
+              {
+                "count": 2,
+                "atk": 8,
+                "hp": 20,
+                "burstCount": 2,
+                "pierce": 2,
+                "doubleBarrel": false,
+                "fireCooldown": 0.42
+              },
+              {
+                "count": 2,
+                "atk": 12,
+                "hp": 30,
+                "burstCount": 3,
+                "pierce": 2,
+                "doubleBarrel": true,
+                "fireCooldown": 0.32
+              }
             ]
           },
           {
@@ -1395,6 +1435,26 @@
             "levelLabels": [
               "第2進化直後",
               "完成"
+            ],
+            "levels": [
+              {
+                "count": 2,
+                "atk": 16,
+                "hp": 40,
+                "burstCount": 3,
+                "pierce": 3,
+                "doubleBarrel": true,
+                "fireCooldown": 0.26
+              },
+              {
+                "count": 2,
+                "atk": 22,
+                "hp": 55,
+                "burstCount": 4,
+                "pierce": 4,
+                "doubleBarrel": true,
+                "fireCooldown": 0.20
+              }
             ]
           }
         ]
@@ -1454,6 +1514,26 @@
             "levelLabels": [
               "バリア1機",
               "HP強化 / 進化可能"
+            ],
+            "levels": [
+              {
+                "count": 1,
+                "hp": 50,
+                "shieldHp": 0,
+                "orbitRadius": 52,
+                "orbitSpeed": 2.0,
+                "fieldRadius": 0,
+                "shieldArc": 0
+              },
+              {
+                "count": 1,
+                "hp": 60,
+                "shieldHp": 0,
+                "orbitRadius": 56,
+                "orbitSpeed": 2.1,
+                "fieldRadius": 0,
+                "shieldArc": 0
+              }
             ]
           },
           {
@@ -1462,6 +1542,26 @@
             "levelLabels": [
               "進化直後",
               "完成"
+            ],
+            "levels": [
+              {
+                "count": 2,
+                "hp": 70,
+                "shieldHp": 24,
+                "orbitRadius": 62,
+                "orbitSpeed": 2.25,
+                "fieldRadius": 0,
+                "shieldArc": 0.9
+              },
+              {
+                "count": 2,
+                "hp": 90,
+                "shieldHp": 36,
+                "orbitRadius": 70,
+                "orbitSpeed": 2.45,
+                "fieldRadius": 0,
+                "shieldArc": 1.1
+              }
             ]
           },
           {
@@ -1470,6 +1570,26 @@
             "levelLabels": [
               "第2進化直後",
               "完成"
+            ],
+            "levels": [
+              {
+                "count": 2,
+                "hp": 120,
+                "shieldHp": 52,
+                "orbitRadius": 78,
+                "orbitSpeed": 2.7,
+                "fieldRadius": 96,
+                "shieldArc": 1.2
+              },
+              {
+                "count": 2,
+                "hp": 150,
+                "shieldHp": 72,
+                "orbitRadius": 86,
+                "orbitSpeed": 3.0,
+                "fieldRadius": 108,
+                "shieldArc": 1.4
+              }
             ]
           }
         ]
