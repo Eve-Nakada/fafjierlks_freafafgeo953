@@ -219,7 +219,7 @@ function syncShopInventoryForWave(waveIndex) {
   }
 }
 
-function getDisplayShopItems() {
+function buildCurrentDisplayShopItems() {
   ensureShopRunState();
   const wave = getCurrentShopWave();
   const out = [];
@@ -233,11 +233,22 @@ function getDisplayShopItems() {
     out.push(item);
   }
 
+  // 新しいものが上
   out.sort((a, b) => {
-    return (a._shopOrder || 0) - (b._shopOrder || 0);
+    return (b._shopOrder || 0) - (a._shopOrder || 0);
   });
 
   return out;
+}
+
+function getDisplayShopItems() {
+  ensureShopRunState();
+
+  if (!Array.isArray(STATE._shopDisplayItems)) {
+    STATE._shopDisplayItems = buildCurrentDisplayShopItems();
+  }
+
+  return STATE._shopDisplayItems;
 }
 
 function getShopGroupKey(item) {
@@ -298,6 +309,9 @@ function openShop() {
   STATE.shopWave = getCurrentShopWave();
   syncShopInventoryForWave(STATE.shopWave);
 
+  // このタイミングでだけ並び順を更新する
+  STATE._shopDisplayItems = buildCurrentDisplayShopItems();
+
   STATE.shopOpen = true;
   STATE.paused = true;
   if (STATE.player) {
@@ -324,10 +338,15 @@ function closeShop() {
     const maxAllowed = Math.min(STATE.player.maxHp, baseHp + allowedHeal + allowedMaxHp);
     STATE.player.hp = Math.min(STATE.player.hp, maxAllowed);
   }
+
   STATE.shopOpen = false;
   STATE.shopWave = 0;
   STATE.paused = false;
   hideScreen('shopScreen');
+
+  // 次回ショップ表示時に並び順を再生成
+  STATE._shopDisplayItems = null;
+
   STATE.shopSession = { startHp: 0, startMaxHp: 0, allowedHeal: 0, allowedMaxHp: 0 };
   updateHUD();
 }

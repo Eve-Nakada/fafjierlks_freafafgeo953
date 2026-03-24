@@ -2541,6 +2541,14 @@ function renderLevelUpChoices() {
 
   ensureLevelUpChoiceStyles();
 
+  const titleEl = document.querySelector("#levelUpScreen h2");
+  const range = STATE._activeLevelUpRange || null;
+  if (titleEl) {
+    titleEl.textContent = range
+      ? `レベルアップ Lv${range.from} → Lv${range.to}`
+      : "レベルアップ";
+  }
+
   wrap.innerHTML = "";
   const choices = buildLevelUpChoices();
   STATE._levelUpChoices = choices;
@@ -2580,6 +2588,10 @@ function renderLevelUpChoices() {
       STATE.levelUpQueue = Math.max(0, STATE.levelUpQueue - 1);
 
       if (STATE.levelUpQueue > 0) {
+        if (!Array.isArray(STATE.levelUpRanges)) {
+          STATE.levelUpRanges = [];
+        }
+        STATE._activeLevelUpRange = STATE.levelUpRanges.shift() || null;
         renderLevelUpChoices();
       } else {
         closeLevelUp();
@@ -2655,6 +2667,15 @@ function useRerollTicket() {
 
 function openLevelUp() {
   STATE.paused = true;
+
+  if (!Array.isArray(STATE.levelUpRanges)) {
+    STATE.levelUpRanges = [];
+  }
+
+  if (!STATE._activeLevelUpRange) {
+    STATE._activeLevelUpRange = STATE.levelUpRanges.shift() || null;
+  }
+
   showScreen("levelUpScreen");
   renderLevelUpChoices();
 
@@ -2666,6 +2687,13 @@ function openLevelUp() {
 function closeLevelUp() {
   hideScreen("levelUpScreen");
   STATE.paused = false;
+  STATE._activeLevelUpRange = null;
+
+  const titleEl = document.querySelector("#levelUpScreen h2");
+  if (titleEl) {
+    titleEl.textContent = "レベルアップ";
+  }
+
   updateLevelUpRerollButton();
   updateHUD();
 }

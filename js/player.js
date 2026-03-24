@@ -736,11 +736,21 @@ function gainXP(amount) {
 
   p.xp += amount;
 
+  if (!Array.isArray(STATE.levelUpRanges)) {
+    STATE.levelUpRanges = [];
+  }
+
   while (p.xp >= requiredXP(p.level)) {
+    const fromLevel = p.level;
     p.xp -= requiredXP(p.level);
     p.level += 1;
+
     STATE.levelUpQueue += 1;
     STATE.score += 100;
+    STATE.levelUpRanges.push({
+      from: fromLevel,
+      to: p.level
+    });
   }
 }
 
@@ -860,48 +870,61 @@ function addPassive(id) {
   return true;
 }
 
+function getShellHpMultiplierByLevel(level) {
+  return 1 + Math.max(0, Number(level || 0)) * 0.20;
+}
+
 function applyPassiveImmediateEffect(id, level) {
   const p = STATE.player;
-  const def = getPassiveDef(id);
-  if (!p || !def) return;
-
-  const resolved = getPassiveResolvedStat(def, level);
-  if (resolved?.stat === 'maxHp') {
-    const prevHp = p.hp;
-    const nextMaxHp = resolved.value + (resolved.includeShopBonus ? (p.shopMaxHpBonus || 0) : 0);
-    p.maxHp = nextMaxHp;
-    if (STATE._suppressImmediateShellHeal) {
-      p.hp = Math.min(p.maxHp, prevHp);
-    } else {
-      const healAmount = resolved.immediateHeal != null ? resolved.immediateHeal : Math.max(0, nextMaxHp - prevHp);
-      p.hp = Math.min(p.maxHp, prevHp + healAmount);
-    }
-    return;
-  }
-
-  if (resolved?.stat && Object.prototype.hasOwnProperty.call(p.stats, resolved.stat)) {
-    p.stats[resolved.stat] = resolved.value;
-    return;
-  }
+  if (!p) return;
 
   if (id === "shell") {
     const prevHp = p.hp;
-    p.maxHp = 100 + level * 20;
+    const shopBonus = Math.max(0, Number(p.shopMaxHpBonus || 0));
+    const baseMaxHp = 100 + shopBonus;
+    const nextMaxHp = Math.round(baseMaxHp * getShellHpMultiplierByLevel(level));
+    const gainedHp = Math.max(0, nextMaxHp - p.maxHp);
+
+    p.maxHp = nextMaxHp;
+
     if (STATE._suppressImmediateShellHeal) {
       p.hp = Math.min(p.maxHp, prevHp);
     } else {
-      p.hp = Math.min(p.maxHp, prevHp + 20);
+      p.hp = Math.min(p.maxHp, prevHp + gainedHp);
     }
   }
 
-  if (id === "chart") p.stats.pickupRange = 90 + level * 12;
-  if (id === "thruster") p.stats.moveMul = 1 + level * 0.10;
-  if (id === "core") p.stats.damageMul = 1 + level * 0.10;
-  if (id === "battery") p.stats.cooldownMul = 1 + level * 0.10;
-  if (id === "sonar_scope") p.stats.projectileSpeedMul = 1 + level * 0.12;
-  if (id === "pressure_fin") p.stats.areaMul = 1 + level * 0.10;
-  if (id === "med_kit") p.stats.regen = level * 0.6;
-  if (id === "armor_plate") p.stats.armor = level * 1.5;
+  if (id === "chart") {
+    p.stats.pickupRange = 90 + level * 12;
+  }
+
+  if (id === "thruster") {
+    p.stats.moveMul = 1 + level * 0.10;
+  }
+
+  if (id === "core") {
+    p.stats.damageMul = 1 + level * 0.10;
+  }
+
+  if (id === "battery") {
+    p.stats.cooldownMul = 1 + level * 0.10;
+  }
+
+  if (id === "sonar_scope") {
+    p.stats.projectileSpeedMul = 1 + level * 0.12;
+  }
+
+  if (id === "pressure_fin") {
+    p.stats.areaMul = 1 + level * 0.10;
+  }
+
+  if (id === "med_kit") {
+    p.stats.regen = level * 0.6;
+  }
+
+  if (id === "armor_plate") {
+    p.stats.armor = level * 1.5;
+  }
 }
 
 function updatePlayerPassives() {
@@ -910,46 +933,21 @@ function updatePlayerPassives() {
 
   const levels = p.passiveLevels || {};
 
-  p.stats.damageMul = 1;
-  p.stats.cooldownMul = 1;
-  p.stats.areaMul = 1;
-  p.stats.moveMul = 1;
-  p.stats.projectileSpeedMul = 1;
-  p.stats.pickupRange = 90;
-  p.stats.armor = 0;
-  p.stats.regen = 0;
+  p.stats.damageMul = 1 + (levels.core || 0) * 0.10;
+  p.stats.cooldownMul = 1 + (levels.battery || 0) * 0.10;
+  p.stats.areaMul = 1 + (levels.pressure_fin || 0) * 0.10;
+  p.stats.moveMul = 1 + (levels.thruster || 0) * 0.10;
+  p.stats.projectileSpeedMul = 1 + (levels.sonar_scope || 0) * 0.12;
+  p.stats.pickupRange = 90 + (levels.chart || 0) * 12;
+  p.stats.armor = (levels.armor_plate || 0) * 1.5;
+  p.stats.regen = (levels.med_kit || 0) * 0.6;
 
-  p.maxHp = 100 + (p.shopMaxHpBonus || 0);
+  const shopBonus = Math.max(0, Number(p.shopMaxHpBonus || 0));
+  const baseMaxHp = 100 + shopBonus;
+  const shellLevel = levels.shell || 0;
 
-  for (const def of (STATE.gameData?.passives || [])) {
-    const lv = levels[def.id] || 0;
-    if (lv <= 0) continue;
-
-    const resolved = getPassiveResolvedStat(def, lv);
-    if (resolved?.stat === 'maxHp') {
-      p.maxHp = resolved.value + (resolved.includeShopBonus ? (p.shopMaxHpBonus || 0) : 0);
-      continue;
-    }
-
-    if (resolved?.stat && Object.prototype.hasOwnProperty.call(p.stats, resolved.stat)) {
-      p.stats[resolved.stat] = resolved.value;
-      continue;
-    }
-
-    if (def.id === 'core') p.stats.damageMul = 1 + lv * 0.10;
-    if (def.id === 'battery') p.stats.cooldownMul = 1 + lv * 0.10;
-    if (def.id === 'pressure_fin') p.stats.areaMul = 1 + lv * 0.10;
-    if (def.id === 'thruster') p.stats.moveMul = 1 + lv * 0.10;
-    if (def.id === 'sonar_scope') p.stats.projectileSpeedMul = 1 + lv * 0.12;
-    if (def.id === 'chart') p.stats.pickupRange = 90 + lv * 12;
-    if (def.id === 'armor_plate') p.stats.armor = lv * 1.5;
-    if (def.id === 'med_kit') p.stats.regen = lv * 0.6;
-    if (def.id === 'shell') p.maxHp = 100 + lv * 20 + (p.shopMaxHpBonus || 0);
-  }
-
+  p.maxHp = Math.round(baseMaxHp * getShellHpMultiplierByLevel(shellLevel));
   p.hp = Math.min(p.hp, p.maxHp);
-
-  updateDronesFromPassives();
 }
 
 function getPlayerScreenPos() {
