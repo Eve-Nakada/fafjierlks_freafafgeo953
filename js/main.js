@@ -6,6 +6,12 @@ let canvas = null;
 let ctx = null;
 let lastTime = 0;
 
+let mainRafId = 0;
+let unattendedLoopTimer = 0;
+let unattendedLoopInstalled = false;
+let lastRenderAt = 0;
+let lastWatchdogTickAt = 0;
+
 // ===============================
 // 初期化
 // ===============================
@@ -32,7 +38,7 @@ async function boot() {
   showScreen("titleScreen");
   renderRanking("rankingList");
 
-  requestAnimationFrame(gameLoop);
+  installUnattendedAutoPlayLoop();
 }
 
 function resizeCanvas() {
@@ -176,26 +182,31 @@ function resetRunShopState() {
   if (STATE.testMode?.customShopCounter == null) STATE.testMode.customShopCounter = 0;
 }
 
+function shouldUseUnattendedAutoPlayMode() {
+  const s = (typeof getAutoPlayState === "function") ? getAutoPlayState() : null;
+  if (!s) return false;
+  return !!(s.enabled && STATE.testMode?.enabled);
+}
 
-// ===============================
-// メインループ
-// ===============================
+function resetLoopTimeBase(now = performance.now()) {
+  lastTime = now;
+  lastRenderAt = now;
+  lastWatchdogTickAt = now;
+}
 
-function gameLoop(timestamp) {
-  if (!lastTime) lastTime = timestamp;
+function runSingleFrame(dt, doRender = true) {
+  const safeDt = Math.max(0, Math.min(0.033, Number(dt || 0)));
+  if (safeDt <= 0) return;
 
-  const rawDt = Math.min(0.033, (timestamp - lastTime) / 1000);
-  lastTime = timestamp;
-
-  STATE.delta = rawDt;
-  STATE.time += rawDt;
+  STATE.delta = safeDt;
+  STATE.time += safeDt;
 
   const simSpeed = (typeof getAutoPlaySimSpeed === "function" && STATE.testMode?.enabled)
     ? getAutoPlaySimSpeed()
     : 1;
 
   const loops = Math.max(1, Math.floor(simSpeed));
-  const stepDt = rawDt;
+  const stepDt = safeDt;
 
   for (let i = 0; i < loops; i++) {
     updateAmbientBubbles(stepDt);
@@ -212,8 +223,102 @@ function gameLoop(timestamp) {
     }
   }
 
-  renderGame();
-  requestAnimationFrame(gameLoop);
+  if (doRender) {
+    renderGame();
+    lastRenderAt = performance.now();
+  }
+}
+
+function kickUnattendedAutoPlayOnce(forceRender = false) {
+  const now = performance.now();
+
+  if (!lastWatchdogTickAt) {
+    resetLoopTimeBase(now);
+    return;
+  }
+
+  let elapsed = (now - lastWatchdogTickAt) / 1000;
+  lastWatchdogTickAt = now;
+
+  if (elapsed <= 0) return;
+
+  // 長時間停止後の一気進みを防ぐ
+  elapsed = Math.min(elapsed, 0.25);
+
+  let remain = elapsed;
+  while (remain > 0.0001) {
+    const step = Math.min(0.033, remain);
+    runSingleFrame(step, false);
+    remain -= step;
+  }
+
+  if (forceRender && !document.hidden) {
+    renderGame();
+    lastRenderAt = now;
+  }
+}
+
+function installUnattendedAutoPlayLoop() {
+  if (unattendedLoopInstalled) return;
+  unattendedLoopInstalled = true;
+
+  resetLoopTimeBase(performance.now());
+
+  const rafLoop = (timestamp) => {
+    if (!lastTime) {
+      resetLoopTimeBase(timestamp || performance.now());
+    }
+
+    const now = Number(timestamp || performance.now());
+    const rawDt = Math.min(0.033, Math.max(0, (now - lastTime) / 1000));
+    lastTime = now;
+    lastWatchdogTickAt = now;
+
+    runSingleFrame(rawDt, true);
+    mainRafId = requestAnimationFrame(rafLoop);
+  };
+
+  mainRafId = requestAnimationFrame(rafLoop);
+
+  // rAF が止まった時の保険
+  unattendedLoopTimer = window.setInterval(() => {
+    if (!shouldUseUnattendedAutoPlayMode()) return;
+
+    const now = performance.now();
+    const stalled = (now - lastRenderAt) >= 250 || document.hidden;
+
+    if (stalled) {
+      kickUnattendedAutoPlayOnce(!document.hidden);
+    }
+  }, 100);
+
+  const resume = () => {
+    resetLoopTimeBase(performance.now());
+  };
+
+  window.addEventListener("focus", resume);
+  window.addEventListener("pageshow", resume);
+  document.addEventListener("visibilitychange", () => {
+    resetLoopTimeBase(performance.now());
+  });
+}
+
+
+// ===============================
+// メインループ
+// ===============================
+
+function gameLoop(timestamp) {
+  if (!lastTime) {
+    resetLoopTimeBase(Number(timestamp || performance.now()));
+  }
+
+  const now = Number(timestamp || performance.now());
+  const rawDt = Math.min(0.033, Math.max(0, (now - lastTime) / 1000));
+  lastTime = now;
+  lastWatchdogTickAt = now;
+
+  runSingleFrame(rawDt, true);
 }
 
 function updateGame(dt) {

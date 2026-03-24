@@ -2,6 +2,40 @@
 // Auto Play / Batch Test
 // ===============================
 
+let autoPlayWakeLock = null;
+
+async function acquireAutoPlayWakeLock() {
+  try {
+    if (!("wakeLock" in navigator)) return false;
+    if (document.hidden) return false;
+
+    if (autoPlayWakeLock) return true;
+    autoPlayWakeLock = await navigator.wakeLock.request("screen");
+
+    autoPlayWakeLock.addEventListener("release", () => {
+      autoPlayWakeLock = null;
+    });
+
+    return true;
+  } catch (e) {
+    console.warn("WakeLock request failed", e);
+    autoPlayWakeLock = null;
+    return false;
+  }
+}
+
+async function releaseAutoPlayWakeLock() {
+  try {
+    if (autoPlayWakeLock) {
+      await autoPlayWakeLock.release();
+    }
+  } catch (e) {
+    console.warn("WakeLock release failed", e);
+  } finally {
+    autoPlayWakeLock = null;
+  }
+}
+
 function getAutoPlayState() {
   if (!STATE.testMode) STATE.testMode = {};
 
@@ -751,7 +785,7 @@ function captureAutoPlayRunResult(clear) {
   });
 }
 
-function beginAutoBatchTest(count) {
+async function beginAutoBatchTest(count) {
   const s = getAutoPlayState();
   s.enabled = true;
   s.batchRunning = true;
@@ -767,18 +801,22 @@ function beginAutoBatchTest(count) {
   STATE.testMode.pendingStart = true;
   STATE.testMode.autoSkipLevelUp = true;
 
+  await acquireAutoPlayWakeLock?.();
+
   if (typeof refreshTestModePanel === "function") refreshTestModePanel();
   if (typeof updateTestModeStatus === "function") {
-    updateTestModeStatus(`自動テスト開始 ${s.batchTargetRuns}回`);
+    updateTestModeStatus(`自動テスト開始 ${s.batchTargetRuns}回 / 完全放置モード`);
   }
 }
 
-function stopAutoBatchTest() {
+async function stopAutoBatchTest() {
   const s = getAutoPlayState();
   s.batchRunning = false;
   s.pendingRestart = false;
   s.selectingShop = false;
   resetAutoPlayInput();
+
+  await releaseAutoPlayWakeLock?.();
 
   if (typeof refreshTestModePanel === "function") refreshTestModePanel();
   if (typeof updateTestModeStatus === "function") {
@@ -809,7 +847,7 @@ function onAutoPlayRunStarted(initialWeaponId) {
   if (typeof refreshTestModePanel === "function") refreshTestModePanel();
 }
 
-function handleAutoBatchEnd(clear) {
+async function handleAutoBatchEnd(clear) {
   const s = getAutoPlayState();
   if (!s.batchRunning) return false;
 
@@ -824,6 +862,8 @@ function handleAutoBatchEnd(clear) {
     s.batchRunning = false;
     s.pendingRestart = false;
     s.promptCsvAfterBatch = true;
+
+    await releaseAutoPlayWakeLock?.();
 
     if (typeof refreshTestModePanel === "function") refreshTestModePanel();
     if (typeof updateTestModeStatus === "function") {
