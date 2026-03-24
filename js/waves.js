@@ -36,75 +36,29 @@ function createBalancedLateWave(index, at, theme, formation, count, enemyTypes, 
 function applyWaveBalanceOverrides() {
   if (!STATE.waveData || !Array.isArray(STATE.waveData.waves)) return;
 
-  const sourceWaves = STATE.waveData.waves
-    .map((wave) => ({
+  STATE.waveData.waves = STATE.waveData.waves.map((wave) => {
+    const cloned = {
       ...wave,
       enemyTypes: Array.isArray(wave.enemyTypes) ? [...wave.enemyTypes] : [],
       guaranteedTypes: Array.isArray(wave.guaranteedTypes) ? [...wave.guaranteedTypes] : [],
       enemyWeights: wave.enemyWeights ? { ...wave.enemyWeights } : undefined,
       mapCoins: wave.mapCoins ? { ...wave.mapCoins } : { normal: 0, rare: 0 }
-    }))
-    .filter((w) => Number(w.index || 0) < 16);
+    };
 
-  for (const wave of sourceWaves) {
-    const idx = Number(wave.index || 0);
+    const idx = Number(cloned.index || 0);
+
+    // 既存バランス調整を維持
     if (idx >= 10 && idx <= 15) {
-      wave.count = Math.max(1, Math.ceil(Number(wave.count || 0) * 1.5));
+      cloned.count = Math.max(1, Math.ceil(Number(cloned.count || 0) * 1.5));
     }
-  }
 
-  sourceWaves.push(
-    createBalancedLateWave(
-      16,
-      792,
-      "強化敵パターン1",
-      "encircle",
-      8,
-      ["shark", "deep_ghost"],
-      ["shark", "deep_ghost", "shark", "deep_ghost"],
-      { shark: 3, deep_ghost: 3 },
-      { normal: 6, rare: 2 }
-    ),
-    createBalancedLateWave(
-      17,
-      812,
-      "強化敵パターン2",
-      "rush_pack",
-      8,
-      ["barracuda", "electric_eel", "shark"],
-      ["barracuda", "electric_eel", "barracuda", "electric_eel"],
-      { barracuda: 4, electric_eel: 4, shark: 2 },
-      { normal: 6, rare: 3 }
-    ),
-    createBalancedLateWave(
-      18,
-      832,
-      "強化敵パターン3",
-      "finale_mix",
-      10,
-      ["shark", "deep_ghost", "barracuda", "electric_eel"],
-      ["shark", "deep_ghost", "barracuda", "electric_eel"],
-      { shark: 3, deep_ghost: 3, barracuda: 2, electric_eel: 2 },
-      { normal: 8, rare: 4 }
-    ),
-    {
-      index: 19,
-      at: 852,
-      spawnInterval: 999,
-      count: 0,
-      theme: "深淵の主",
-      enemyTypes: [],
-      guaranteedTypes: [],
-      formation: "boss_only",
-      mapCoins: { normal: 0, rare: 0 },
-      leviathan: {
-        at: 852,
-        typeId: "leviathan"
-      }
+    // 後半の金貨を抑制
+    if (idx >= 9) {
+      cloned.mapCoins = { normal: 7, rare: 2 };
     }
-  );
 
-  STATE.waveData.waves = sourceWaves;
+    return cloned;
+  });
 }
 
 function getWaveDefs() {
