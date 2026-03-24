@@ -271,19 +271,29 @@ function ensurePassiveRelatedWeaponStyles() {
       margin-top:6px;
       display:grid;
       gap:6px;
+      min-width:0;
+      width:100%;
     }
 
     .detailRelatedWeaponsLabel{
       font-size:11px;
       color:var(--sub);
       line-height:1.2;
+      min-width:0;
     }
 
     .detailRelatedWeaponsIcons{
       display:flex;
-      flex-wrap:wrap;
+      flex-wrap:nowrap;
       gap:6px;
       align-items:center;
+      min-width:0;
+      width:100%;
+      overflow-x:auto;
+      overflow-y:hidden;
+      padding:2px 0 4px;
+      -webkit-overflow-scrolling:touch;
+      scrollbar-width:thin;
     }
 
     .detailRelatedWeaponChip{
@@ -305,11 +315,38 @@ function ensurePassiveRelatedWeaponStyles() {
       image-rendering:pixelated;
       image-rendering:crisp-edges;
       display:block;
+      flex:0 0 auto;
+    }
+
+    @media (max-width:640px){
+      .detailRelatedWeapons{
+        gap:5px;
+      }
+
+      .detailRelatedWeaponsLabel{
+        font-size:10px;
+        line-height:1.15;
+      }
+
+      .detailRelatedWeaponsIcons{
+        gap:5px;
+        padding:2px 0 6px;
+      }
+
+      .detailRelatedWeaponChip{
+        width:28px;
+        height:28px;
+        border-radius:7px;
+      }
+
+      .detailRelatedWeaponIcon{
+        width:24px;
+        height:24px;
+      }
     }
   `;
   document.head.appendChild(style);
 }
-
 
 function buildEvolutionHintText(def, inst = null) {
   const branches = getWeaponGrowthBranches(def);
