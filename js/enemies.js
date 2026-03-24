@@ -150,6 +150,8 @@ function spawnEnemy(typeId, x, y, isBoss = false, behavior = 'normal') {
   const bossScale = isBoss ? Math.max(1, Number(def.bossScale || 3)) : 1;
   const shieldMaxHp = isBoss ? Math.max(1, Number(def.shieldHp || 3000)) : 0;
 
+  const aiPreset = getEnemyAiPreset(typeId, isBoss, behavior);
+
   const enemy = {
     id: `enemy_${Math.random().toString(36).slice(2)}`,
     typeId,
@@ -165,12 +167,29 @@ function spawnEnemy(typeId, x, y, isBoss = false, behavior = 'normal') {
     xp: Number(def.xp || 1),
     gold: Number(def.gold || 0),
     spriteIndex: Number(def.spriteIndex || 0),
+
     ai: def.ai || { type: behavior || 'normal' },
-    attacks: Array.isArray(def.attacks) ? def.attacks.map((a) => ({ ...a, timer: rand(0.1, Math.max(0.2, Number(a.cooldown || 1))) })) : [],
+    aiType: aiPreset.aiType || "normal",
+    preferRange: Number(aiPreset.preferRange || 0),
+    burstSpeedMul: Number(aiPreset.burstSpeedMul || 1.8),
+    strafeSpeedMul: Number(aiPreset.strafeSpeedMul || 0.8),
+    wobbleMul: Number(aiPreset.wobbleMul || 0.6),
+    rushDuration: Number(aiPreset.rushDuration || 0.5),
+    restDuration: Number(aiPreset.restDuration || 0.8),
+    aiTimer: rand(0.2, 0.8),
+    aiState: "approach",
+    aiDir: Math.random() < 0.5 ? -1 : 1,
+    contactMul: 1,
+    lastDx: 0,
+    lastDy: 1,
+
+    attacks: cloneEnemyAttacks(typeId),
+
     isBoss: !!isBoss,
     bossKind: behavior,
     bossScale,
     baseRenderSize: isBoss ? 72 : 40,
+
     shieldActive: !!isBoss && shieldMaxHp > 0,
     shieldHp: shieldMaxHp,
     shieldMaxHp,
@@ -178,10 +197,12 @@ function spawnEnemy(typeId, x, y, isBoss = false, behavior = 'normal') {
     shieldRespawnTimer: 0,
     switchCount: Number(def.switchCount || 0),
     wallPhaseTimer: isBoss ? 2.8 : 0,
+
     attackDrones: [],
     attackPatternTimer: 0,
     waveBeamCooldown: 2.8,
     waveBeamTimer: 1.5,
+
     dead: false,
     damageFlash: 0
   };
@@ -394,45 +415,72 @@ function updateEnemies(dt) {
 
     enemy.damageFlash = Math.max(0, Number(enemy.damageFlash || 0) - dt);
 
-    const dx = p.x - enemy.x;
-    const dy = p.y - enemy.y;
-    const len = Math.hypot(dx, dy) || 1;
+    const target = (typeof getEnemyPrimaryTarget === "function")
+      ? (getEnemyPrimaryTarget(p) || p)
+      : p;
 
-    const speedMul = enemy.isBoss ? 0.9 : 1.0;
-    enemy.vx = (dx / len) * enemy.speed * speedMul;
-    enemy.vy = (dy / len) * enemy.speed * speedMul;
+    if (enemy.isBoss && Number(enemy.shieldRespawnTimer || 0) > 0) {
+      enemy.shieldRespawnTimer = Math.max(0, enemy.shieldRespawnTimer - dt);
+      if (enemy.shieldRespawnTimer <= 0 && (enemy.shieldMaxHp || 0) > 0) {
+        enemy.shieldActive = true;
+        enemy.shieldHp = enemy.shieldMaxHp;
+        addEffect?.(enemy.x, enemy.y, enemy.r * 1.9, "#9fe8ff", 0.22, 0.18);
+      }
+    }
 
-    enemy.x += enemy.vx * dt;
-    enemy.y += enemy.vy * dt;
+    updateEnemyAi(enemy, target, dt);
+    updateEnemyAttacks(enemy, target, dt);
 
-    enemy.x = clamp(enemy.x, enemy.r, STATE.world.width - enemy.r);
-    enemy.y = clamp(enemy.y, enemy.r, STATE.world.height - enemy.r);
+    const vx = Number(enemy.x - (enemy.prevX ?? enemy.x));
+    const vy = Number(enemy.y - (enemy.prevY ?? enemy.y));
+    enemy.vx = Number.isFinite(vx) ? vx / Math.max(dt, 0.0001) : 0;
+    enemy.vy = Number.isFinite(vy) ? vy / Math.max(dt, 0.0001) : 0;
+    enemy.prevX = enemy.x;
+    enemy.prevY = enemy.y;
 
     if (enemy.isBoss) {
       updateBossAttackDrones(enemy, dt);
     }
 
-    if (dist(enemy.x, enemy.y, p.x, p.y) <= enemy.r + p.r) {
-      damagePlayer?.(enemy.damage * dt, {
-        id: enemy.typeId,
-        label: getEnemyDef(enemy.typeId)?.name || enemy.typeId
-      });
+    const hitTarget = (typeof getEnemyPrimaryTarget === "function")
+      ? (getEnemyPrimaryTarget(p) || p)
+      : p;
+
+    if (hitTarget && dist(enemy.x, enemy.y, hitTarget.x, hitTarget.y) <= enemy.r + (hitTarget.r || 0)) {
+      if (hitTarget === p) {
+        damagePlayer?.(enemy.damage * (enemy.contactMul || 1) * dt, {
+          id: enemy.typeId,
+          label: getEnemyDef(enemy.typeId)?.name || enemy.typeId
+        });
+      } else {
+        damageDrone?.(hitTarget, enemy.damage * (enemy.contactMul || 1) * dt);
+      }
     }
 
     if (enemy.hp > 0) {
       next.push(enemy);
-    } else {
-      enemy.dead = true;
-      if (enemy.isBoss && typeof onBossDefeated === 'function') {
-        onBossDefeated(enemy);
-      }
-      if (enemy.typeId === 'leviathan') {
-        STATE.isGameClear = true;
-      }
-      dropXPGem?.(enemy.x, enemy.y, enemy.xp || 1);
-      if ((enemy.gold || 0) > 0) addGold?.(enemy.gold);
-      addEffect?.(enemy.x, enemy.y, enemy.isBoss ? 44 : 22, enemy.isBoss ? '#ffd8c7' : '#ffb0a0', 0.24, 0.26);
+      continue;
     }
+
+    enemy.dead = true;
+
+    if (enemy.isBoss && typeof onBossDefeated === 'function') {
+      onBossDefeated(enemy);
+    }
+    if (enemy.typeId === 'leviathan') {
+      STATE.isGameClear = true;
+    }
+
+    dropXPGem?.(enemy.x, enemy.y, enemy.xp || 1);
+    if ((enemy.gold || 0) > 0) addGold?.(enemy.gold);
+    addEffect?.(
+      enemy.x,
+      enemy.y,
+      enemy.isBoss ? 44 : 22,
+      enemy.isBoss ? '#ffd8c7' : '#ffb0a0',
+      0.24,
+      0.26
+    );
   }
 
   STATE.enemies = next;

@@ -949,6 +949,11 @@ function updatePlayerPassives() {
 
   p.maxHp = Math.round(baseMaxHp * getShellHpMultiplierByLevel(shellLevel));
   p.hp = Math.min(p.hp, p.maxHp);
+
+  // パッシブ由来のドローン実体を毎フレーム同期
+  if (typeof updateDronesFromPassives === "function") {
+    updateDronesFromPassives();
+  }
 }
 
 function getPlayerScreenPos() {

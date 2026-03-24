@@ -246,8 +246,8 @@
     {
       "index": 16,
       "at": 760,
-      "spawnInterval": 999,
-      "count": 6,
+      "spawnInterval": 4,
+      "count": 4,
       "theme": "強化敵包囲陣",
       "enemyTypes": ["octopus", "deep_fish", "shark", "deep_ghost"],
       "guaranteedTypes": ["shark", "deep_ghost", "octopus", "deep_fish"],
@@ -264,7 +264,7 @@
     {
       "index": 17,
       "at": 792,
-      "spawnInterval": 999,
+      "spawnInterval": 3,
       "count": 6,
       "theme": "強化敵突進陣",
       "enemyTypes": ["shark", "deep_ghost", "barracuda", "electric_eel"],
@@ -282,7 +282,7 @@
     {
       "index": 18,
       "at": 826,
-      "spawnInterval": 999,
+      "spawnInterval": 2,
       "count": 8,
       "theme": "強化敵混成陣",
       "enemyTypes": ["shark", "deep_ghost", "barracuda", "electric_eel", "octopus", "deep_fish"],

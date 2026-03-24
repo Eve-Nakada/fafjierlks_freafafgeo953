@@ -120,10 +120,20 @@ function updateWaves(dt) {
 
   const newWaveIndex = wave.index || 1;
   const prevWaveIndex = STATE.currentWave || 1;
+  const changedWave = newWaveIndex !== prevWaveIndex;
+
   STATE.currentWave = newWaveIndex;
 
-  if (newWaveIndex !== prevWaveIndex) {
+  if (changedWave) {
     addWaveCoins(newWaveIndex);
+
+    // 強化敵Waveは突入時に即時出現させる
+    if (isBalancedEliteWave(wave)) {
+      wave._eliteSpawned = false;
+    }
+
+    // Wave切り替え時は通常spawnタイマーも即リセット
+    wave._spawnTimer = 0;
   }
 
   if (!wave._mapCoinsSpawned) {
@@ -137,8 +147,20 @@ function updateWaves(dt) {
     }
   }
 
+  // 強化敵Waveは「突入時に1回だけ即湧き」
+  if (isBalancedEliteWave(wave)) {
+    if (!wave._eliteSpawned) {
+      spawnBalancedEliteWaveEnemies(wave);
+      wave._eliteSpawned = true;
+    }
+
+    handleWaveShop(newWaveIndex, prevWaveIndex);
+    handleClearCheck();
+    return;
+  }
+
   if (wave._spawnTimer == null) {
-    wave._spawnTimer = wave.spawnInterval || 1.0;
+    wave._spawnTimer = 0;
   }
 
   wave._spawnTimer -= dt;
