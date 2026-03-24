@@ -36,9 +36,24 @@ function createBalancedLateWave(index, at, theme, formation, count, enemyTypes, 
 function applyWaveBalanceOverrides() {
   if (!STATE.waveData || !Array.isArray(STATE.waveData.waves)) return;
 
-  const base = STATE.waveData.waves.filter((w) => Number(w.index || 0) < 16);
+  const sourceWaves = STATE.waveData.waves
+    .map((wave) => ({
+      ...wave,
+      enemyTypes: Array.isArray(wave.enemyTypes) ? [...wave.enemyTypes] : [],
+      guaranteedTypes: Array.isArray(wave.guaranteedTypes) ? [...wave.guaranteedTypes] : [],
+      enemyWeights: wave.enemyWeights ? { ...wave.enemyWeights } : undefined,
+      mapCoins: wave.mapCoins ? { ...wave.mapCoins } : { normal: 0, rare: 0 }
+    }))
+    .filter((w) => Number(w.index || 0) < 16);
 
-  base.push(
+  for (const wave of sourceWaves) {
+    const idx = Number(wave.index || 0);
+    if (idx >= 10 && idx <= 15) {
+      wave.count = Math.max(1, Math.ceil(Number(wave.count || 0) * 1.5));
+    }
+  }
+
+  sourceWaves.push(
     createBalancedLateWave(
       16,
       792,
@@ -89,7 +104,7 @@ function applyWaveBalanceOverrides() {
     }
   );
 
-  STATE.waveData.waves = base;
+  STATE.waveData.waves = sourceWaves;
 }
 
 function getWaveDefs() {

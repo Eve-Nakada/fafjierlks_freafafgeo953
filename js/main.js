@@ -271,12 +271,13 @@ function renderGame() {
   if (!STATE.player) return;
 
   renderMap(ctx);
-  if (typeof renderBossSwitches === 'function') {
+  if (typeof renderBossSwitches === "function") {
     renderBossSwitches(ctx);
   }
   renderAmbientBubbles(ctx);
   renderBossHazards(ctx);
   renderXPGems(ctx);
+  renderMapCoins(ctx);
   renderChests(ctx);
   renderEnemies(ctx);
   renderEnemyProjectiles(ctx);
@@ -385,6 +386,127 @@ function openChestReward() {
 
   addEffect?.(STATE.player?.x || 0, STATE.player?.y || 0, 42, "#ffe08a", 0.22, 0.24);
   updateHUD?.();
+}
+
+function getMapCoinConfig(kind = "normal") {
+  if (kind === "rare") {
+    return {
+      value: 25,
+      r: 11,
+      frame: 1,
+      size: 26,
+      pullSpeed: 300
+    };
+  }
+
+  return {
+    value: 5,
+    r: 9,
+    frame: 0,
+    size: 22,
+    pullSpeed: 260
+  };
+}
+
+function spawnMapCoin(kind = "normal", x = null, y = null) {
+  const stage = typeof getCurrentMap === "function" ? getCurrentMap() : null;
+  const worldW = Number(stage?.worldWidth || STATE.world.width || 2400);
+  const worldH = Number(stage?.worldHeight || STATE.world.height || 2400);
+
+  const cfg = getMapCoinConfig(kind);
+
+  STATE.mapCoins.push({
+    kind,
+    x: x != null ? x : rand(40, worldW - 40),
+    y: y != null ? y : rand(40, worldH - 40),
+    value: cfg.value,
+    r: cfg.r,
+    frameIndex: cfg.frame,
+    size: cfg.size,
+    pullSpeed: cfg.pullSpeed,
+    vx: rand(-10, 10),
+    vy: rand(-10, 10),
+    collectDelay: 0.12
+  });
+}
+
+function resetWaveCoins() {
+  STATE.mapCoins = [];
+}
+
+function updateMapCoins(dt) {
+  const p = STATE.player;
+  if (!p) return;
+
+  const next = [];
+
+  for (const coin of STATE.mapCoins || []) {
+    if (!coin) continue;
+
+    if ((coin.collectDelay || 0) > 0) {
+      coin.collectDelay = Math.max(0, coin.collectDelay - dt);
+      coin.x += (coin.vx || 0) * dt;
+      coin.y += (coin.vy || 0) * dt;
+      coin.vx *= 0.92;
+      coin.vy *= 0.92;
+    } else {
+      const d = dist(coin.x, coin.y, p.x, p.y);
+
+      // 金貨の回収範囲をXPと同じにする
+      if (d <= p.stats.pickupRange) {
+        const dx = p.x - coin.x;
+        const dy = p.y - coin.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const pullSpeed = Number(coin.pullSpeed || 260) + Math.max(0, 220 - d);
+
+        coin.x += (dx / len) * pullSpeed * dt;
+        coin.y += (dy / len) * pullSpeed * dt;
+      }
+    }
+
+    if (dist(coin.x, coin.y, p.x, p.y) <= (coin.r || 8) + p.r + 4) {
+      addGold(coin.value || 0);
+      STATE.score += Math.max(1, Math.round((coin.value || 0) * 2));
+      addEffect?.(coin.x, coin.y, (coin.r || 8) + 6, "#ffd166", 0.12, 0.16);
+      continue;
+    }
+
+    next.push(coin);
+  }
+
+  STATE.mapCoins = next;
+}
+
+function renderMapCoins(ctx) {
+  const cam = STATE.camera;
+
+  for (const coin of STATE.mapCoins || []) {
+    const x = coin.x - cam.x;
+    const y = coin.y - cam.y;
+    const size = coin.size || 22;
+
+    const ok = drawSpriteFrame(
+      ctx,
+      "map_gold",
+      Number(coin.frameIndex || 0),
+      x - size * 0.5,
+      y - size * 0.5,
+      size,
+      size
+    );
+
+    if (!ok) {
+      ctx.save();
+      ctx.fillStyle = coin.kind === "rare" ? "#ffd166" : "#ffdf7a";
+      ctx.beginPath();
+      ctx.arc(x, y, coin.r || 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.45)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
 }
 
 

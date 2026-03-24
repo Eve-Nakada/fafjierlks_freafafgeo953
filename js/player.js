@@ -808,7 +808,8 @@ function getPassiveBalance(def) {
 function getPassiveMaxLevel(def) {
   const balance = getPassiveBalance(def);
   const balanceLen = Array.isArray(balance?.levels) ? balance.levels.length : 0;
-  return def?.maxLevel || balanceLen || (Array.isArray(def?.levelDesc) ? def.levelDesc.length : 3);
+  const configured = def?.maxLevel || balanceLen || (Array.isArray(def?.levelDesc) ? def.levelDesc.length : 3);
+  return Math.max(6, configured);
 }
 
 function getPassiveLevelValue(def, level) {
@@ -895,11 +896,11 @@ function applyPassiveImmediateEffect(id, level) {
   }
 
   if (id === "chart") {
-    p.stats.pickupRange = 90 + level * 12;
+    p.stats.pickupRange = 99 + level * 18;
   }
 
   if (id === "thruster") {
-    p.stats.moveMul = 1 + level * 0.10;
+    p.stats.moveMul = 1 + level * 0.20;
   }
 
   if (id === "core") {
@@ -936,9 +937,9 @@ function updatePlayerPassives() {
   p.stats.damageMul = 1 + (levels.core || 0) * 0.10;
   p.stats.cooldownMul = 1 + (levels.battery || 0) * 0.10;
   p.stats.areaMul = 1 + (levels.pressure_fin || 0) * 0.10;
-  p.stats.moveMul = 1 + (levels.thruster || 0) * 0.10;
+  p.stats.moveMul = 1 + (levels.thruster || 0) * 0.20;
   p.stats.projectileSpeedMul = 1 + (levels.sonar_scope || 0) * 0.12;
-  p.stats.pickupRange = 90 + (levels.chart || 0) * 12;
+  p.stats.pickupRange = 99 + (levels.chart || 0) * 18;
   p.stats.armor = (levels.armor_plate || 0) * 1.5;
   p.stats.regen = (levels.med_kit || 0) * 0.6;
 

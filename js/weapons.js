@@ -525,42 +525,49 @@ function fireHarpoon(w, def) {
 function fireMine(w, def) {
   const p = STATE.player;
   if (!p) return;
+
   const tuning = getWeaponTuning(w, def);
   const targets = [];
   const near = [...STATE.enemies]
     .sort((a, b) => dist(p.x, p.y, a.x, a.y) - dist(p.x, p.y, b.x, b.y))
     .slice(0, tuning.mineCount);
 
-  for (const target of near) targets.push({ x: target.x, y: target.y });
-  while (targets.length < tuning.mineCount) {
-    targets.push({ x: p.x + rand(-120, 120), y: p.y + rand(-120, 120) });
+  for (const target of near) {
+    targets.push({ x: target.x, y: target.y });
   }
 
- for (const pos of targets) {
-   spawnBullet({
-     x: pos.x,
-     y: pos.y,
-     vx: 0,
-     vy: 0,
-     life: 3.0,
-     radius: 16,
-     damage: getWeaponDamage(w, def),
-     pierce: 999,
-     weaponId: w.id,
-     weaponPattern: getWeaponCurrentPattern(w),
-     weaponStage: w.evolutionStage || 0,
-     weaponLevel: w.level || 1,
-     type: 'mine',
-     color: '#ffd166',
-     explodeRadius: tuning.explodeRadius,
-     warningRadius: tuning.warningRadius,
-     armDelay: 0.35,
-     selfSafeTimer: 0.5,
-     chainCount: tuning.mineChainCount,
-     chainRadius: tuning.mineChainRadius,
-     chainDamageMul: tuning.mineChainDamageMul
-   });
- }
+  while (targets.length < tuning.mineCount) {
+    targets.push({
+      x: p.x + rand(-120, 120),
+      y: p.y + rand(-120, 120)
+    });
+  }
+
+  for (const pos of targets) {
+    spawnBullet({
+      x: pos.x,
+      y: pos.y,
+      vx: 0,
+      vy: 0,
+      life: 3.0,
+      radius: 16,
+      damage: getWeaponDamage(w, def),
+      pierce: 999,
+      weaponId: w.id,
+      weaponPattern: getWeaponCurrentPattern(w),
+      weaponStage: w.evolutionStage || 0,
+      weaponLevel: w.level || 1,
+      type: "mine",
+      color: "#ffd166",
+      explodeRadius: tuning.explodeRadius,
+      warningRadius: tuning.warningRadius,
+      armDelay: 0.35,
+      selfSafeTimer: 0.1,
+      chainCount: tuning.mineChainCount,
+      chainRadius: tuning.mineChainRadius,
+      chainDamageMul: tuning.mineChainDamageMul
+    });
+  }
 }
 
 function fireJellyField(w, def) {
