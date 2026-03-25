@@ -26,6 +26,7 @@ function createPlayer() {
     weapons: [],
     passives: [],
     passiveLevels: {},
+    passiveEvolutionBranches: {},
 
     stats: {
       damageMul: 1,
@@ -698,6 +699,7 @@ function setPassiveTestLevel(id, level) {
   if (nextLv <= 0) {
     p.passiveLevels[id] = 0;
     p.passives = (p.passives || []).filter(passiveId => passiveId !== id);
+    clearPassiveEvolutionBranch(id);
     updatePlayerPassives();
     return true;
   }
@@ -705,6 +707,14 @@ function setPassiveTestLevel(id, level) {
   p.passiveLevels[id] = nextLv;
   if (!p.passives.includes(id)) {
     p.passives.push(id);
+  }
+
+  if (def?.evolutions?.length) {
+    if (getPassiveEvolutionStage(id) <= 0) {
+      clearPassiveEvolutionBranch(id);
+    } else {
+      lockPassiveEvolutionBranch(id);
+    }
   }
 
   updatePlayerPassives();
@@ -791,6 +801,17 @@ function addPassive(id) {
     p.passives.push(id);
   }
 
+  // 進化分岐を固定保存
+  if (def?.evolutions?.length) {
+    const nextStage = getPassiveEvolutionStage(id);
+
+    if (nextStage <= 0) {
+      clearPassiveEvolutionBranch(id);
+    } else {
+      lockPassiveEvolutionBranch(id);
+    }
+  }
+
   applyPassiveImmediateEffect(id, p.passiveLevels[id]);
   updatePlayerPassives();
   return true;
@@ -874,6 +895,9 @@ function updatePlayerPassives() {
 
   p.maxHp = Math.round(baseMaxHp * getShellHpMultiplierByLevel(shellLevel));
   p.hp = Math.min(p.hp, p.maxHp);
+
+  // パッシブ分岐の固定保存を同期
+  syncPassiveEvolutionBranchLocks();
 
   // パッシブ由来のドローン実体を毎フレーム同期
   if (typeof updateDronesFromPassives === "function") {
@@ -994,6 +1018,115 @@ function getPassiveBranchDef(passiveId, branchId) {
   return def.evolutions.find(x => x.branchId === branchId) || null;
 }
 
+function ensurePassiveEvolutionBranchStore() {
+  const p = STATE.player;
+  if (!p) return {};
+  if (!p.passiveEvolutionBranches || typeof p.passiveEvolutionBranches !== "object") {
+    p.passiveEvolutionBranches = {};
+  }
+  return p.passiveEvolutionBranches;
+}
+
+function clearPassiveEvolutionBranch(passiveId) {
+  const store = ensurePassiveEvolutionBranchStore();
+  if (!passiveId) return;
+  delete store[passiveId];
+}
+
+function decidePassiveEvolutionBranchId(passiveId, stage = null) {
+  const def = getPassiveDef(passiveId);
+  if (!def || !Array.isArray(def.evolutions) || def.evolutions.length <= 0) return null;
+
+  const ownedPassives = STATE.player?.passiveLevels || {};
+  const currentStage = stage != null ? Number(stage) : getPassiveEvolutionStage(passiveId);
+
+  // 第2進化到達時は
+  // 1) 第1条件 + 第2条件の両方を満たす枝
+  // 2) 第1条件を満たす枝
+  // 3) 第2条件だけ満たす枝
+  // の順で決める
+  if (currentStage >= 2) {
+    for (const evo of def.evolutions) {
+      const need1 = evo?.needsPassive;
+      const need2 = evo?.secondStage?.needsPassive;
+      if (need1 && need2 && ownedPassives[need1] > 0 && ownedPassives[need2] > 0) {
+        return evo.branchId || null;
+      }
+    }
+
+    for (const evo of def.evolutions) {
+      const need1 = evo?.needsPassive;
+      if (need1 && ownedPassives[need1] > 0) {
+        return evo.branchId || null;
+      }
+    }
+
+    for (const evo of def.evolutions) {
+      const need2 = evo?.secondStage?.needsPassive;
+      if (need2 && ownedPassives[need2] > 0) {
+        return evo.branchId || null;
+      }
+    }
+  }
+
+  // 第1進化到達時は第1条件で決める
+  if (currentStage >= 1) {
+    for (const evo of def.evolutions) {
+      const need1 = evo?.needsPassive;
+      if (need1 && ownedPassives[need1] > 0) {
+        return evo.branchId || null;
+      }
+    }
+  }
+
+  // どれも満たしていない場合は先頭枝
+  return def.evolutions[0]?.branchId || null;
+}
+
+function lockPassiveEvolutionBranch(passiveId) {
+  const p = STATE.player;
+  if (!p || !passiveId) return null;
+
+  const def = getPassiveDef(passiveId);
+  if (!def || !Array.isArray(def.evolutions) || def.evolutions.length <= 0) return null;
+
+  const stage = getPassiveEvolutionStage(passiveId);
+  const store = ensurePassiveEvolutionBranchStore();
+
+  if (stage <= 0) {
+    delete store[passiveId];
+    return null;
+  }
+
+  const current = store[passiveId];
+  const currentBranch = current ? getPassiveBranchDef(passiveId, current) : null;
+  if (current && currentBranch) {
+    return current;
+  }
+
+  const decided = decidePassiveEvolutionBranchId(passiveId, stage);
+  store[passiveId] = decided || def.evolutions[0]?.branchId || null;
+  return store[passiveId];
+}
+
+function syncPassiveEvolutionBranchLocks() {
+  const p = STATE.player;
+  if (!p) return;
+
+  for (const passiveId of Object.keys(p.passiveLevels || {})) {
+    const lv = Number(p.passiveLevels?.[passiveId] || 0);
+    if (lv <= 0) {
+      clearPassiveEvolutionBranch(passiveId);
+      continue;
+    }
+
+    const def = getPassiveDef(passiveId);
+    if (!def?.evolutions?.length) continue;
+
+    lockPassiveEvolutionBranch(passiveId);
+  }
+}
+
 function getPassiveEvolutionStage(id) {
   const lv = getPassiveLevel(id);
   if (lv >= 5) return 2;
@@ -1008,28 +1141,14 @@ function getPassiveBranchId(id) {
   const stage = getPassiveEvolutionStage(id);
   if (stage <= 0) return null;
 
-  const ownedPassives = STATE.player?.passiveLevels || {};
+  const store = ensurePassiveEvolutionBranchStore();
+  const locked = store[id];
 
-  // 第2進化まで行っている場合は、第2進化条件を優先して逆算
-  if (stage >= 2) {
-    for (const evo of def.evolutions) {
-      const need2 = evo?.secondStage?.needsPassive;
-      if (need2 && ownedPassives[need2] > 0) {
-        return evo.branchId || null;
-      }
-    }
+  if (locked && getPassiveBranchDef(id, locked)) {
+    return locked;
   }
 
-  // 第1進化条件から分岐を推定
-  for (const evo of def.evolutions) {
-    const need1 = evo?.needsPassive;
-    if (need1 && ownedPassives[need1] > 0) {
-      return evo.branchId || null;
-    }
-  }
-
-  // どれも満たしていない場合は先頭分岐を返す
-  return def.evolutions[0]?.branchId || null;
+  return lockPassiveEvolutionBranch(id);
 }
 
 function getPassiveCurrentPattern(passiveId) {
