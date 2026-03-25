@@ -6,6 +6,26 @@ function getWeaponDef(id) {
   return (STATE.gameData?.weapons || []).find(w => w.id === id) || null;
 }
 
+function getWeaponEvolutionBranches(def) {
+  if (!def) return [];
+
+  if (Array.isArray(def.evolutions) && def.evolutions.length > 0) {
+    return def.evolutions;
+  }
+
+  if (def.evolution) {
+    return [{
+      branchId: def.evolution.branchId || def.evolution.pattern || "evolution",
+      name: def.evolution.name || "進化",
+      pattern: def.evolution.pattern || null,
+      needsPassive: def.evolution.needsPassive || null,
+      secondStage: def.evolution.secondStage || null
+    }];
+  }
+
+  return [];
+}
+
 function getWeaponInstance(id) {
   return STATE.player?.weapons?.find(w => w.id === id) || null;
 }
@@ -45,6 +65,10 @@ function addWeapon(id) {
     const maxLv = getWeaponMaxLevel(inst);
     if (inst.level >= maxLv) return false;
     inst.level += 1;
+
+    if ((inst.evolutionStage || 0) > 0) {
+      inst.branchId = resolveWeaponBranchIdForCurrentBuild(id, inst.branchId);
+    }
     return true;
   }
 
@@ -92,17 +116,17 @@ function setWeaponTestConfig(id, config = {}) {
 
   const stage = Math.max(0, Math.min(2, Number(config.stage || 0)));
   const branches = getWeaponEvolutionBranches(def);
-  let branchId = config.branchId || inst.branchId || null;
+
+  let branchId = null;
   if (stage > 0) {
+    branchId = resolveWeaponBranchIdForCurrentBuild(id, config.branchId || inst.branchId || null);
     if (!branchId || !branches.find((b) => b.branchId === branchId)) {
       branchId = branches[0]?.branchId || null;
     }
-  } else {
-    branchId = null;
   }
 
   inst.evolutionStage = stage;
-  inst.branchId = branchId;
+  inst.branchId = stage > 0 ? branchId : null;
   inst.level = Math.max(1, Math.min(getStageMaxLevel(stage, def), Number(config.level || 1)));
   inst.cooldown = 0;
   inst.orbitAngle = 0;
@@ -112,25 +136,54 @@ function setWeaponTestConfig(id, config = {}) {
   return true;
 }
 
-function getWeaponEvolutionBranches(def) {
-  if (!def) return [];
-  if (Array.isArray(def.evolutions) && def.evolutions.length > 0) return def.evolutions;
-  if (def.evolution) {
-    return [{
-      branchId: def.evolution.branchId || def.evolution.pattern || "evolution",
-      name: def.evolution.name || "進化",
-      pattern: def.evolution.pattern || null,
-      needsPassive: def.evolution.needsPassive || null,
-      secondStage: def.evolution.secondStage || null
-    }];
+function getForcedWeaponBranchId(weaponId) {
+  switch (weaponId) {
+    case "harpoon":
+      return "trident";
+    case "water_cutter":
+      return "orbit";
+    case "jelly_field":
+      return "storm";
+    case "mine":
+      return "cluster";
+    case "fish_missile":
+      return "multi_homing";
+    case "sonar":
+      return "beam";
+    default:
+      return null;
   }
-  return [];
+}
+
+function getForcedWeaponBranchDef(defOrWeaponId) {
+  const def = typeof defOrWeaponId === "string"
+    ? getWeaponDef(defOrWeaponId)
+    : defOrWeaponId;
+
+  if (!def) return null;
+
+  const forcedBranchId = getForcedWeaponBranchId(def.id);
+  if (!forcedBranchId) return null;
+
+  return getWeaponEvolutionBranches(def).find(branch => branch.branchId === forcedBranchId) || null;
+}
+
+function resolveWeaponBranchIdForCurrentBuild(weaponId, requestedBranchId = null) {
+  const forcedBranchId = getForcedWeaponBranchId(weaponId);
+  if (forcedBranchId) return forcedBranchId;
+
+  if (requestedBranchId) return requestedBranchId;
+
+  const def = getWeaponDef(weaponId);
+  return getWeaponEvolutionBranches(def)[0]?.branchId || null;
 }
 
 function getWeaponBranchDef(w) {
   const def = getWeaponDef(w?.id);
   if (!def) return null;
-  return getWeaponEvolutionBranches(def).find(x => x.branchId === w.branchId) || null;
+
+  const resolvedBranchId = resolveWeaponBranchIdForCurrentBuild(w?.id, w?.branchId || null);
+  return getWeaponEvolutionBranches(def).find(x => x.branchId === resolvedBranchId) || null;
 }
 
 function getWeaponCurrentPattern(w) {
@@ -729,6 +782,22 @@ function getAvailableEvolutions() {
     if (w.level < getWeaponMaxLevel(w)) continue;
 
     if (stage === 0) {
+      const forcedBranch = getForcedWeaponBranchDef(def);
+
+      if (forcedBranch) {
+        const need = forcedBranch.needsPassive;
+        if (!need || getPassiveLevel(need) > 0) {
+          out.push({
+            type: "first",
+            weaponId: w.id,
+            branchId: forcedBranch.branchId,
+            evolutionName: forcedBranch.name || "進化武器",
+            needPassive: need || null
+          });
+        }
+        continue;
+      }
+
       for (const evo of getWeaponEvolutionBranches(def)) {
         const need = evo.needsPassive;
         if (!need || getPassiveLevel(need) > 0) {
@@ -745,6 +814,7 @@ function getAvailableEvolutions() {
       const branch = getWeaponBranchDef(w);
       const second = branch?.secondStage;
       if (!second) continue;
+
       const need = second.needsPassive;
       if (!need || getPassiveLevel(need) > 0) {
         out.push({
@@ -765,8 +835,13 @@ function evolveWeaponToBranch(weaponId, branchId) {
   const w = getWeaponInstance(weaponId);
   if (!w || (w.evolutionStage || 0) !== 0) return false;
 
+  const resolvedBranchId = resolveWeaponBranchIdForCurrentBuild(weaponId, branchId);
+  const def = getWeaponDef(weaponId);
+  const valid = getWeaponEvolutionBranches(def).find(branch => branch.branchId === resolvedBranchId);
+  if (!valid) return false;
+
   w.evolutionStage = 1;
-  w.branchId = branchId;
+  w.branchId = resolvedBranchId;
   w.level = 1;
   w.cooldown = 0;
   return true;

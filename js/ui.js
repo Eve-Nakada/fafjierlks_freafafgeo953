@@ -175,7 +175,49 @@ function getWeaponGrowthBranches(def) {
 }
 
 function getGrowthScreenDescription(def) {
-  return def?.growthDesc || "通常武器から分岐進化し、さらに第2進化へ派生します。";
+  if (!def) return "通常強化から第1進化、第2進化へ成長します。";
+
+  const forcedBranch =
+    typeof getForcedWeaponBranchDef === "function"
+      ? getForcedWeaponBranchDef(def)
+      : null;
+
+  if (forcedBranch) {
+    const normalMax = getWeaponStageMaxLevelUi(0, def);
+    const evo1Max = getWeaponStageMaxLevelUi(1, def);
+    const firstNeed = getPassiveNameFromId(forcedBranch.needsPassive);
+    const secondNeed = forcedBranch.secondStage?.needsPassive
+      ? getPassiveNameFromId(forcedBranch.secondStage.needsPassive)
+      : "";
+
+    return [
+      `通常Lv1→Lv${normalMax}で第1進化可能。`,
+      firstNeed ? `第1進化条件は ${firstNeed}。` : "",
+      forcedBranch.secondStage
+        ? `第1進化Lv1→Lv${evo1Max}で第2進化可能${secondNeed ? `。第2進化条件は ${secondNeed}` : "。"}`
+        : ""
+    ].filter(Boolean).join(" ");
+  }
+
+  return def?.growthDesc || "通常強化から第1進化、第2進化へ成長します。";
+}
+
+function getWeaponUiEvolutionBranch(def, inst = null) {
+  if (!def) return null;
+
+  if (typeof getForcedWeaponBranchDef === "function") {
+    const forced = getForcedWeaponBranchDef(def);
+    if (forced) return forced;
+  }
+
+  const branches = getWeaponGrowthBranches(def);
+  if (!branches.length) return null;
+
+  if (inst?.branchId) {
+    return branches.find((b) => b.branchId === inst.branchId) || branches[0] || null;
+  }
+
+  return branches[0] || null;
 }
 
 function getPassiveNameFromId(id) {
@@ -395,28 +437,25 @@ function ensurePassiveRelatedWeaponStyles() {
 }
 
 function buildEvolutionHintText(def, inst = null) {
-  const branches = getWeaponGrowthBranches(def);
-  if (!branches.length) return "";
+  const branch = getWeaponUiEvolutionBranch(def, inst);
+  if (!branch) return "";
 
   const stage = inst?.evolutionStage || 0;
   const normalMax = getWeaponStageMaxLevelUi(0, def);
   const evo1Max = getWeaponStageMaxLevelUi(1, def);
 
-  if (stage >= 1 && inst?.branchId) {
-    const branch = branches.find((b) => b.branchId === inst.branchId);
-    const second = branch?.secondStage;
-
+  if (stage >= 1) {
+    const second = branch.secondStage;
     if (!second) {
       return `第2進化条件: 第1進化Lv${evo1Max}`;
     }
 
-    return `第2進化条件: 第1進化Lv${evo1Max} + ${getPassiveNameFromId(second.needsPassive)}`;
+    const secondNeed = getPassiveNameFromId(second.needsPassive);
+    return `第2進化条件: 第1進化Lv${evo1Max}${secondNeed ? ` + ${secondNeed}` : ""}`;
   }
 
-  const names = branches.map((b) => getPassiveNameFromId(b.needsPassive)).filter(Boolean);
-  const uniq = [...new Set(names)];
-
-  return `進化条件: 通常Lv${normalMax} + ${uniq.join(" / ")} `;
+  const firstNeed = getPassiveNameFromId(branch.needsPassive);
+  return `第1進化条件: 通常Lv${normalMax}${firstNeed ? ` + ${firstNeed}` : ""}`;
 }
 
 
@@ -466,50 +505,66 @@ function buildWeaponGrowthTreeHtml(weaponId, includeHeader = true) {
   if (!def) return "";
 
   const inst = getWeaponInstance(weaponId);
-  const branches = getWeaponGrowthBranches(def);
+  const branch = getWeaponUiEvolutionBranch(def, inst);
   const rootActive = !!inst && (inst.evolutionStage || 0) === 0;
 
   let html = `<div class="growthTree">`;
 
-  
-if (includeHeader) {
-  html += `
-    <div class="growthTreeHeader">
-      <div class="choiceTitle">${def.name}</div>
-      <div class="choiceDesc">${getGrowthScreenDescription(def)}</div>
-      <div class="growthFeelText">触り心地: ${getWeaponFeelText(def)}</div>
-      ${buildWeaponSynergyHtml(def)}
-    </div>`;
-}
-
+  if (includeHeader) {
+    html += `
+      <div class="growthTreeHeader">
+        <div class="choiceTitle">${def.name}</div>
+        <div class="choiceDesc">${getGrowthScreenDescription(def)}</div>
+        <div class="growthFeelText">触り心地: ${getWeaponFeelText(def)}</div>
+        ${buildWeaponSynergyHtml(def)}
+      </div>`;
+  }
 
   html += `
     <div class="growthTreeCanvas">
       <div class="growthCenterLine"></div>
       <div class="growthRootWrap">
-        ${buildGrowthNodeHtml("通常", def.name, getWeaponStageRangeText(0, def), getWeaponStageSummaryText(def, 0) || def.desc || "", rootActive, "growthRoot")}
+        ${buildGrowthNodeHtml(
+          "通常",
+          def.name,
+          getWeaponStageRangeText(0, def),
+          getWeaponStageSummaryText(def, 0) || def.desc || "",
+          rootActive,
+          "growthRoot"
+        )}
       </div>
       <div class="growthBranchesWrap">`;
 
-  if (branches.length === 0) {
+  if (!branch) {
     html += `<div class="growthEmpty">この武器には進化先がまだ設定されていません。</div>`;
-  }
-
-  for (const branch of branches) {
-    const branchMatch = !inst?.branchId || inst.branchId === branch.branchId;
-    const stage1Active = !!inst && (inst.evolutionStage || 0) >= 1 && branchMatch;
-    const stage2Active = !!inst && (inst.evolutionStage || 0) >= 2 && branchMatch;
+  } else {
+    const stage1Active = !!inst && (inst.evolutionStage || 0) >= 1;
+    const stage2Active = !!inst && (inst.evolutionStage || 0) >= 2;
     const second = branch.secondStage || null;
 
     html += `
       <div class="growthBranchColumn">
         <div class="growthBranchConnector"></div>
-        ${buildGrowthNodeHtml("第1進化", branch.name || "進化", `条件: ${getPassiveNameFromId(branch.needsPassive)}`, getWeaponStageSummaryText(def, 1) || `型: ${branch.pattern || "standard"} / ${getWeaponStageRangeText(1, def)}`, stage1Active, "growthStage1")}`;
+        ${buildGrowthNodeHtml(
+          "第1進化",
+          branch.name || "進化",
+          `条件: ${getPassiveNameFromId(branch.needsPassive)}`,
+          getWeaponStageSummaryText(def, 1) || getWeaponStageRangeText(1, def),
+          stage1Active,
+          "growthStage1"
+        )}`;
 
     if (second) {
       html += `
         <div class="growthChildConnector"></div>
-        ${buildGrowthNodeHtml("第2進化", second.name || "第2進化", `条件: ${getPassiveNameFromId(second.needsPassive)}`, getWeaponStageSummaryText(def, 2) || `型: ${second.pattern || branch.pattern || "standard"} / ${getWeaponStageRangeText(2, def)}`, stage2Active, "growthStage2")}`;
+        ${buildGrowthNodeHtml(
+          "第2進化",
+          second.name || "第2進化",
+          `条件: ${getPassiveNameFromId(second.needsPassive)}`,
+          getWeaponStageSummaryText(def, 2) || getWeaponStageRangeText(2, def),
+          stage2Active,
+          "growthStage2"
+        )}`;
     }
 
     html += `</div>`;
@@ -2147,21 +2202,22 @@ function renderDetailLists() {
 function buildPassiveEvolutionHintText(def, lv) {
   if (!def?.evolutions?.length) return "";
 
-  const stage = getPassiveEvolutionStage(def.id);
-  const branchId = getPassiveBranchId(def.id);
+  const passiveId = def.id;
+  const stage = getPassiveEvolutionStage(passiveId);
+  const branch = getPassiveUiEvolutionBranch(def, passiveId);
+
+  if (!branch) return "";
 
   if (stage <= 0) {
-    const needList = def.evolutions
-      .map((e) => `Lv${Math.max(3, lv)} + ${getPassiveDisplayName(e.needsPassive)}`)
-      .join(" / ");
-    return `進化ヒント: ${needList}`;
+    return `第1進化条件: 通常Lv2 + ${getPassiveDisplayName(branch.needsPassive)}`;
   }
 
   if (stage === 1) {
-    const branch = def.evolutions.find((e) => e.branchId === branchId);
-    if (branch?.secondStage) {
-      return `第2進化ヒント: Lv${Math.max(4, lv)} + ${getPassiveDisplayName(branch.secondStage.needsPassive)}`;
+    const second = branch.secondStage;
+    if (!second) {
+      return `第2進化条件: 第1進化Lv2`;
     }
+    return `第2進化条件: 第1進化Lv2 + ${getPassiveDisplayName(second.needsPassive)}`;
   }
 
   return "最終進化済み";
@@ -2187,34 +2243,35 @@ function buildPassiveGrowthTreeHtml(passiveId) {
   if (!def) return `<div class="growthEmpty">データがありません。</div>`;
 
   const instStage = getPassiveEvolutionStage(passiveId);
-  const instBranchId = getPassiveBranchId(passiveId);
-  const stages = def.balance?.stages || [];
-  const branches = def.evolutions || [];
+  const branch = getPassiveUiEvolutionBranch(def, passiveId);
+  const stage1Active = instStage >= 1;
+  const stage2Active = instStage >= 2;
 
   let html = `
-    <div class="growthTreeRoot">
-      <div class="growthRootBlock">
-        ${buildGrowthNodeHtml(
-          "パッシブ",
-          def.name,
-          def.growthDesc || def.desc || "",
-          (stages[0]?.levelLabels || []).map((label, i) => `Lv${i + 1}: ${label}`).join("<br>"),
-          instStage <= 0,
-          "growthStage0"
-        )}
+    <div class="growthTree">
+      <div class="growthTreeHeader">
+        <div class="choiceTitle">${def.name}</div>
+        <div class="choiceDesc">${getPassiveGrowthScreenDescription(def, passiveId)}</div>
+        ${def.feel ? `<div class="growthFeelText">触り心地: ${def.feel}</div>` : ""}
       </div>
-      <div class="growthBranchRow">`;
 
-  if (branches.length === 0) {
+      <div class="growthTreeCanvas">
+        <div class="growthCenterLine"></div>
+        <div class="growthRootWrap">
+          ${buildGrowthNodeHtml(
+            "通常",
+            def.name,
+            getPassiveStageRangeText("normal", def),
+            getPassiveStageSummaryText(def, "normal") || def.desc || "",
+            instStage <= 0,
+            "growthRoot"
+          )}
+        </div>
+        <div class="growthBranchesWrap">`;
+
+  if (!branch) {
     html += `<div class="growthEmpty">このパッシブには進化先がまだ設定されていません。</div>`;
-  }
-
-  for (const branch of branches) {
-    const stage1Active = instStage >= 1 && (!instBranchId || instBranchId === branch.branchId);
-    const stage2Active = instStage >= 2 && (!instBranchId || instBranchId === branch.branchId);
-    const stage1Def = stages.find((s) => s.key === "evolution1");
-    const stage2Def = stages.find((s) => s.key === "evolution2");
-
+  } else {
     html += `
       <div class="growthBranchColumn">
         <div class="growthBranchConnector"></div>
@@ -2222,7 +2279,7 @@ function buildPassiveGrowthTreeHtml(passiveId) {
           "第1進化",
           branch.name || "進化",
           `条件: ${getPassiveDisplayName(branch.needsPassive)}`,
-          (stage1Def?.levelLabels || []).map((label, i) => `Lv${i + 1}: ${label}`).join("<br>"),
+          getPassiveStageSummaryText(def, "evolution1") || getPassiveStageRangeText("evolution1", def),
           stage1Active,
           "growthStage1"
         )}`;
@@ -2234,7 +2291,7 @@ function buildPassiveGrowthTreeHtml(passiveId) {
           "第2進化",
           branch.secondStage.name || "第2進化",
           `条件: ${getPassiveDisplayName(branch.secondStage.needsPassive)}`,
-          (stage2Def?.levelLabels || []).map((label, i) => `Lv${i + 1}: ${label}`).join("<br>"),
+          getPassiveStageSummaryText(def, "evolution2") || getPassiveStageRangeText("evolution2", def),
           stage2Active,
           "growthStage2"
         )}`;
@@ -2244,10 +2301,71 @@ function buildPassiveGrowthTreeHtml(passiveId) {
   }
 
   html += `
+        </div>
       </div>
     </div>`;
 
   return html;
+}
+
+function getPassiveUiEvolutionBranch(def, passiveId = null) {
+  if (!def || !Array.isArray(def.evolutions) || def.evolutions.length <= 0) return null;
+
+  const actualPassiveId = passiveId || def.id || null;
+  const stage = actualPassiveId ? getPassiveEvolutionStage(actualPassiveId) : 0;
+  const lockedBranchId = actualPassiveId ? getPassiveBranchId(actualPassiveId) : null;
+
+  if (lockedBranchId) {
+    return def.evolutions.find((e) => e.branchId === lockedBranchId) || def.evolutions[0] || null;
+  }
+
+  // 未進化時はUI代表枝として先頭枝を使う
+  // 将来、固定表示したい枝を変えたくなったらここだけ変えればOK
+  if (stage <= 0) {
+    return def.evolutions[0] || null;
+  }
+
+  return def.evolutions[0] || null;
+}
+
+function getPassiveStageLevelLabels(def, stageKey) {
+  const stages = Array.isArray(def?.balance?.stages) ? def.balance.stages : [];
+  const stageDef = stages.find((s) => s.key === stageKey);
+  return Array.isArray(stageDef?.levelLabels) ? stageDef.levelLabels : [];
+}
+
+function getPassiveStageRangeText(stageKey, def) {
+  const labels = getPassiveStageLevelLabels(def, stageKey);
+  const maxLv = Math.max(1, labels.length || 1);
+  return `Lv1 → Lv${maxLv}`;
+}
+
+function getPassiveStageSummaryText(def, stageKey) {
+  const labels = getPassiveStageLevelLabels(def, stageKey);
+  if (!labels.length) return "";
+  return labels.map((label, i) => `Lv${i + 1}: ${label}`).join("<br>");
+}
+
+function getPassiveGrowthScreenDescription(def, passiveId = null) {
+  if (!def) return "通常強化から第1進化、第2進化へ成長します。";
+
+  const branch = getPassiveUiEvolutionBranch(def, passiveId);
+  if (!branch) {
+    return def.growthDesc || def.desc || "通常強化から第1進化、第2進化へ成長します。";
+  }
+
+  const firstNeed = getPassiveDisplayName(branch.needsPassive);
+  const secondNeed = branch.secondStage?.needsPassive
+    ? getPassiveDisplayName(branch.secondStage.needsPassive)
+    : "";
+
+  return [
+    `通常Lv1→Lv2で第1進化可能。`,
+    firstNeed ? `第1進化条件は ${firstNeed}。` : "",
+    branch.secondStage
+      ? `第1進化Lv1→Lv2で第2進化可能${secondNeed ? `。第2進化条件は ${secondNeed}` : "。"}`
+      : ""
+  ].filter(Boolean).join(" ");
 }
 
 function getPassiveDisplayName(id) {
