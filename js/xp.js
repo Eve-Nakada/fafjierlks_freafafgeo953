@@ -17,6 +17,9 @@ function getXPGemFrameIndex(xp) {
 }
 
 function dropXPGem(x, y, xp) {
+  const cap = Math.max(1, Number(STATE.objectCaps?.xpGems || 400));
+  if ((STATE.xpGems?.length || 0) >= cap) return;
+
   const value = normalizeXPValue(xp || 1);
 
   STATE.xpGems.push({

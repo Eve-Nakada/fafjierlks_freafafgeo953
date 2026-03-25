@@ -161,6 +161,36 @@ function spawnEnemy(typeId, x, y, isBoss = false, behavior = 'normal') {
   const def = getEnemyDef(typeId);
   if (!def) return null;
 
+  const cap = Math.max(1, Number(STATE.objectCaps?.enemies || 400));
+  const current = Array.isArray(STATE.enemies) ? STATE.enemies.length : 0;
+
+  // ボス出現時は枠を確保するため、通常敵を先に間引く
+  if (isBoss && current >= cap) {
+    let need = current - cap + 1;
+
+    if (need > 0 && Array.isArray(STATE.enemies)) {
+      const survivors = [];
+      for (const e of STATE.enemies) {
+        if (
+          need > 0 &&
+          e &&
+          !e.isBoss &&
+          !e.dead
+        ) {
+          need--;
+          continue;
+        }
+        survivors.push(e);
+      }
+      STATE.enemies = survivors;
+    }
+  }
+
+  // それでも満員なら追加しない
+  if ((STATE.enemies?.length || 0) >= cap) {
+    return null;
+  }
+
   const r = isBoss ? 42 : 16 + Math.max(0, Number(def.hp || 40)) * 0.02;
   const bossScale = isBoss ? Math.max(1, Number(def.bossScale || 3)) : 1;
   const shieldMaxHp = isBoss ? Math.max(1, Number(def.shieldHp || 3000)) : 0;

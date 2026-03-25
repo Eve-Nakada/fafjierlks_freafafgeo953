@@ -359,81 +359,6 @@ function emitBarrierDroneField(drone, lv) {
   }
 }
 
-function syncBarrierDrones() {
-  const lv = getPassiveLevel("barrier_drone");
-  const pattern = getPassiveCurrentPattern("barrier_drone");
-  const balance = getPassiveBalanceLevel("barrier_drone");
-  const drones = ensureDroneArray();
-  let existing = drones.filter(d => d.type === "barrier");
-
-  if (lv <= 0 || !balance) {
-    STATE.drones = drones.filter(d => d.type !== "barrier");
-    return;
-  }
-
-  const count = balance.count || 1;
-
-  while (existing.length < count) {
-    const idx = existing.length;
-    const d = {
-      type: "barrier",
-      index: idx,
-      pattern,
-      x: STATE.player.x,
-      y: STATE.player.y,
-      r: 16,
-      angle: (Math.PI * 2 / count) * idx,
-      deadTimer: 0,
-      fieldTick: 0,
-      hp: balance.hp || 50,
-      maxHp: balance.hp || 50,
-      shieldHp: balance.shieldHp || 0,
-      shieldMaxHp: balance.shieldHp || 0
-    };
-    drones.push(d);
-    existing.push(d);
-  }
-
-  for (let i = existing.length - 1; i >= count; i--) {
-    const idx = drones.indexOf(existing[i]);
-    if (idx >= 0) drones.splice(idx, 1);
-    existing.pop();
-  }
-
-  existing.forEach((d, i) => {
-    d.index = i;
-    d.pattern = pattern;
-    d.orbitRadius = balance.orbitRadius || 40;
-    d.orbitSpeed = balance.orbitSpeed || 2.0;
-    d.fieldRadius = balance.fieldRadius || 0;
-    d.shieldArc = balance.shieldArc || 0;
-
-    const prevMax = d.maxHp || 0;
-    d.maxHp = balance.hp || prevMax || 50;
-
-    if (d.hp == null) {
-      d.hp = d.maxHp;
-    } else if (d.maxHp > prevMax) {
-      d.hp = Math.min(d.maxHp, d.hp + (d.maxHp - prevMax));
-    } else {
-      d.hp = Math.min(d.hp, d.maxHp);
-    }
-
-    const prevShieldMax = d.shieldMaxHp || 0;
-    d.shieldMaxHp = balance.shieldHp || 0;
-
-    if (d.shieldMaxHp <= 0) {
-      d.shieldHp = 0;
-    } else if (d.shieldHp == null) {
-      d.shieldHp = d.shieldMaxHp;
-    } else if (d.shieldMaxHp > prevShieldMax) {
-      d.shieldHp = Math.min(d.shieldMaxHp, d.shieldHp + (d.shieldMaxHp - prevShieldMax));
-    } else {
-      d.shieldHp = Math.min(Math.max(0, d.shieldHp), d.shieldMaxHp);
-    }
-  });
-}
-
 function updateDrones(dt) {
   const p = STATE.player;
   if (!p) return;
@@ -1069,14 +994,6 @@ function getPassiveBranchDef(passiveId, branchId) {
   return def.evolutions.find(x => x.branchId === branchId) || null;
 }
 
-function getPassiveDef(id) {
-  return (STATE.gameData?.passives || []).find((p) => p.id === id) || null;
-}
-
-function getPassiveLevel(id) {
-  return STATE.player?.passiveLevels?.[id] || 0;
-}
-
 function getPassiveEvolutionStage(id) {
   const lv = getPassiveLevel(id);
   if (lv >= 5) return 2;
@@ -1113,12 +1030,6 @@ function getPassiveBranchId(id) {
 
   // どれも満たしていない場合は先頭分岐を返す
   return def.evolutions[0]?.branchId || null;
-}
-
-function getPassiveBranchDef(passiveId, branchId) {
-  const def = getPassiveDef(passiveId);
-  if (!def || !Array.isArray(def.evolutions)) return null;
-  return def.evolutions.find((x) => x.branchId === branchId) || null;
 }
 
 function getPassiveCurrentPattern(passiveId) {

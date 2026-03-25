@@ -977,14 +977,6 @@ function isWeaponOwned(id) {
   return false;
 }
 
-function isWeaponEvolved(id) {
-  const p = STATE.player;
-  if (!p || !Array.isArray(p.weapons)) return false;
-  const entry = p.weapons.find((w) => w && typeof w === 'object' && w.id === id);
-  if (!entry || typeof entry !== 'object') return false;
-  return !!(entry.evolved || entry.isEvolved || entry.evolutionApplied || entry.evo || entry.evolvedName);
-}
-
 function getWeaponDisplayLevel(id) {
   const p = STATE.player;
   if (!p) return 0;

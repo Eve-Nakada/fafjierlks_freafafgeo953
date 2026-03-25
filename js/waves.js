@@ -14,7 +14,6 @@ function resetWaveState() {
     delete wave._eliteSpawned;
   }
   STATE.lastShopWave = 0;
-  STATE.mapCoins = [];
 }
 
 function createBalancedLateWave(index, at, theme, formation, count, enemyTypes, guaranteedTypes, enemyWeights, mapCoins = { normal: 0, rare: 0 }) {

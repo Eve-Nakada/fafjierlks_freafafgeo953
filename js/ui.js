@@ -6,6 +6,52 @@ function getEl(id) {
   return document.getElementById(id);
 }
 
+function isDesktopHudObjectCountAvailable() {
+  const mq = typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia("(pointer:fine)").matches
+    : false;
+
+  return !!(mq || (typeof window !== "undefined" && window.innerWidth >= 960));
+}
+
+function renderObjectCountDetail() {
+  const el = getEl("objectCountDetail");
+  if (!el) return;
+
+  const isDesktop = isDesktopHudObjectCountAvailable();
+  const isDetail = !STATE.uiSimple;
+
+  if (!isDesktop || !isDetail || !STATE.player) {
+    el.innerHTML = "";
+    el.style.display = "none";
+    return;
+  }
+
+  const enemyNow = Array.isArray(STATE.enemies) ? STATE.enemies.length : 0;
+  const xpNow = Array.isArray(STATE.xpGems) ? STATE.xpGems.length : 0;
+  const coinNow = Array.isArray(STATE.mapCoins) ? STATE.mapCoins.length : 0;
+
+  const enemyCap = Number(STATE.objectCaps?.enemies || 400);
+  const xpCap = Number(STATE.objectCaps?.xpGems || 400);
+  const coinCap = Number(STATE.objectCaps?.mapCoins || 100);
+
+  el.style.display = "grid";
+  el.innerHTML = `
+    <div class="detailEntry">
+      <div class="detailName">敵数</div>
+      <div class="detailValue">${enemyNow} / ${enemyCap}</div>
+    </div>
+    <div class="detailEntry">
+      <div class="detailName">XP数</div>
+      <div class="detailValue">${xpNow} / ${xpCap}</div>
+    </div>
+    <div class="detailEntry">
+      <div class="detailName">コイン数</div>
+      <div class="detailValue">${coinNow} / ${coinCap}</div>
+    </div>
+  `;
+}
+
 function showScreen(id) {
   hideAllScreens();
   if (!id) return;
@@ -1917,6 +1963,7 @@ function updateHUD() {
   renderDetailLists();
   updateBossHud();
   updateAutoBatchHudUi();
+  renderObjectCountDetail();
 }
 
 function updateBossHud() {

@@ -124,21 +124,45 @@ function applyMapCurrent(dt, prevX, prevY) {
 
 function applyMapDamage(dt) {
   const p = STATE.player;
-  const map = getCurrentMap();
-  if (!p || !map) return;
+  if (!p || p.hp <= 0) return;
 
-  for (const trap of map.traps || []) {
-    if (
-      p.x >= trap.x &&
-      p.x <= trap.x + trap.w &&
-      p.y >= trap.y &&
-      p.y <= trap.y + trap.h
-    ) {
-      damagePlayer((trap.damage || 10) * dt, {
-        id: "map_trap",
-        label: "マップ罠"
-      });
-    }
+  const trap = getMapTrapAt(p.x, p.y);
+
+  if (!trap) {
+    p._mapTrapAccum = 0;
+    return;
+  }
+
+  p._mapTrapAccum = Number(p._mapTrapAccum || 0) + dt;
+
+  // 0.25秒ごとの割合ダメージTick
+  const tickSpan = 0.25;
+  if (p._mapTrapAccum < tickSpan) return;
+
+  const ticks = Math.floor(p._mapTrapAccum / tickSpan);
+  p._mapTrapAccum -= ticks * tickSpan;
+
+  const ratePerSec = getTrapDamageRate(trap);
+  const baseDamage = p.maxHp * ratePerSec * tickSpan * ticks;
+
+  // ダメージ床は割合ベース。防御は軽く効かせる
+  const reduced = Math.max(1, baseDamage - (p.stats.armor || 0) * 0.35 * ticks);
+
+  if (typeof setLastDamageCause === "function") {
+    setLastDamageCause({
+      id: "map_trap",
+      label: "ダメージ床"
+    });
+  }
+
+  p.hp = Math.max(0, p.hp - reduced);
+  p.damageFlash = Math.max(Number(p.damageFlash || 0), 0.12);
+
+  if (STATE.scoreState) {
+    STATE.scoreState.noDamageTimer = 0;
+    STATE.scoreState.noDamageTier = 0;
+    STATE.scoreState.killChainTimer = 0;
+    STATE.scoreState.killChainCount = 0;
   }
 }
 
@@ -152,7 +176,6 @@ function renderMap(ctx) {
     ctx.fillStyle = '#06304a';
   }
   ctx.fillRect(-cam.x, -cam.y, STATE.world.width, STATE.world.height);
-  renderMapCoins(ctx);
 
   renderMapGrid(ctx, cam);
 
@@ -402,110 +425,4 @@ function findRandomCoinPosition(kind = 'normal') {
     x: rand(margin, STATE.world.width - margin),
     y: rand(margin, STATE.world.height - margin)
   };
-}
-
-function spawnMapCoin(kind = 'normal') {
-  if (!Array.isArray(STATE.mapCoins)) {
-    STATE.mapCoins = [];
-  }
-
-  const pos = findRandomCoinPosition(kind);
-  const value = getMapCoinValue(kind);
-  const r = getMapCoinRadius(kind);
-
-  STATE.mapCoins.push({
-    kind,
-    x: pos.x,
-    y: pos.y,
-    r,
-    value,
-    frameIndex: getMapCoinFrameIndex(kind),
-    bobSeed: Math.random() * Math.PI * 2,
-    rotateSeed: Math.random() * Math.PI * 2,
-    glowColor: getMapCoinGlowColor(kind)
-  });
-}
-
-function resetWaveCoins() {
-  // Wave切替ではリセットしない。ゲーム全体の開始時は resetWaveState 側で空になる。
-}
-
-function updateMapCoins(dt) {
-  const p = STATE.player;
-  if (!p) return;
-
-  const next = [];
-
-  for (const coin of STATE.mapCoins || []) {
-    if (dist(coin.x, coin.y, p.x, p.y) <= (coin.r || 12) + p.r + 6) {
-      const gain = coin.value || 10;
-      p.gold = (p.gold || 0) + gain;
-      STATE.score += gain * 2;
-      addEffect(coin.x, coin.y, coin.kind === 'rare' ? 28 : 20, coin.kind === 'rare' ? '#ffeb99' : '#ffd166', 0.22, 0.28);
-      updateHUD();
-      continue;
-    }
-
-    next.push(coin);
-  }
-
-  STATE.mapCoins = next;
-}
-
-function renderMapCoinFallback(ctx, coin, x, y) {
-  const glow = coin.kind === 'rare' ? 'rgba(255, 235, 153, 0.28)' : 'rgba(255, 215, 90, 0.22)';
-  const body = coin.kind === 'rare' ? '#ffe27a' : '#ffd166';
-  const rim = coin.kind === 'rare' ? '#fff6bf' : '#fff1a8';
-
-  ctx.fillStyle = glow;
-  ctx.beginPath();
-  ctx.arc(x, y, (coin.r || 12) + 6, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = body;
-  ctx.beginPath();
-  ctx.arc(x, y, coin.r || 12, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = rim;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  ctx.fillStyle = 'rgba(255,255,255,0.65)';
-  ctx.fillRect(x - 2, y - 6, 4, 12);
-}
-
-function renderMapCoins(ctx) {
-  const cam = STATE.camera;
-  const spriteOk = !!STATE.assets?.map_gold?.img;
-
-  for (const coin of STATE.mapCoins || []) {
-    const bobY = Math.sin(STATE.time * 3 + (coin.bobSeed || 0)) * 3;
-    const x = coin.x - cam.x;
-    const y = coin.y - cam.y + bobY;
-
-    ctx.save();
-
-    ctx.fillStyle = coin.kind === 'rare' ? 'rgba(255, 235, 153, 0.24)' : 'rgba(255, 215, 90, 0.18)';
-    ctx.beginPath();
-    ctx.ellipse(x, y + (coin.r || 12) + 5, (coin.r || 12) + 7, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (spriteOk) {
-      const drawSize = coin.kind === 'rare' ? 34 : 28;
-      drawSpriteFrame(
-        ctx,
-        'map_gold',
-        coin.frameIndex || 0,
-        x - drawSize * 0.5,
-        y - drawSize * 0.5,
-        drawSize,
-        drawSize
-      );
-    } else {
-      renderMapCoinFallback(ctx, coin, x, y);
-    }
-
-    ctx.restore();
-  }
 }
