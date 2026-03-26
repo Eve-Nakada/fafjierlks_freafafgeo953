@@ -1105,7 +1105,6 @@ function ensureTestModeStyles() {
 }
 
 function ensureTestModePanelDom() {
-  ensureTestModeStyles();
   let wrap = getEl('testModePanelWrap');
   if (wrap) return wrap;
 
@@ -1204,6 +1203,21 @@ function ensureTestModePanelDom() {
               <button id="testSkipLevelUpOnceBtn" type="button">今すぐ1回スキップ</button>
               <button id="testAutoPlayToggleBtn" type="button">自動プレイ: OFF</button>
             </div>
+          </div>
+
+          <div class="testModeField">
+            <label>自動プレイ中の被ダメ設定</label>
+            <div class="testModeCheckList">
+              <label class="testModeCheck">
+                <input id="testAutoReceiveTrapDamage" type="checkbox">
+                ダメージ床ダメージを受ける
+              </label>
+              <label class="testModeCheck">
+                <input id="testAutoReceiveSelfMineDamage" type="checkbox">
+                自機機雷爆風ダメージを受ける
+              </label>
+            </div>
+            <div class="testModeHint">OFFなら、自動プレイ中だけ無効になります。手動プレイ時は通常どおりダメージを受けます。</div>
           </div>
 
           <div class="testModeMiniGrid">
@@ -1409,6 +1423,26 @@ function setupTestModeUi() {
       if (typeof setAutoPlayEnabled === "function") setAutoPlayEnabled(next);
       autoPlayToggleBtn.textContent = `自動プレイ: ${next ? 'ON' : 'OFF'}`;
       updateTestModeStatus(`自動プレイ ${next ? 'ON' : 'OFF'}`);
+    };
+  }
+
+  const autoReceiveTrapDamage = getEl('testAutoReceiveTrapDamage');
+  if (autoReceiveTrapDamage) {
+    autoReceiveTrapDamage.onchange = () => {
+      const s = typeof getAutoPlayState === "function" ? getAutoPlayState() : null;
+      if (!s) return;
+      s.receiveTrapDamage = !!autoReceiveTrapDamage.checked;
+      updateTestModeStatus(`自動プレイ中のダメージ床ダメージ ${s.receiveTrapDamage ? 'ON' : 'OFF'}`);
+    };
+  }
+
+  const autoReceiveSelfMineDamage = getEl('testAutoReceiveSelfMineDamage');
+  if (autoReceiveSelfMineDamage) {
+    autoReceiveSelfMineDamage.onchange = () => {
+      const s = typeof getAutoPlayState === "function" ? getAutoPlayState() : null;
+      if (!s) return;
+      s.receiveSelfMineDamage = !!autoReceiveSelfMineDamage.checked;
+      updateTestModeStatus(`自動プレイ中の自機機雷爆風ダメージ ${s.receiveSelfMineDamage ? 'ON' : 'OFF'}`);
     };
   }
 
@@ -1686,6 +1720,16 @@ function refreshTestModePanel() {
 
   const autoBatchCount = getEl('testAutoBatchCount');
   if (autoBatchCount && auto) autoBatchCount.value = Number(auto.batchTargetRuns || 100);
+
+  const autoReceiveTrapDamage = getEl('testAutoReceiveTrapDamage');
+  if (autoReceiveTrapDamage && auto) {
+    autoReceiveTrapDamage.checked = !!auto.receiveTrapDamage;
+  }
+
+  const autoReceiveSelfMineDamage = getEl('testAutoReceiveSelfMineDamage');
+  if (autoReceiveSelfMineDamage && auto) {
+    autoReceiveSelfMineDamage.checked = !!auto.receiveSelfMineDamage;
+  }
 
   const autoBatchStartBtn = getEl('testAutoBatchStartBtn');
   if (autoBatchStartBtn && auto) {

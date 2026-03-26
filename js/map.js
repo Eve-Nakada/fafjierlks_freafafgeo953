@@ -133,6 +133,17 @@ function applyMapDamage(dt) {
     return;
   }
 
+  // 追加:
+  // 自動プレイ中かつ「罠ダメージを受けない」設定なら、
+  // 蓄積もリセットしてダメージ無効
+  if (
+    typeof shouldAutoPlayReceiveTrapDamage === "function" &&
+    !shouldAutoPlayReceiveTrapDamage()
+  ) {
+    p._mapTrapAccum = 0;
+    return;
+  }
+
   p._mapTrapAccum = Number(p._mapTrapAccum || 0) + dt;
 
   // 0.25秒ごとの割合ダメージTick

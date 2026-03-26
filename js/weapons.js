@@ -1149,10 +1149,17 @@ function explodeMine(mine, triggerEnemy = null) {
     const hitPlayer = dist(mine.x, mine.y, p.x, p.y) <= radius + (p.r || 0);
 
     if (hitPlayer && !isMineSelfDamageProtected(mine)) {
-      damagePlayer?.(damage * 0.5, {
-        id: "self_mine",
-        label: "自機機雷爆風"
-      });
+      const canReceiveSelfMineDamage =
+        typeof shouldAutoPlayReceiveSelfMineDamage !== "function"
+          ? true
+          : shouldAutoPlayReceiveSelfMineDamage();
+
+      if (canReceiveSelfMineDamage) {
+        damagePlayer?.(damage * 0.5, {
+          id: "self_mine",
+          label: "自機機雷爆風"
+        });
+      }
     }
   }
 

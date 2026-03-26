@@ -53,7 +53,12 @@ function getAutoPlayState() {
       restartDelay: 0.45,
       lastRunClear: false,
       selectingShop: false,
-      promptCsvAfterBatch: false
+      promptCsvAfterBatch: false,
+
+      // 追加: 自動プレイ中に各ダメージを受けるか
+      // false = 受けない / true = 受ける
+      receiveTrapDamage: false,
+      receiveSelfMineDamage: false
     };
   }
 
@@ -61,7 +66,30 @@ function getAutoPlayState() {
   s.simSpeed = Math.max(1, Number(s.simSpeed || 1));
   s.batchTargetRuns = Math.max(1, Number(s.batchTargetRuns || 1));
   s.promptCsvAfterBatch = !!s.promptCsvAfterBatch;
+
+  // 旧セーブや途中状態との互換
+  if (typeof s.receiveTrapDamage !== "boolean") s.receiveTrapDamage = false;
+  if (typeof s.receiveSelfMineDamage !== "boolean") s.receiveSelfMineDamage = false;
+
   return s;
+}
+
+function shouldAutoPlayReceiveTrapDamage() {
+  const s = getAutoPlayState();
+
+  // 自動プレイ中以外は通常どおりダメージを受ける
+  if (!s.enabled || !STATE.testMode?.enabled) return true;
+
+  return !!s.receiveTrapDamage;
+}
+
+function shouldAutoPlayReceiveSelfMineDamage() {
+  const s = getAutoPlayState();
+
+  // 自動プレイ中以外は通常どおりダメージを受ける
+  if (!s.enabled || !STATE.testMode?.enabled) return true;
+
+  return !!s.receiveSelfMineDamage;
 }
 
 function isAutoPlayEnabled() {
