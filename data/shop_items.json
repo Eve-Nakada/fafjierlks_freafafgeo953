@@ -822,6 +822,22 @@
         "price": 25,
         "persistent": true
       }
+    ],
+    "16": [
+      { "id": "w16_heal_500_1", "name": "HP回復 +500", "desc": "HPを500回復する。", "effect": "heal", "value": 500, "price": 600, "persistent": true },
+      { "id": "w16_absorb_xp_1", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false },
+      { "id": "w16_reroll_1", "name": "リロール券", "desc": "レベルアップ選択肢を引き直す。", "effect": "reroll", "value": 1, "price": 25, "persistent": true }
+    ],
+    
+    "17": [
+      { "id": "w17_heal_500_1", "name": "HP回復 +500", "desc": "HPを500回復する。", "effect": "heal", "value": 500, "price": 600, "persistent": true },
+      { "id": "w17_absorb_xp_1", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false },
+      { "id": "w17_reroll_1", "name": "リロール券", "desc": "レベルアップ選択肢を引き直す。", "effect": "reroll", "value": 1, "price": 25, "persistent": true }
+    ],
+    "18": [
+      { "id": "w18_heal_500_1", "name": "HP回復 +500", "desc": "HPを500回復する。", "effect": "heal", "value": 500, "price": 600, "persistent": true },
+      { "id": "w18_absorb_xp_1", "name": "XP全回収", "desc": "画面上のXPをすべて吸収する。", "effect": "absorbXp", "value": 1, "price": 40, "persistent": false },
+      { "id": "w18_reroll_1", "name": "リロール券", "desc": "レベルアップ選択肢を引き直す。", "effect": "reroll", "value": 1, "price": 25, "persistent": true }
     ]
   }
 }

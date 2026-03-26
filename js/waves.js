@@ -493,8 +493,17 @@ function handleWaveShop(newWaveIndex, prevWaveIndex) {
   if (newWaveIndex === prevWaveIndex) return;
   if (STATE.lastShopWave >= newWaveIndex) return;
 
+  // Wave19ではショップを開かない
+  if (newWaveIndex >= 19) {
+    STATE.lastShopWave = newWaveIndex;
+    return;
+  }
+
   STATE.lastShopWave = newWaveIndex;
-  if (typeof openShop === 'function') openShop();
+
+  if (typeof openShop === 'function') {
+    openShop();
+  }
 }
 
 function handleClearCheck() {
