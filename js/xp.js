@@ -20,14 +20,24 @@ function dropXPGem(x, y, xp) {
   const cap = Math.max(1, Number(STATE.objectCaps?.xpGems || 400));
   if ((STATE.xpGems?.length || 0) >= cap) return;
 
-  const value = normalizeXPValue(xp || 1);
+  const rawXp = Math.max(1, Math.round(Number(xp || 1)));
+  const displayXp = normalizeXPValue(rawXp);
+
+  let iconScale = 1;
+  if (rawXp >= 60) iconScale = 2.0;
+  else if (rawXp >= 30) iconScale = 1.7;
+  else if (rawXp >= 20) iconScale = 1.4;
+
+  const baseR = displayXp >= 20 ? 9 : displayXp >= 10 ? 8 : displayXp >= 5 ? 7 : 6;
 
   STATE.xpGems.push({
     x,
     y,
-    xp: value,
-    frameIndex: getXPGemFrameIndex(value),
-    r: value >= 20 ? 9 : value >= 10 ? 8 : value >= 5 ? 7 : 6,
+    xp: displayXp,
+    actualXp: rawXp,
+    frameIndex: getXPGemFrameIndex(displayXp),
+    iconScale,
+    r: baseR * iconScale,
     vx: rand(-18, 18),
     vy: rand(-18, 18),
     collectDelay: 0.18
@@ -41,8 +51,9 @@ function absorbAllXP() {
   let totalScore = 0;
 
   for (const gem of STATE.xpGems) {
-    gainXP(gem.xp);
-    totalScore += gem.xp * 2;
+    const gain = Math.max(1, Number(gem.actualXp || gem.xp || 1));
+    gainXP(gain);
+    totalScore += gain * 2;
   }
 
   STATE.score += totalScore;
@@ -78,8 +89,9 @@ function updateXPGems(dt) {
     }
 
     if (dist(gem.x, gem.y, p.x, p.y) <= gem.r + p.r + 4) {
-      gainXP(gem.xp);
-      STATE.score += gem.xp * 2;
+      const gain = Math.max(1, Number(gem.actualXp || gem.xp || 1));
+      gainXP(gain);
+      STATE.score += gain * 2;
       continue;
     }
 
@@ -95,8 +107,18 @@ function renderXPGems(ctx) {
   for (const gem of STATE.xpGems) {
     const x = gem.x - cam.x;
     const y = gem.y - cam.y;
-    const size = gem.r * 2 + 8;
-    const ok = drawSpriteFrame(ctx, "xp_gems", gem.frameIndex || 0, x - size * 0.5, y - size * 0.5, size, size);
+    const scale = Math.max(1, Number(gem.iconScale || 1));
+    const size = (gem.r * 2 + 8) * scale;
+
+    const ok = drawSpriteFrame(
+      ctx,
+      "xp_gems",
+      gem.frameIndex || 0,
+      x - size * 0.5,
+      y - size * 0.5,
+      size,
+      size
+    );
 
     if (!ok) {
       ctx.save();

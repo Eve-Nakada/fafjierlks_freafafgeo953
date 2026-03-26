@@ -105,11 +105,13 @@ function applyBossShieldDamage(enemy, damage) {
 function makeEliteEnemy(enemy, options = {}) {
   if (!enemy) return null;
 
-  const hpMul = Math.max(1, Number(options.hpMul || 15));
-  const shieldHits = Math.max(1, Math.round(Number(options.shieldHits || 1)));
-  const sizeMul = Math.max(1, Number(options.sizeMul || 3));
-  const damageMul = Math.max(1, Number(options.damageMul || 2.2));
-  const speedMul = Math.max(1, Number(options.speedMul || 1.12));
+  const hpMul = Math.max(1, Number(options.hpMul ?? 22));
+  const shieldHits = Math.max(1, Math.round(Number(options.shieldHits ?? 1)));
+  const sizeMul = Math.max(1, Number(options.sizeMul ?? 3));
+  const damageMul = Math.max(1, Number(options.damageMul ?? 2.5));
+  const speedMul = Math.max(0.1, Number(options.speedMul ?? 0.9));
+  const xpMul = Math.max(1, Number(options.xpMul ?? 3));
+  const goldMul = Math.max(1, Number(options.goldMul ?? 1.8));
 
   enemy.isElite = true;
   enemy.elitePattern = options.pattern || "elite";
@@ -127,12 +129,15 @@ function makeEliteEnemy(enemy, options = {}) {
 
   enemy.gold = Math.max(
     Number(enemy.gold || 0),
-    Number(options.goldBonus || 0) + Number(enemy.gold || 0)
+    Math.round(Number(enemy.gold || 0) * goldMul + Number(options.goldBonus || 0))
   );
+
   enemy.xp = Math.max(
     Number(enemy.xp || 0),
-    Number(options.xpBonus || 0) + Number(enemy.xp || 0)
+    Math.round(Number(enemy.xp || 0) * xpMul + Number(options.xpBonus || 0))
   );
+
+  enemy.eliteXpVisualScale = Math.max(1.6, Number(options.eliteXpVisualScale || 1.9));
 
   return enemy;
 }
@@ -260,20 +265,20 @@ function spawnBossOrbitDroneBurst(boss, kind = "star", count = 5) {
   if (!boss) return;
   if (!Array.isArray(boss.attackDrones)) boss.attackDrones = [];
 
+  const isWave = kind === "wave";
   const liveCount = boss.attackDrones.filter((d) => !d.dead).length;
-  const cap = Math.max(count, kind === "wave" ? 8 : 7);
+  const cap = Math.max(count, isWave ? 10 : 7);
   if (liveCount >= cap) return;
 
   const spawnCount = cap - liveCount;
   const baseAngle = rand(0, Math.PI * 2);
 
-  const modeTable = kind === "wave"
-    ? ["charge", "boomerang", "turret", "spiral", "cross", "homing"]
+  const modeTable = isWave
+    ? ["charge", "boomerang", "turret", "spiral", "cross", "homing", "fan", "nova"]
     : ["charge", "boomerang", "turret", "spiral", "cross", "homing"];
 
   for (let i = 0; i < spawnCount; i++) {
     const mode = modeTable[i % modeTable.length];
-    const isWave = kind === "wave";
 
     boss.attackDrones.push({
       id: `boss_drone_${Math.random().toString(36).slice(2)}`,
@@ -281,14 +286,16 @@ function spawnBossOrbitDroneBurst(boss, kind = "star", count = 5) {
       mode,
       angle: baseAngle + (Math.PI * 2 * i) / Math.max(1, spawnCount),
 
-      orbitRadius: boss.r + getBossBaseSize(boss) * (isWave ? 0.44 : 0.46),
-      orbitSpeed: isWave ? 1.85 : 2.35,
-      hoverTime: isWave ? rand(0.9, 1.45) : rand(0.7, 1.2),
+      orbitRadius: boss.r + getBossBaseSize(boss) * (isWave ? 0.46 : 0.46),
+      orbitSpeed: isWave ? 2.05 : 2.35,
+      hoverTime: isWave ? rand(0.65, 1.15) : rand(0.7, 1.2),
 
       chargeSpeed:
-        mode === "boomerang" ? (isWave ? 340 : 330) :
-        mode === "homing" ? (isWave ? 290 : 280) :
-        (isWave ? 380 : 410),
+        mode === "boomerang" ? (isWave ? 360 : 330) :
+        mode === "homing" ? (isWave ? 300 : 280) :
+        mode === "fan" ? (isWave ? 340 : 300) :
+        mode === "nova" ? 0 :
+        (isWave ? 410 : 410),
 
       phase: "orbit",
       x: boss.x,
@@ -298,29 +305,35 @@ function spawnBossOrbitDroneBurst(boss, kind = "star", count = 5) {
       rot: 0,
 
       size:
-        mode === "turret" ? (isWave ? 34 : 30) :
-        mode === "cross" ? (isWave ? 38 : 30) :
+        mode === "turret" ? (isWave ? 36 : 30) :
+        mode === "cross" ? (isWave ? 40 : 30) :
+        mode === "nova" ? (isWave ? 42 : 30) :
         (isWave ? 36 : 28),
 
       damage:
         mode === "turret" ? (isWave ? 180 : 140) :
         mode === "homing" ? (isWave ? 220 : 160) :
+        mode === "nova" ? (isWave ? 260 : 180) :
         (isWave ? 400 : 200),
 
-      life: isWave ? 6.4 : 5.8,
+      life: isWave ? 7.2 : 5.8,
 
       shotTimer:
-        mode === "turret" ? 0.22 :
-        mode === "spiral" ? 0.08 :
-        mode === "cross" ? 0.36 :
-        mode === "homing" ? 0.42 :
+        mode === "turret" ? 0.18 :
+        mode === "spiral" ? 0.07 :
+        mode === "cross" ? 0.28 :
+        mode === "homing" ? 0.34 :
+        mode === "fan" ? 0.26 :
+        mode === "nova" ? 0.9 :
         0,
 
       burstLeft:
-        mode === "turret" ? 4 :
-        mode === "spiral" ? 18 :
-        mode === "cross" ? 3 :
-        mode === "homing" ? 4 :
+        mode === "turret" ? 5 :
+        mode === "spiral" ? 22 :
+        mode === "cross" ? 4 :
+        mode === "homing" ? 5 :
+        mode === "fan" ? 4 :
+        mode === "nova" ? 1 :
         0,
 
       spiralAngle: rand(0, Math.PI * 2),
@@ -343,7 +356,7 @@ function updateBossAttackDrones(boss, dt) {
       { x: 0, y: 1 },
       { x: 0, y: -1 }
     ];
-  
+
     for (const dir of dirs) {
       spawnEnemyProjectile({
         x,
@@ -400,6 +413,48 @@ function updateBossAttackDrones(boss, dt) {
     }
   };
 
+  const emitFanShot = (d, count, spread, speed, damage, radius, color) => {
+    const base = angle(d.x, d.y, p.x, p.y);
+    const center = (count - 1) * 0.5;
+    for (let i = 0; i < count; i++) {
+      const ang = base + (i - center) * spread;
+      spawnEnemyProjectile({
+        x: d.x,
+        y: d.y,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed,
+        life: 2.0,
+        radius,
+        damage,
+        color,
+        visual: "star"
+      });
+    }
+  };
+
+  const emitNova = (d, ringCount, bulletsPerRing, baseSpeed, damage, radius, colorA, colorB) => {
+    for (let r = 0; r < ringCount; r++) {
+      const speed = baseSpeed + r * 36;
+      const color = r % 2 === 0 ? colorA : colorB;
+      const angleOffset = (r % 2) * (Math.PI / bulletsPerRing);
+      for (let i = 0; i < bulletsPerRing; i++) {
+        const ang = angleOffset + (Math.PI * 2 * i) / bulletsPerRing;
+        spawnEnemyProjectile({
+          x: d.x,
+          y: d.y,
+          vx: Math.cos(ang) * speed,
+          vy: Math.sin(ang) * speed,
+          life: 2.3,
+          radius,
+          damage,
+          color,
+          visual: i % 2 === 0 ? "cross" : "spiral",
+          spin: 2.8
+        });
+      }
+    }
+  };
+
   for (const d of boss.attackDrones) {
     if (!d || d.dead) continue;
 
@@ -415,12 +470,19 @@ function updateBossAttackDrones(boss, dt) {
       d.angle += (d.orbitSpeed || 0) * dt;
       d.x = boss.x + Math.cos(d.angle) * (d.orbitRadius || 0);
       d.y = boss.y + Math.sin(d.angle) * (d.orbitRadius || 0);
-      d.rot += dt * (isWave ? 4.4 : 5.5);
+      d.rot += dt * (isWave ? 4.6 : 5.5);
 
       if (d.hoverTime <= 0) {
         const ang = angle(d.x, d.y, p.x, p.y);
 
-        if (d.mode === "turret" || d.mode === "spiral" || d.mode === "cross" || d.mode === "homing") {
+        if (
+          d.mode === "turret" ||
+          d.mode === "spiral" ||
+          d.mode === "cross" ||
+          d.mode === "homing" ||
+          d.mode === "fan" ||
+          d.mode === "nova"
+        ) {
           d.phase = "turret";
           d.rot = ang;
         } else {
@@ -435,35 +497,35 @@ function updateBossAttackDrones(boss, dt) {
       d.shotTimer = Math.max(0, Number(d.shotTimer || 0) - dt);
 
       if (d.mode === "turret" && d.shotTimer <= 0 && (d.burstLeft || 0) > 0) {
-        d.shotTimer = isWave ? 0.18 : 0.22;
+        d.shotTimer = isWave ? 0.16 : 0.22;
         d.burstLeft -= 1;
 
         const base = angle(d.x, d.y, p.x, p.y);
         for (let i = -1; i <= 1; i++) {
-          const ang = base + i * (isWave ? 0.18 : 0.24);
+          const ang = base + i * (isWave ? 0.15 : 0.24);
           spawnEnemyProjectile({
             x: d.x,
             y: d.y,
-            vx: Math.cos(ang) * (isWave ? 260 : 240),
-            vy: Math.sin(ang) * (isWave ? 260 : 240),
+            vx: Math.cos(ang) * (isWave ? 280 : 240),
+            vy: Math.sin(ang) * (isWave ? 280 : 240),
             life: 1.9,
             radius: isWave ? 8 : 7,
-            damage: isWave ? 90 : 70,
+            damage: isWave ? 96 : 70,
             color: bulletColor
           });
         }
 
         if (d.burstLeft <= 0) {
-          for (let i = 0; i < (isWave ? 10 : 8); i++) {
-            const ang = (Math.PI * 2 * i) / (isWave ? 10 : 8);
+          for (let i = 0; i < (isWave ? 12 : 8); i++) {
+            const ang = (Math.PI * 2 * i) / (isWave ? 12 : 8);
             spawnEnemyProjectile({
               x: d.x,
               y: d.y,
-              vx: Math.cos(ang) * (isWave ? 210 : 190),
-              vy: Math.sin(ang) * (isWave ? 210 : 190),
+              vx: Math.cos(ang) * (isWave ? 220 : 190),
+              vy: Math.sin(ang) * (isWave ? 220 : 190),
               life: 1.8,
               radius: 6,
-              damage: isWave ? 65 : 55,
+              damage: isWave ? 68 : 55,
               color: bulletColor2
             });
           }
@@ -472,30 +534,17 @@ function updateBossAttackDrones(boss, dt) {
       }
 
       if (d.mode === "spiral" && d.shotTimer <= 0 && (d.burstLeft || 0) > 0) {
-        d.shotTimer = isWave ? 0.065 : 0.08;
+        d.shotTimer = isWave ? 0.06 : 0.08;
         d.burstLeft -= 1;
-        emitSpiralShot(
-          d,
-          isWave ? 230 : 210,
-          isWave ? 62 : 48,
-          isWave ? 7 : 6,
-          bulletColor
-        );
+        emitSpiralShot(d, isWave ? 238 : 210, isWave ? 64 : 48, isWave ? 7 : 6, bulletColor);
         if (d.burstLeft <= 0) continue;
       }
 
       if (d.mode === "cross" && d.shotTimer <= 0 && (d.burstLeft || 0) > 0) {
-        d.shotTimer = isWave ? 0.28 : 0.36;
+        d.shotTimer = isWave ? 0.24 : 0.36;
         d.burstLeft -= 1;
 
-        emitCrossShot(
-          d.x,
-          d.y,
-          isWave ? 240 : 210,
-          isWave ? 82 : 60,
-          isWave ? 8 : 6,
-          bulletColor2
-        );
+        emitCrossShot(d.x, d.y, isWave ? 248 : 210, isWave ? 86 : 60, isWave ? 8 : 6, bulletColor2);
 
         const base = angle(d.x, d.y, p.x, p.y) + Math.PI / 4;
         for (let i = 0; i < 4; i++) {
@@ -503,11 +552,11 @@ function updateBossAttackDrones(boss, dt) {
           spawnEnemyProjectile({
             x: d.x,
             y: d.y,
-            vx: Math.cos(ang) * (isWave ? 220 : 190),
-            vy: Math.sin(ang) * (isWave ? 220 : 190),
+            vx: Math.cos(ang) * (isWave ? 228 : 190),
+            vy: Math.sin(ang) * (isWave ? 228 : 190),
             life: 1.9,
             radius: isWave ? 7 : 6,
-            damage: isWave ? 74 : 52,
+            damage: isWave ? 76 : 52,
             color: bulletColor
           });
         }
@@ -516,19 +565,24 @@ function updateBossAttackDrones(boss, dt) {
       }
 
       if (d.mode === "homing" && d.shotTimer <= 0 && (d.burstLeft || 0) > 0) {
-        d.shotTimer = isWave ? 0.34 : 0.42;
+        d.shotTimer = isWave ? 0.30 : 0.42;
         d.burstLeft -= 1;
-
-        emitHomingMiniStar(
-          d,
-          isWave ? 180 : 165,
-          isWave ? 76 : 56,
-          isWave ? 7 : 6,
-          bulletColor,
-          isWave ? 5.2 : 4.6
-        );
-
+        emitHomingMiniStar(d, isWave ? 190 : 165, isWave ? 80 : 56, isWave ? 7 : 6, bulletColor, isWave ? 5.4 : 4.6);
         if (d.burstLeft <= 0) continue;
+      }
+
+      if (d.mode === "fan" && d.shotTimer <= 0 && (d.burstLeft || 0) > 0) {
+        d.shotTimer = 0.22;
+        d.burstLeft -= 1;
+        emitFanShot(d, 7, 0.14, 250, 72, 7, bulletColor2);
+        if (d.burstLeft <= 0) continue;
+      }
+
+      if (d.mode === "nova" && d.shotTimer <= 0 && (d.burstLeft || 0) > 0) {
+        d.shotTimer = 999;
+        d.burstLeft -= 1;
+        emitNova(d, 3, 10, 150, 70, 7, bulletColor, bulletColor2);
+        continue;
       }
     } else if (d.phase === "charge") {
       d.x += (d.vx || 0) * dt;
@@ -537,9 +591,7 @@ function updateBossAttackDrones(boss, dt) {
 
       if (d.mode === "boomerang") {
         d.returnDelay = Math.max(0, Number(d.returnDelay || 0) - dt);
-        if (d.returnDelay <= 0) {
-          d.phase = "return";
-        }
+        if (d.returnDelay <= 0) d.phase = "return";
       }
 
       if (
@@ -873,28 +925,69 @@ function updateEnemies(dt) {
       continue;
     }
 
-    enemy.dead = true;
-
-    if (enemy.isBoss && typeof onBossDefeated === 'function') {
-      onBossDefeated(enemy);
-    }
-    if (enemy.typeId === 'leviathan') {
-      STATE.isGameClear = true;
-    }
-
-    dropXPGem?.(enemy.x, enemy.y, enemy.xp || 1);
-    if ((enemy.gold || 0) > 0) addGold?.(enemy.gold);
-    addEffect?.(
-      enemy.x,
-      enemy.y,
-      enemy.isBoss ? 44 : 22,
-      enemy.isBoss ? '#ffd8c7' : '#ffb0a0',
-      0.24,
-      0.26
-    );
+    finalizeEnemyDeath(enemy);
   }
 
   STATE.enemies = next;
+}
+
+function finalizeEnemyDeath(enemy) {
+  if (!enemy || enemy._deathHandled) return;
+
+  enemy._deathHandled = true;
+  enemy.dead = true;
+
+  const isLeviathan = enemy.typeId === "leviathan" || enemy.bossKind === "leviathan";
+
+  if (typeof markEnemyDefeated === "function") {
+    markEnemyDefeated(enemy.typeId);
+  }
+
+  if (enemy.isBoss) {
+    if (typeof onBossDefeated === "function") {
+      onBossDefeated(enemy);
+    }
+
+    if (Array.isArray(enemy.attackDrones)) {
+      enemy.attackDrones.length = 0;
+    }
+
+    if (isLeviathan) {
+      STATE.score += 3000;
+      STATE.isGameClear = true;
+    } else {
+      STATE.score += 1200;
+      STATE.chests.push({
+        x: enemy.x,
+        y: enemy.y,
+        r: 18,
+        size: 40
+      });
+    }
+  } else {
+    STATE.score += enemy.isElite ? 60 : 20;
+  }
+
+  if (typeof registerKillChain === "function") {
+    registerKillChain(enemy);
+  }
+
+  if ((enemy.gold || 0) > 0 && typeof addGold === "function") {
+    addGold(enemy.gold);
+  }
+
+  if (typeof dropXPGem === "function") {
+    dropXPGem(enemy.x, enemy.y, enemy.xp || 1);
+  }
+
+  addEffect?.(
+    enemy.x,
+    enemy.y,
+    enemy.isBoss ? 46 : Math.max(22, (enemy.r || 18) * 1.2),
+    enemy.isBoss ? "#ffd8c7" : "#ffb0a0",
+    0.24,
+    0.26
+  );
 }
 
 function updateEnemyAi(e, target, dt) {
