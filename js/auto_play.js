@@ -156,9 +156,164 @@ function getAutoNearestTarget(list, maxDist = Infinity, extraFilter = null) {
   return best;
 }
 
+function getAutoClosestPointOnRect(px, py, rect) {
+  const left = Number(rect?.x || 0);
+  const top = Number(rect?.y || 0);
+  const right = left + Number(rect?.w || 0);
+  const bottom = top + Number(rect?.h || 0);
+
+  return {
+    x: clampAuto(px, left, right),
+    y: clampAuto(py, top, bottom)
+  };
+}
+
+function addAutoRepulsionFromPoint(acc, px, py, cx, cy, avoidRadius, weight) {
+  const dx = px - cx;
+  const dy = py - cy;
+  const d = Math.max(0.0001, Math.hypot(dx, dy));
+  const near = Math.max(0, avoidRadius - d) / Math.max(1, avoidRadius);
+  const w = near * near * Math.max(0, Number(weight || 0));
+
+  acc.x += (dx / d) * w;
+  acc.y += (dy / d) * w;
+  acc.score += w;
+}
+
+function addAutoRepulsionFromRect(acc, px, py, rect, padding, weight, insideBonus = 0) {
+  if (!rect) return;
+
+  const left = Number(rect.x || 0);
+  const top = Number(rect.y || 0);
+  const right = left + Number(rect.w || 0);
+  const bottom = top + Number(rect.h || 0);
+
+  const inside = px >= left && px <= right && py >= top && py <= bottom;
+  const closest = getAutoClosestPointOnRect(px, py, rect);
+
+  let dx = px - closest.x;
+  let dy = py - closest.y;
+  let d = Math.hypot(dx, dy);
+
+  if (inside || d <= 0.0001) {
+    const distLeft = Math.abs(px - left);
+    const distRight = Math.abs(right - px);
+    const distTop = Math.abs(py - top);
+    const distBottom = Math.abs(bottom - py);
+
+    const minEdge = Math.min(distLeft, distRight, distTop, distBottom);
+
+    if (minEdge === distLeft) {
+      dx = -1;
+      dy = 0;
+    } else if (minEdge === distRight) {
+      dx = 1;
+      dy = 0;
+    } else if (minEdge === distTop) {
+      dx = 0;
+      dy = -1;
+    } else {
+      dx = 0;
+      dy = 1;
+    }
+
+    d = 1;
+  }
+
+  const avoidRadius = Math.max(1, Number(padding || 0)) + (inside ? 24 : 0);
+  const near = inside ? 1 : Math.max(0, avoidRadius - d) / avoidRadius;
+  const w = near * near * (Number(weight || 0) + (inside ? Number(insideBonus || 0) : 0));
+
+  acc.x += (dx / d) * w;
+  acc.y += (dy / d) * w;
+  acc.score += w;
+}
+
+function getAutoTrapDangerVector() {
+  const p = getAutoPlayer();
+  if (!p) return { x: 0, y: 0, score: 0, inside: false };
+
+  const map = typeof getCurrentMap === "function" ? getCurrentMap() : null;
+  const traps = Array.isArray(map?.traps) ? map.traps : [];
+  const acc = { x: 0, y: 0, score: 0, inside: false };
+
+  for (const trap of traps) {
+    if (!trap) continue;
+
+    const wasInside =
+      p.x >= Number(trap.x || 0) &&
+      p.x <= Number(trap.x || 0) + Number(trap.w || 0) &&
+      p.y >= Number(trap.y || 0) &&
+      p.y <= Number(trap.y || 0) + Number(trap.h || 0);
+
+    addAutoRepulsionFromRect(
+      acc,
+      p.x,
+      p.y,
+      trap,
+      96,
+      4.4,
+      3.2
+    );
+
+    if (wasInside) acc.inside = true;
+  }
+
+  return acc;
+}
+
+function getAutoMineDangerVector() {
+  const p = getAutoPlayer();
+  if (!p) return { x: 0, y: 0, score: 0, urgent: false };
+
+  const acc = { x: 0, y: 0, score: 0, urgent: false };
+
+  for (const b of STATE.bullets || []) {
+    if (!b || b.type !== "mine") continue;
+    if ((b.life || 0) <= 0) continue;
+
+    const radius = Math.max(
+      28,
+      Number(b.warningRadius || b.explodeRadius || b.r || b.radius || 0)
+    );
+
+    const pending = !!b.pendingExplode;
+    const timer = Math.max(0, Number(b.pendingExplodeTimer || 0));
+    const armDelay = Math.max(0, Number(b.armDelay || 0));
+
+    let weight = pending ? 4.6 : 2.8;
+    let avoidRadius = radius + (pending ? 34 : 20);
+
+    if (pending && timer <= 0.35) {
+      weight += 2.2;
+      avoidRadius += 18;
+      acc.urgent = true;
+    } else if (pending && timer <= 0.60) {
+      weight += 1.0;
+      avoidRadius += 10;
+    }
+
+    if (!pending && armDelay > 0) {
+      weight *= 0.7;
+    }
+
+    addAutoRepulsionFromPoint(
+      acc,
+      p.x,
+      p.y,
+      Number(b.x || 0),
+      Number(b.y || 0),
+      avoidRadius,
+      weight
+    );
+  }
+
+  return acc;
+}
+
 function getAutoDangerVector() {
   const p = getAutoPlayer();
-  if (!p) return { x: 0, y: 0 };
+  if (!p) return { x: 0, y: 0, trapScore: 0, mineScore: 0, emergency: false };
 
   let vx = 0;
   let vy = 0;
@@ -179,6 +334,7 @@ function getAutoDangerVector() {
 
   for (const b of STATE.enemyBullets || []) {
     if (!b) continue;
+
     const dx = p.x - b.x;
     const dy = p.y - b.y;
     const d = Math.max(1, Math.hypot(dx, dy));
@@ -226,7 +382,23 @@ function getAutoDangerVector() {
     vy += (dy / d) * w;
   }
 
-  return { x: vx, y: vy };
+  // 追加: ダメージ床を強く回避
+  const trapDanger = getAutoTrapDangerVector();
+  vx += trapDanger.x;
+  vy += trapDanger.y;
+
+  // 追加: 自機機雷を強く回避
+  const mineDanger = getAutoMineDangerVector();
+  vx += mineDanger.x;
+  vy += mineDanger.y;
+
+  return {
+    x: vx,
+    y: vy,
+    trapScore: Number(trapDanger.score || 0),
+    mineScore: Number(mineDanger.score || 0),
+    emergency: !!(trapDanger.inside || mineDanger.urgent)
+  };
 }
 
 function getAutoGoalVector() {
@@ -237,19 +409,30 @@ function getAutoGoalVector() {
   let vy = 0;
 
   const hpRate = p.maxHp > 0 ? p.hp / p.maxHp : 1;
+  const trapDanger = getAutoTrapDangerVector();
+  const mineDanger = getAutoMineDangerVector();
+
+  const isTrapEscape = !!trapDanger.inside || trapDanger.score >= 0.9;
+  const isMineEscape = !!mineDanger.urgent || mineDanger.score >= 0.7;
+  const emergency = isTrapEscape || isMineEscape;
 
   const nearestXp = getAutoNearestTarget(STATE.xpGems || [], 520);
   if (nearestXp) {
     const dx = nearestXp.x - p.x;
     const dy = nearestXp.y - p.y;
     const d = Math.max(1, Math.hypot(dx, dy));
-    const w = hpRate < 0.35 ? 0.35 : 1.2;
+
+    let w = hpRate < 0.35 ? 0.35 : 1.2;
+    if (isTrapEscape) w *= 0.18;
+    else if (isMineEscape) w *= 0.28;
+    else if (hpRate < 0.5) w *= 0.7;
+
     vx += (dx / d) * w;
     vy += (dy / d) * w;
   }
 
   const nearestCoin = getAutoNearestTarget(STATE.mapCoins || [], 380);
-  if (nearestCoin && hpRate > 0.4) {
+  if (nearestCoin && hpRate > 0.4 && !emergency) {
     const dx = nearestCoin.x - p.x;
     const dy = nearestCoin.y - p.y;
     const d = Math.max(1, Math.hypot(dx, dy));
@@ -264,22 +447,25 @@ function getAutoGoalVector() {
   );
   const activeBoss = typeof getActiveBoss === "function" ? getActiveBoss() : null;
 
-  if (bossSwitch && activeBoss?.shieldActive) {
+  if (bossSwitch && activeBoss?.shieldActive && !isTrapEscape) {
     const dx = bossSwitch.x - p.x;
     const dy = bossSwitch.y - p.y;
     const d = Math.max(1, Math.hypot(dx, dy));
-    vx += (dx / d) * 2.1;
-    vy += (dy / d) * 2.1;
+    const w = isMineEscape ? 0.7 : 2.1;
+    vx += (dx / d) * w;
+    vy += (dy / d) * w;
   }
 
-  if (!nearestXp && !bossSwitch) {
+  if ((!nearestXp && !bossSwitch) || emergency) {
     const centerX = STATE.world.width * 0.5;
     const centerY = STATE.world.height * 0.5;
     const dx = centerX - p.x;
     const dy = centerY - p.y;
     const d = Math.max(1, Math.hypot(dx, dy));
-    vx += (dx / d) * 0.22;
-    vy += (dy / d) * 0.22;
+
+    const centerWeight = emergency ? 0.46 : 0.22;
+    vx += (dx / d) * centerWeight;
+    vy += (dy / d) * centerWeight;
   }
 
   return { x: vx, y: vy };
@@ -319,17 +505,33 @@ function updateAutoPlayInput(dt) {
   const p = STATE.player;
   const hpRate = p.maxHp > 0 ? p.hp / p.maxHp : 1;
 
+  const trapEmergency = Number(danger.trapScore || 0) >= 0.9;
+  const mineEmergency = Number(danger.mineScore || 0) >= 0.7;
+  const emergency = !!danger.emergency || trapEmergency || mineEmergency;
+
   let x = 0;
   let y = 0;
 
-  x += goal.x * (hpRate < 0.35 ? 0.55 : 1.0);
-  y += goal.y * (hpRate < 0.35 ? 0.55 : 1.0);
+  const goalWeight = emergency
+    ? 0.16
+    : hpRate < 0.35
+      ? 0.55
+      : 1.0;
 
-  x += danger.x * (hpRate < 0.35 ? 1.8 : 1.2);
-  y += danger.y * (hpRate < 0.35 ? 1.8 : 1.2);
+  const dangerWeight = emergency
+    ? 2.6
+    : hpRate < 0.35
+      ? 1.8
+      : 1.2;
 
-  x += wall.x;
-  y += wall.y;
+  x += goal.x * goalWeight;
+  y += goal.y * goalWeight;
+
+  x += danger.x * dangerWeight;
+  y += danger.y * dangerWeight;
+
+  x += wall.x * (emergency ? 1.15 : 1.0);
+  y += wall.y * (emergency ? 1.15 : 1.0);
 
   const n = normalizeAutoVec(x, y);
   STATE.input.moveX = n.x;
